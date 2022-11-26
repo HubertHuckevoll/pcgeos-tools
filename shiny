@@ -1,0 +1,6 @@
+#!/bin/bash
+# Build your project afresh
+yes|clean
+mkmf
+pmake depend
+pmake -n -L 4

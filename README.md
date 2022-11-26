@@ -1,2 +1,2 @@
 # pcgeos-tools
-Some tools for developing FreeGEOS
+Some tools for development of/in FreeGEOS (Linux)

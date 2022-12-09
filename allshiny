@@ -1,0 +1,13 @@
+#!/bin/bash
+# Try to build all the source
+cd ~/pcgeos/Tools/pmake/pmake
+wmake install
+
+cd ~/pcgeos/Installed/Tools
+pmake install
+
+cd ~/pcgeos/Installed
+pmake -L 4
+
+cd ~/pcgeos/Tools/build/product/bbxensem/Scripts
+perl -I. buildbbx.pl

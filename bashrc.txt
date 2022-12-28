@@ -1,6 +1,6 @@
 # setup .bashrc for SDK
 export WATCOM=~/watcom
 export ROOT_DIR=~/pcgeos
-export LOCAL_ROOT=~/pcgeos
+export LOCAL_ROOT=~/
 export BASEBOX=basebox
 export PATH=$PATH:~/watcom/binl64:~/pcgeos/bin:~/pcgeos-basebox/binl64:~/pcgeos-tools

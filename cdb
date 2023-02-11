@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # this script must be run using the source command:
-# source cdb Breadbox/BbxBrow
+# source cdb BbxBrow
 
-cd ~/pcgeos/Installed/Appl/$1
+dir=`find $ROOT_DIR/Installed/Appl -type d -name "$1"`
+echo Switching to: $dir
+cd $dir

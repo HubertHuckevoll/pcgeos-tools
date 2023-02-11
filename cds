@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # this script must be run using the source command:
-# source cds Breadbox/BbxBrow
+# source cds BbxBrow
 
-cd ~/pcgeos/Appl/$1
+dir=`find $ROOT_DIR/Appl -type d -name "$1"`
+echo Switching to: $dir
+cd $dir

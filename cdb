@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# this script must be run using the source command:
+# source cdb Breadbox/BbxBrow
+
+cd ~/pcgeos/Installed/Appl/$1

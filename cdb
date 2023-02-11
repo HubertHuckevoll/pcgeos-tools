@@ -3,6 +3,6 @@
 # this script must be run using the source command:
 # source cdb BbxBrow
 
-dir=`find $ROOT_DIR/Installed/Appl -type d -name "$1"`
+dir=`find $ROOT_DIR/Installed/Appl $ROOT_DIR/Installed/Library $ROOT_DIR/Installed/Driver -type d -name "$1"`
 echo Switching to: $dir
 cd $dir

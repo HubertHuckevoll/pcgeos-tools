@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# this script must be run using the source command:
+# source cdi BbxBrow
+
+cdir=`pwd`
+dirn=`basename "$cdir"`
+
+sdir=`find $ROOT_DIR/Appl $ROOT_DIR/Library $ROOT_DIR/Driver -type d -name "$dirn"`
+bdir=`find $ROOT_DIR/Installed/Appl $ROOT_DIR/Installed/Library $ROOT_DIR/Installed/Driver -type d -name "$dirn"`
+
+if [ "$cdir" = "$sdir" ]
+then
+    echo Switching to: $bdir
+    cd $bdir
+fi
+
+if [ "$cdir" = "$bdir" ]
+then
+    echo Switching to: $sdir
+    cd $sdir
+fi
+
+

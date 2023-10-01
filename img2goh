@@ -7,11 +7,19 @@ outf="$basef".pcx
 gohf="$basef".goh
 
 # convert any modern image to old-school pcx
-img2pcx $inf
+# the script "returns" the color index of the magenta background color
+# that we want to mask out for transparency using the "m" option in
+# cvtpcx
+identify $inf
+colormapIdx=$(img2pcx $inf)
+identify $outf
 
 # make sure we have the correct dimensions
 width=`identify -format '%w' $outf`
 height=`identify -format '%h' $outf`
 
 # call the CVTPCX methusalem
-cvtpcx -G -2 -m0 -Sicon -w"$width" -h"$height" -n"$basef"00 -o"$gohf" $outf
+cvtpcx -G -2 -m"$colormapIdx" -Sicon -w"$width" -h"$height" -n"$basef"00 -o"$gohf" $outf
+
+# delete PCX image, not needed anymore
+rm $outf

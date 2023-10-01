@@ -2,24 +2,20 @@
 
 # set some variables
 inf=$1
-basef=$inf
-basef="${basef%.*}"
-tempf="$basef"_temp.png
-outf="$basef".pcx
+outf="${inf%.*}".pcx
 
-# inform about our input
-echo -n "Input: "; identify $inf;
+# make sure we have a MAGENTA bg (-background '#ff00ff')
+# remove any transparency layer (-flatten)
+# make sure we have a paletted image
+# make sure our bitmap is 8 bit, with at most 256 colors (-depth 8, -colors 256)
+convert $inf -background '#ff00ff' \
+             -flatten \
+             -type palette \
+             -depth 8 \
+             -colors 256 $outf
 
-# the "hard" part: remove any transparency layer
-# make sure our bitmap is 8 bit, with at most 256 colors
-# finally, convert to PCX
-# "background white" makes sure we have a white bg
-convert $inf -background white -flatten $tempf
-convert $tempf -depth 8 -colors 256 PNG8:$tempf
-
-# convert to pcx, delete temp file
-convert $tempf $outf
-rm $tempf
-
-#Our output file
-echo -n "Output: "; identify $outf;
+# Our output
+# find the MAGENTA color value in the Colormap and extract it's index value
+# that we return (by echoing it to stdout) so that it can be passed to
+# cvtpcx as transparent pixel.
+identify -verbose $outf | grep -ioP '\d{0,3}(?=: \(255,0,255\) #FF00FF magenta)' | tail -n1;

@@ -11,7 +11,7 @@ gohf="$basef".goh
 # that we want to mask out for transparency using the "m" option in
 # cvtpcx
 identify $inf
-colormapIdx=$(img2pcx $inf)
+colormapIdx=$(img2pcx $inf | tail -n1)
 identify $outf
 
 # make sure we have the correct dimensions
@@ -22,4 +22,4 @@ height=`identify -format '%h' $outf`
 cvtpcx -G -2 -m"$colormapIdx" -Sicon -w"$width" -h"$height" -n"$basef"00 -o"$gohf" $outf
 
 # delete PCX image, not needed anymore
-rm $outf
+#rm $outf

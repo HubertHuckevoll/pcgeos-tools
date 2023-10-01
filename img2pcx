@@ -6,11 +6,12 @@ outf="${inf%.*}".pcx
 
 # make sure we have a MAGENTA bg (-background '#ff00ff')
 # remove any transparency layer (-flatten)
-# make sure we have a paletted image
+# make sure we have a paletted image (-type palette)
 # make sure our bitmap is 8 bit, with at most 256 colors (-depth 8, -colors 256)
 convert $inf -background '#ff00ff' \
              -flatten \
              -type palette \
+             -remap ~/pcgeos-tools/vga.png \
              -depth 8 \
              -colors 256 $outf
 
@@ -18,4 +19,5 @@ convert $inf -background '#ff00ff' \
 # find the MAGENTA color value in the Colormap and extract it's index value
 # that we return (by echoing it to stdout) so that it can be passed to
 # cvtpcx as transparent pixel.
+identify -verbose $outf > "${inf%.*}".txt
 identify -verbose $outf | grep -ioP '\d{0,3}(?=: \(255,0,255\) #FF00FF magenta)' | tail -n1;

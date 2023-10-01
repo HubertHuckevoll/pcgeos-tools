@@ -19,7 +19,9 @@ width=`identify -format '%w' $outf`
 height=`identify -format '%h' $outf`
 
 # call the CVTPCX methusalem
-cvtpcx -G -2 -m"$colormapIdx" -Sicon -w"$width" -h"$height" -n"$basef"00 -o"$gohf" $outf
+cvtpcx -G -2 -m"$colormapIdx" -Sicon -w"$width" -h"$height" -o"$gohf" $outf
+#cvtpcx -G -2 -m"$colormapIdx" -Sicon -w"$width" -h"$height" -dLC,LM,SC,SM,LCGA,SCGA,YC,YM,TC,TM,TCGA -o"$gohf" $outf
+#cvtpcx -G -2 -m"$colormapIdx" -Sicon -dLC,LM,SC,SM,LCGA,SCGA,YC,YM,TC,TM,TCGA -o"$gohf" $outf
 
 # delete PCX image, not needed anymore
-#rm $outf
+rm $outf

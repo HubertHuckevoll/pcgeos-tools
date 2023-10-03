@@ -5,16 +5,19 @@ inf=$1
 outf="${inf%.*}".pcx
 
 # make sure we have a MAGENTA bg (-background '#ff00ff')
+# turn pixels with alpha shading either on or off (-channel A -fx "(a>0.5) ? 1.0 : 0")
 # remove any transparency layer (-flatten)
 # make sure we have a paletted image (-type palette)
 # make sure our bitmap is 8 bit, with at most 256 colors (-depth 8, -colors 256)
-convert $inf -channel A -fx "(a>0.5) ? 1.0 : 0" \
-             -background '#ff00ff' \
-             -flatten \
-             -type palette \
-             -remap ~/pcgeos-tools/geosvga.png \
-             -depth 8 \
-             -colors 256 $outf
+convert $inf \
+        -channel A -fx "(a>0.5) ? 1.0 : 0" \
+        -background '#ff00ff' \
+        -flatten \
+        -type palette \
+        -remap ~/pcgeos-tools/geosvga.png \
+        -depth 8 \
+        -colors 256 \
+        $outf
 
 # Our output
 # find the MAGENTA color value in the Colormap and extract it's index value

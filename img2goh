@@ -4,42 +4,47 @@
 appIconF=$1
 toolF=$2
 
-outf="${appIconF%.*}".pcx
-gohf="${appIconF%.*}".goh
+baseDir=$(dirname "$appIconF")
+tempGohF="$baseDir"/tempf.goh
+appPcxF="$baseDir"/appicon.pcx
+toolPcxF="$baseDir"/toolicon.pcx
+gohF="$baseDir"/appicon.goh
 
-toolPcxF="${toolF%.*}".pcx
-toolGohF="${toolF%.*}".goh
+#
+# default color icon, 48x30
+#
 
-# convert any modern image to old-school pcx
+# convert any modern image format to old-school pcx
 # the script "returns" the color index of the magenta background color
-# that we want to mask out for transparency using the "m" option in
-# cvtpcx
+# we've added in the process of the conversion that we want to
+# mask out for transparency using the "m" option in cvtpcx
 identify $appIconF
 colormapIdx=$(img2pcx $appIconF | tail -n1)
-identify $outf
-
-# make sure we have the correct dimensions
-width=`identify -format '%w' $outf`
-height=`identify -format '%h' $outf`
+identify $appPcxF
 
 # call the CVTPCX methusalem
-#cvtpcx -G -2 -m"$colormapIdx" -w"$width" -h"$height" -Sicon -sstandard -anormal -o"$gohf" $outf
-cvtpcx -G -2 -m"$colormapIdx" -Sicon -o"$gohf" $outf
+cvtpcx -Sicon -sstandard -anormal -w48 -h30 -m"$colormapIdx" -G -2 -o"$tempGohF" $appPcxF
+sed -i 's/\bMoniker\b/Moniker0/g' $tempGohF
+cat $tempGohF > $gohF
 
-# delete PCX image
-rm $outf
+# cleanup
+rm $tempGohF
+rm $appPcxF
 
+#
 # Tool icon
 #
-# make sure we have the correct dimensions
-# convert $outf -gravity center -crop "$width"x"$height"+0+0 +repage $outf
 
+# convert to PCX
 identify $toolF
 colormapIdx=$(img2pcx $toolF | tail -n1)
 identify $toolPcxF
 
 # call the CVTPCX methusalem
-cvtpcx -G -2 -m"$colormapIdx" -Stool -w15 -h15 -o"$toolGohF" $toolPcxF
+cvtpcx -G -2 -m"$colormapIdx" -Stool -w15 -h15 -o"$tempGohF" $toolPcxF
+sed -i 's/\bMoniker\b/Moniker1/g' $tempGohF
+cat $tempGohF >> $gohF
 
-# delete PCX image, not needed anymore
+# cleanup
+rm $tempGohF
 rm $toolPcxF

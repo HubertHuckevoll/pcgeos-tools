@@ -31,15 +31,24 @@ cat $tempGohF > $gohF
 # so we have to downconvert again.
 # But actually, the results look worse than when we just
 # have the system use the regular 8-bit version...
-# convert $appPcxF \
-#        -depth 4 \
-#        -colors 16 \
-#        $appPcxF
+#convert $appPcxF \
+#       -depth 4 \
+#       -colors 2 \
+#       $appPcxF
 
-#cvtpcx -Sicon -stiny -averySquished -w48 -h14 -b -G -2 -o"$tempGohF" $appPcxF
-#cvtpcx -Sicon -sstandard -anormal -w48 -h14 -G -2 -o"$tempGohF" $appPcxF
-#sed -i 's/\bMoniker\b/Moniker1/g' $tempGohF
-#cat $tempGohF >> $gohF
+#cvtpcx -Sicon -sstandard -anormal -w48 -h30 -G -B -2 -m"$colormapIdx" -o"$tempGohF" $appPcxF
+#sed -i 's/\bMoniker\b/Moniker0/g' $tempGohF
+#cat $tempGohF > $gohF
+
+# CGA very squished, should be gray1, but works well with color8
+cvtpcx -Sicon -stiny -averySquished -w48 -h14 -G -2 -m"$colormapIdx" -o"$tempGohF" $appPcxF
+sed -i 's/\bMoniker\b/Moniker1/g' $tempGohF
+cat $tempGohF >> $gohF
+
+cvtpcx -Sicon -stiny -anormal -w18 -h18 -b -G -2 -m"$colormapIdx" -o"$tempGohF" $appPcxF
+sed -i 's/\bMoniker\b/Moniker2/g' $tempGohF
+cat $tempGohF >> $gohF
+
 
 # cleanup
 rm $tempGohF
@@ -56,7 +65,7 @@ identify $toolPcxF
 
 # call the CVTPCX methusalem
 cvtpcx -G -2 -m"$colormapIdx" -Stool -w15 -h15 -o"$tempGohF" $toolPcxF
-sed -i 's/\bMoniker\b/Moniker1/g' $tempGohF
+sed -i 's/\bMoniker\b/Moniker3/g' $tempGohF
 cat $tempGohF >> $gohF
 
 # cleanup

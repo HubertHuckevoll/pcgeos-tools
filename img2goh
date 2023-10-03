@@ -19,7 +19,7 @@ gohF="$baseDir"/appicon.goh
 # we've added in the process of the conversion that we want to
 # mask out for transparency using the "m" option in cvtpcx
 identify $appIconF
-colormapIdx=$(img2pcx $appIconF | tail -n1)
+colormapIdx=$(img2pcx $appIconF $appPcxF | tail -n1)
 identify $appPcxF
 
 # call the CVTPCX methusalem
@@ -37,7 +37,7 @@ rm $appPcxF
 
 # convert to PCX
 identify $toolF
-colormapIdx=$(img2pcx $toolF | tail -n1)
+colormapIdx=$(img2pcx $toolF $toolPcxF | tail -n1)
 identify $toolPcxF
 
 # call the CVTPCX methusalem

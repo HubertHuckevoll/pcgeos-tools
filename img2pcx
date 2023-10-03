@@ -2,7 +2,7 @@
 
 # set some variables
 inf=$1
-outf="${inf%.*}".pcx
+outf=$2
 
 # make sure we have a MAGENTA bg (-background '#ff00ff')
 # turn pixels with alpha shading either on or off (-channel A -fx "(a>0.5) ? 1.0 : 0")

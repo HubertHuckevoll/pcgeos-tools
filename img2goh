@@ -27,6 +27,20 @@ cvtpcx -Sicon -sstandard -anormal -w48 -h30 -m"$colormapIdx" -G -2 -o"$tempGohF"
 sed -i 's/\bMoniker\b/Moniker0/g' $tempGohF
 cat $tempGohF > $gohF
 
+# CVTPCX only supports 4 bit color when converting to b/w,
+# so we have to downconvert again.
+# But actually, the results look worse than when we just
+# have the system use the regular 8-bit version...
+# convert $appPcxF \
+#        -depth 4 \
+#        -colors 16 \
+#        $appPcxF
+
+#cvtpcx -Sicon -stiny -averySquished -w48 -h14 -b -G -2 -o"$tempGohF" $appPcxF
+#cvtpcx -Sicon -sstandard -anormal -w48 -h14 -G -2 -o"$tempGohF" $appPcxF
+#sed -i 's/\bMoniker\b/Moniker1/g' $tempGohF
+#cat $tempGohF >> $gohF
+
 # cleanup
 rm $tempGohF
 rm $appPcxF

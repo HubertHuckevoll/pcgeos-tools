@@ -9,12 +9,14 @@ outf=$2
 # remove any transparency layer (-flatten)
 # make sure we have a paletted image (-type palette)
 # make sure our bitmap is 8 bit, with at most 256 colors (-depth 8, -colors 256)
+# Unclear:
+# -alpha off \
+# -remap ~/pcgeos-tools/geosvga.png \
 convert $inf \
         -channel A -fx "(a>0.5) ? 1.0 : 0" \
         -background '#ff00ff' \
         -flatten \
         -type palette \
-        -remap ~/pcgeos-tools/geosvga.png \
         -depth 8 \
         -colors 256 \
         $outf

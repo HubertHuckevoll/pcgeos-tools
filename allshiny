@@ -7,6 +7,7 @@ cd ~/pcgeos/Installed/Tools
 pmake install
 
 cd ~/pcgeos/Installed
+yes | clean
 pmake -L 4
 
 cd ~/pcgeos/Tools/build/product/bbxensem/Scripts

@@ -1,14 +1,19 @@
 #!/bin/bash
 # Try to build all the source
-cd ~/pcgeos/Tools/pmake/pmake
-wmake install
 
-cd ~/pcgeos/Installed/Tools
-pmake install
+# Build pmake
+#cd ~/pcgeos/Tools/pmake/pmake
+#wmake install
 
+# Build all the tools
+#cd ~/pcgeos/Installed/Tools
+#pmake install
+
+# Build all the geodes
 cd ~/pcgeos/Installed
 yes | clean
 pmake -L 4
 
+# Build product
 cd ~/pcgeos/Tools/build/product/bbxensem/Scripts
 perl -I. buildbbx.pl

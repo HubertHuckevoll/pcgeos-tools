@@ -10,9 +10,9 @@
 #pmake install
 
 # Build all the geodes
-cd ~/pcgeos/Installed
-yes | clean
-pmake -L 4
+#cd ~/pcgeos/Installed
+#yes | clean
+#pmake -L 4
 
 # Build product
 cd ~/pcgeos/Tools/build/product/bbxensem/Scripts

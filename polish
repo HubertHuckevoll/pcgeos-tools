@@ -1,0 +1,4 @@
+#!/bin/bash
+# Build your project afresh, with predefined makefiles
+yes | clean
+pmake -n -L 4

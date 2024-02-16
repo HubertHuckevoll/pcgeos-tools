@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build your project afresh
-yes|clean
+yes | clean
 mkmf
 pmake depend
-pmake -n -L 4
+pmake -L 4

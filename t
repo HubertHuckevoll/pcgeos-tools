@@ -1,0 +1,56 @@
+#!/bin/sh
+##############################################################################
+#
+# 	Copyright (c) GeoWorks 1991 -- All Rights Reserved
+#
+# PROJECT:	PC GEOS
+# MODULE:	target
+# FILE: 	target
+# AUTHOR: 	Falk Rehwagen, Oct 26, 2020
+#
+# REVISION HISTORY:
+#	Name	Date		Description
+#	----	----		-----------
+#	fr	26/10/20	Initial Revision
+#
+# DESCRIPTION:
+#	A script to start the target basebox and optionally
+#       connect swat.
+#
+#	Usage: target [path] [-swat]
+#
+#	If you give the argument "no", then the things that would be
+#	removed will be printed, but not removed.
+#
+#	$Id: clean,v 1.18 97/02/12 17:08:40 stevey Exp $
+#
+###############################################################################
+if [ "$BASEBOX" = "" ]; then
+    BASEBOX=dosbox
+fi
+OLD_PATH=$PWD
+cd ${LOCAL_ROOT}/gbuild/localpc
+rm $LOCAL_ROOT/gbuild/localpc/IPX_STAT.TXT
+rm ensemble/init.bat
+if [ "$GEOS_CENTRAL_STORAGE" != "" ]; then
+   echo mount s: %GEOS_CENTRAL_STORAGE% >> ensemble/init.bat
+fi
+if [ "$GEOS_CDROM_DRIVE" != "" ]; then
+   if [ -f "$GEOS_CDROM_DRIVE" ]; then
+      echo imgmount r "$GEOS_CDROM_DRIVE" -t iso >> ensemble/init.bat
+   else 
+      echo mount r $GEOS_CDROM_DRIVE -t cdrom >> ensemble/init.bat
+   fi
+fi
+if [ -f "ensemble/init.bat" ]; then
+   echo swatgo >> ensemble/init.bat
+fi
+set -m
+$BASEBOX -conf $ROOT_DIR/bin/basebox.conf -conf $LOCAL_ROOT/basebox_user.conf >/dev/null 2>&1 &
+set +m
+cd $OLD_PATH
+
+clear
+while [ ! -f $LOCAL_ROOT/gbuild/localpc/IPX_STAT.TXT ]; do sleep 1; printf "."; done
+IPX_PORT=$(grep "127.0.0.1 from port" $LOCAL_ROOT/gbuild/localpc/IPX_STAT.TXT | perl -e 'my $status = <>; $status =~  m/(\d+)\r/; printf("%04X", $1);')
+swat -net 00000000:7F000001${IPX_PORT}:003F

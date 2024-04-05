@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# set some variables
+appIconF=$1
+toolF=$2
+
+baseDir=$(dirname "$appIconF")
+tempGohF="$baseDir"/tempf.goh
+appPcxF="$baseDir"/appicon.pcx
+toolPcxF="$baseDir"/toolicon.pcx
+gohF="$baseDir"/appicon.goh
+
+#
+# default color icon, 48x30
+#
+
+# convert any modern image format to old-school pcx
+# the script "returns" the color index of the magenta background color
+# we've added in the process of the conversion that we want to
+# mask out for transparency using the "m" option in cvtpcx
+identify $appIconF
+colormapIdx=$(img2pcx $appIconF $appPcxF | tail -n1)
+identify $appPcxF
+
+# call the CVTPCX methusalem
+cvtpcx -Sicon -sstandard -anormal -w48 -h30 -m"$colormapIdx" -G -2 -o"$tempGohF" $appPcxF
+sed -i 's/\bMoniker\b/Moniker0/g' $tempGohF
+cat $tempGohF > $gohF
+
+# CVTPCX only supports 4 bit color when converting to b/w,
+# so we have to downconvert again.
+# But actually, the results look worse than when we just
+# have the system use the regular 8-bit version...
+#convert $appPcxF \
+#       -depth 4 \
+#       -colors 2 \
+#       $appPcxF
+
+#cvtpcx -Sicon -sstandard -anormal -w48 -h30 -G -B -2 -m"$colormapIdx" -o"$tempGohF" $appPcxF
+#sed -i 's/\bMoniker\b/Moniker0/g' $tempGohF
+#cat $tempGohF > $gohF
+
+# CGA very squished, should be gray1, but works well with color8
+cvtpcx -Sicon -stiny -averySquished -w48 -h14 -G -2 -m"$colormapIdx" -o"$tempGohF" $appPcxF
+sed -i 's/\bMoniker\b/Moniker1/g' $tempGohF
+cat $tempGohF >> $gohF
+
+cvtpcx -Sicon -stiny -anormal -w18 -h18 -b -G -2 -m"$colormapIdx" -o"$tempGohF" $appPcxF
+sed -i 's/\bMoniker\b/Moniker2/g' $tempGohF
+cat $tempGohF >> $gohF
+
+
+# cleanup
+rm $tempGohF
+rm $appPcxF
+
+#
+# Tool icon
+#
+
+# convert to PCX
+identify $toolF
+colormapIdx=$(img2pcx $toolF $toolPcxF | tail -n1)
+identify $toolPcxF
+
+# call the CVTPCX methusalem
+cvtpcx -G -2 -m"$colormapIdx" -Stool -w15 -h15 -o"$tempGohF" $toolPcxF
+sed -i 's/\bMoniker\b/Moniker3/g' $tempGohF
+cat $tempGohF >> $gohF
+
+# cleanup
+rm $tempGohF
+rm $toolPcxF

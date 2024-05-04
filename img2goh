@@ -62,11 +62,12 @@ convert $inf \
         -background '#ff00ff' \
         -flatten \
         +dither \
-        -remap "$giff" \
         -type palette \
         -colors "$numColors" \
         -compress none \
         "$ppmf"
+
+#        -remap "$giff" \
 
 identify "$ppmf"
 echo

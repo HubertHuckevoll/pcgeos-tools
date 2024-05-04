@@ -25,7 +25,7 @@ doForGOC=
 # -R => Don't put out resource start/end directives; just monikers
 res=-R
 
-# create CGA/EGA/VGA 16 color palette
+echo "CREATE CGA/EGA/VGA 16 COLOR PALETTE"
 convert xc:"#000000" \
         xc:"#0000AA" \
         xc:"#00AA00" \
@@ -43,11 +43,13 @@ convert xc:"#000000" \
         xc:"#FFFF55" \
         xc:"#FFFFFF" \
         +append "$giff"
+echo
 
-# identify input file
+echo "INPUT FILE"
 identify $inf
+echo
 
-# convert input image to old-school PPM
+echo "CONVERT INPUT IMAGE TO OLD-SCHOOL PPM"
 # make sure we have a MAGENTA bg (-background '#ff00ff')
 # turn pixels with alpha shading either on or off (-channel A -fx "(a>0.5) ? 1.0 : 0")
 # remove any transparency layer (-flatten)
@@ -65,13 +67,16 @@ convert $inf \
         -colors "$numColors" \
         -compress none \
         "$ppmf"
-identify "$ppmf"
 
-# convert input image from old-school PPM to PCX
+identify "$ppmf"
+echo
+
+echo "CONVERT INPUT IMAGE FROM OLD-SCHOOL PPM TO PCX"
 # because old-school PPM can output 4 bit PCX files
 # (no modern program can...)
-ppmtopcx "$ppmf" > "$pcxf"
+ppmtopcx "$ppmf" -planes=4 > "$pcxf"
 identify $pcxf
+echo
 
 # make sure we have the correct dimensions
 width=`identify -format '%w' "$pcxf"`
@@ -83,7 +88,7 @@ height=`identify -format '%h' "$pcxf"`
 # identify -verbose $outf > "${inf%.*}".txt
 colormapIdx=$(identify -verbose "$pcxf" | grep -ioP '\d{0,3}(?=: \(255,0,255\) #FF00FF magenta)' | tail -n1);
 
-# call the CVTPCX methusalem
+echo "CALL THE CVTPCX METHUSALEM"
 cvtpcx -S"$style" \
        -s"$size" \
        -a"$aspect" \
@@ -95,8 +100,9 @@ cvtpcx -S"$style" \
        $res \
        -2 \
        -o"$gohf" "$pcxf"
+echo
 
-# cleanup
+echo "CLEANUP"
 rm $pcxf
 rm $giff
 rm $ppmf

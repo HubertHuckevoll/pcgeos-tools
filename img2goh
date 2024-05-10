@@ -6,7 +6,6 @@ basef="${inf%.*}"
 gohf="$basef".goh
 pcxf="temp.pcx"
 ppmf="temp.ppm"
-giff="palette.gif"
 
 # Colors: 16 => BMF_4BIT or 256 => BMF_8BIT
 numColors=16
@@ -25,38 +24,19 @@ doForGOC=-G
 # -R => Don't put out resource start/end directives; just monikers
 res=-R
 
-echo "CREATE EGA/VGA 16 COLOR DEFAULT PALETTE"
-convert xc:"#000000" \
-        xc:"#0000AA" \
-        xc:"#00AA00" \
-        xc:"#00AAAA" \
-        xc:"#AA0000" \
-        xc:"#AA00AA" \
-        xc:"#AA5500" \
-        xc:"#AAAAAA" \
-        xc:"#555555" \
-        xc:"#5555FF" \
-        xc:"#55FF55" \
-        xc:"#55FFFF" \
-        xc:"#FF5555" \
-        xc:"#FF55FF" \
-        xc:"#FFFF55" \
-        xc:"#FFFFFF" \
-        +append "$giff"
-echo
-
-echo "INPUT FILE"
+echo "WORKING ON FILE"
 identify $inf
 echo
 
-echo "CONVERT INPUT IMAGE TO OLD-SCHOOL PPM"
+echo "CONVERTING INPUT IMAGE TO PPM"
+echo "because PPM can output 4 bit PCX files"
+echo "(apparently, no modern program can...)"
 # make sure we have a MAGENTA bg (-background '#ff00ff')
 # turn pixels with alpha shading either on or off (-channel A -fx "(a>0.5) ? 1.0 : 0")
 # remove any transparency layer (-flatten)
 # make sure we have a paletted image (-type palette)
 # make sure our bitmap is XX colors (-colors 256)
 # turn *off* dithering: +dither
-# remap all colors to our predefined color map of 16 or 256 colors (-remap)
 convert $inf \
         -channel A -fx "(a>0.5) ? 1.0 : 0" \
         -background '#ff00ff' \
@@ -67,14 +47,11 @@ convert $inf \
         -compress none \
         "$ppmf"
 
-#        -remap "$giff" \
-
 identify "$ppmf"
 echo
 
-echo "CONVERT INPUT IMAGE FROM OLD-SCHOOL PPM TO PCX"
-# because old-school PPM can output 4 bit PCX files
-# (no modern program can...)
+echo "CONVERTING IMAGE FROM PPM TO PCX"
+# planes=4 is important!
 ppmtopcx "$ppmf" -planes=4 > "$pcxf"
 identify $pcxf
 echo
@@ -89,7 +66,7 @@ height=`identify -format '%h' "$pcxf"`
 # identify -verbose $outf > "${inf%.*}".txt
 colormapIdx=$(identify -verbose "$pcxf" | grep -ioP '\d{0,3}(?=: \(255,0,255\) #FF00FF magenta)' | tail -n1);
 
-echo "CALL THE CVTPCX METHUSALEM"
+echo "CALLING CVTPCX"
 cvtpcx -S"$style" \
        -s"$size" \
        -a"$aspect" \
@@ -104,7 +81,7 @@ cvtpcx -S"$style" \
        -o"$gohf" "$pcxf"
 echo
 
-echo "CLEANUP"
+echo "CLEANING UP"
 rm $pcxf
 rm $giff
 rm $ppmf

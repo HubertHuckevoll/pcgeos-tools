@@ -29,7 +29,7 @@ identify $inf
 echo
 
 echo "CONVERTING INPUT IMAGE TO PPM"
-echo "because PPM can output 4 bit PCX files"
+echo "(...because PPM can output 4 bit PCX files,"
 echo "(apparently, no modern program can...)"
 # make sure we have a MAGENTA bg (-background '#ff00ff')
 # turn pixels with alpha shading either on or off (-channel A -fx "(a>0.5) ? 1.0 : 0")

@@ -35,8 +35,9 @@ echo "(apparently, no modern program can...)"
 # turn pixels with alpha shading either on or off (-channel A -fx "(a>0.5) ? 1.0 : 0")
 # remove any transparency layer (-flatten)
 # make sure we have a paletted image (-type palette)
-# make sure our bitmap is XX colors (-colors 256)
+# make sure our bitmap is XX colors (-colors "$numColors")
 # turn *off* dithering: +dither
+# remapping the palette is done by cvtpcx!
 convert $inf \
         -channel A -fx "(a>0.5) ? 1.0 : 0" \
         -background '#ff00ff' \

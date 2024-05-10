@@ -4,8 +4,8 @@
 inf=$1
 basef="${inf%.*}"
 gohf="$basef".goh
-pcxf="temp.pcx"
-ppmf="temp.ppm"
+pcxf="$basef".temp.pcx
+ppmf="$basef".temp.ppm
 
 # Colors: 16 => BMF_4BIT or 256 => BMF_8BIT
 numColors=16
@@ -83,5 +83,4 @@ echo
 
 echo "CLEANING UP"
 rm $pcxf
-rm $giff
 rm $ppmf

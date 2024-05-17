@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# set some variables
-inf=$1
-basef="${inf%.*}"
-gohf="$basef".goh
-pcxf="$basef".temp.pcx
-ppmf="$basef".temp.ppm
-
 # Colors: 16 => BMF_4BIT or 256 => BMF_8BIT
 numColors=16
 
@@ -23,6 +16,19 @@ doForGOC=-G
 
 # -R => Don't put out resource start/end directives; just monikers
 res=-R
+
+# filenames
+inf=$1
+basef="${inf%.*}"
+pcxf="$basef".temp.pcx
+ppmf="$basef".temp.ppm
+
+if [ "$doForGOC" = "-G" ]; then
+   gohf="$basef".goh
+else
+gohf="$basef".ui
+fi
+
 
 echo "WORKING ON FILE"
 identify $inf

@@ -12,7 +12,7 @@ aspect=normal
 fill=
 
 # -G => output GOH/GOC code instead of ESP/UI
-doForGOC=-G
+doForGOC=
 
 # -R => Don't put out resource start/end directives; just monikers
 res=-R
@@ -24,11 +24,10 @@ pcxf="$basef".temp.pcx
 ppmf="$basef".temp.ppm
 
 if [ "$doForGOC" = "-G" ]; then
-   gohf="$basef".goh
+    gohf="$basef".goh
 else
-gohf="$basef".ui
+    gohf="$basef".ui
 fi
-
 
 echo "WORKING ON FILE"
 identify $inf

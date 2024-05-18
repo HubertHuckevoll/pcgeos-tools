@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Check input
+inf=$1
+ext="${inf##*.}"
+
+if [ "${ext,,}" == "pcx" ]; then
+    # we do this to prevent the user from unintentionally overwriting original pcx files
+    echo "Input file may not be PCX, convert to PNG first."
+    exit
+fi
+
 # Colors: 16 => BMF_4BIT or 256 => BMF_8BIT
 numColors=16
 
@@ -18,9 +28,10 @@ doForGOC=
 res=-R
 
 # filenames
-inf=$1
+# Note: we always create a PCX file that can be used on it's own with cvtpcx
+# and is therefore not deleted in the end
 basef="${inf%.*}"
-pcxf="$basef".temp.pcx
+pcxf="$basef".pcx
 ppmf="$basef".temp.ppm
 
 if [ "$doForGOC" = "-G" ]; then
@@ -88,5 +99,4 @@ cvtpcx -S"$style" \
 echo
 
 echo "CLEANING UP"
-rm $pcxf
 rm $ppmf

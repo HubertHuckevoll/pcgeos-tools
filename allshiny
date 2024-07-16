@@ -15,5 +15,6 @@ yes | clean
 pmake -L 4
 
 # Build product
+rm -r ~/gbuild/localpc/ensemble
 cd ~/pcgeos/Tools/build/product/bbxensem/Scripts
 perl -I. buildbbx.pl

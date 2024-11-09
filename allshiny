@@ -2,12 +2,12 @@
 # Try to build all the source
 
 # Build pmake
-#cd ~/pcgeos/Tools/pmake/pmake
-#wmake install
+cd ~/pcgeos/Tools/pmake/pmake
+wmake install
 
 # Build all the tools
-#cd ~/pcgeos/Installed/Tools
-#pmake install
+cd ~/pcgeos/Installed/Tools
+pmake install
 
 # Build all the geodes
 cd ~/pcgeos/Installed

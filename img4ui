@@ -17,6 +17,9 @@ INPUT_FILE="$1"
 VARIABLE_NAME="$2"
 OUTPUT_FILE="${VARIABLE_NAME}.ui"
 
+#what are we dealing with?
+identify -verbose $INPUT_FILE
+
 # Reduce colors to 256 with optimized palette
 convert $INPUT_FILE -colors 16 -type palette +dither reduced.png
 identify reduced.png
@@ -69,6 +72,7 @@ END {
         }
     }
 }' >> "$OUTPUT_FILE"
+identify -verbose reduced.png
 
 # Extract pixel data in 4-bit format
 convert reduced.png -depth 8 gray:- | xxd -p -c "$WIDTH" | awk -v width="$WIDTH" '

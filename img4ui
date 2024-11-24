@@ -41,33 +41,34 @@ HEIGHT=$(identify -format "%h" reduced.png)
     echo "        word    16"
 } > "$OUTPUT_FILE"
 
-# Extract and append palette data (16 entries max for 4-bit)
-convert reduced.png -format "%c" histogram:info:- | awk '
-/#[0-9A-Fa-f]{6}/ {
-    match($0, /#[0-9A-Fa-f]{6}/, color)
-    r = substr(color[0], 2, 2)
-    g = substr(color[0], 4, 2)
-    b = substr(color[0], 6, 2)
-    printf "        RGBValue < 0x%s, 0x%s, 0x%s >\n", tolower(r), tolower(g), tolower(b)
-}' | head -n 16 > palette.tmp
-
-# Ensure there are exactly 16 palette entries, padding if necessary
-awk 'BEGIN {
-    for (i = 1; i <= 16; i++) {
-        palette[i] = "        RGBValue < 0x00, 0x00, 0x00 >"
-    }
+# Extract and reorder the palette according to actual PNG index, ensure 16 entries
+identify -verbose reduced.png | awk '
+/Colormap:/ { 
+    in_colormap = 1; 
+    next 
 }
-{
-    palette[NR] = $0
+/^  [ ]*[0-9]+:/ && in_colormap {
+    # Extract color index and RGB values from the colormap section
+    match($0, /[0-9]+: \([^)]+\) #[0-9A-Fa-f]+/, line)
+    split(line[0], fields, ": ")
+    idx = fields[1]
+    color = substr(fields[2], match(fields[2], /#[0-9A-Fa-f]+/)+1, 6)
+    r = substr(color, 1, 2)
+    g = substr(color, 3, 2)
+    b = substr(color, 5, 2)
+    palette[idx+1] = sprintf("        RGBValue < 0x%s, 0x%s, 0x%s >", tolower(r), tolower(g), tolower(b))
+    max_idx = idx > max_idx ? idx : max_idx
 }
 END {
+    # Output the palette entries, padding with black if less than 16
     for (i = 1; i <= 16; i++) {
-        print palette[i]
+        if (i in palette) {
+            print palette[i]
+        } else {
+            print "        RGBValue < 0x00, 0x00, 0x00 >"
+        }
     }
-}' palette.tmp >> "$OUTPUT_FILE"
-
-# Insert a newline
-echo "" >> "$OUTPUT_FILE"
+}' >> "$OUTPUT_FILE"
 
 # Extract pixel data in 4-bit format
 convert reduced.png -depth 8 gray:- | xxd -p -c "$WIDTH" | awk -v width="$WIDTH" '

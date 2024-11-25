@@ -44,7 +44,7 @@ HEIGHT=$(identify -format "%h" reduced.png)
     echo "        word    16"
 } > "$OUTPUT_FILE"
 
-# Extract and reorder the palette according to actual PNG index, ensure 16 entries
+# Extract and reorder the palette, ensure reverse mapping
 identify -verbose reduced.png | awk '
 /Colormap:/ { 
     in_colormap = 1; 
@@ -59,33 +59,92 @@ identify -verbose reduced.png | awk '
     r = substr(color, 1, 2)
     g = substr(color, 3, 2)
     b = substr(color, 5, 2)
-    palette[idx+1] = sprintf("        RGBValue < 0x%s, 0x%s, 0x%s >", tolower(r), tolower(g), tolower(b))
-    max_idx = idx > max_idx ? idx : max_idx
+    palette[idx] = sprintf("        RGBValue < 0x%s, 0x%s, 0x%s >", tolower(r), tolower(g), tolower(b))
+    color_to_index[tolower(color)] = idx # Reverse mapping of color to index
 }
 END {
     # Output the palette entries, padding with black if less than 16
-    for (i = 1; i <= 16; i++) {
+    for (i = 0; i < 16; i++) {
         if (i in palette) {
             print palette[i]
         } else {
             print "        RGBValue < 0x00, 0x00, 0x00 >"
         }
     }
-}' >> "$OUTPUT_FILE"
-identify -verbose reduced.png
+}' > palette.tmp
 
-# Extract pixel data in 4-bit format
-convert reduced.png -depth 8 gray:- | xxd -p -c "$WIDTH" | awk -v width="$WIDTH" '
-{
-    printf "        db  "
-    for (i = 1; i <= length($0); i += 4) {
-        # Combine two 4-bit values (nibbles) into a single byte
-        high = substr($0, i, 1)    # High nibble
-        low = substr($0, i + 2, 1) # Low nibble
-        if (low == "") low = "0"   # Handle padding for odd width
-        printf "0x%s%s", high, low
-        if (i + 3 < length($0)) printf ", "
+# Write the palette data to the .ui file
+cat palette.tmp >> "$OUTPUT_FILE"
+
+# Extract pixel data in 4-bit format, perform reverse lookup
+# Reverse lookup for indices
+convert reduced.png -depth 8 rgb:- | xxd -p -c "$((WIDTH * 3))" | awk -v width="$WIDTH" '
+BEGIN {
+    valid_count = 0  # Initialize the valid entry counter
+
+    # Load the palette
+    while ((getline line < "palette.tmp") > 0) {
+        # Match RGB values, handle whitespace
+        match(line, /[[:space:]]*RGBValue < 0x([0-9a-fA-F]{2}),[[:space:]]*0x([0-9a-fA-F]{2}),[[:space:]]*0x([0-9a-fA-F]{2}) >[[:space:]]*/, matches)
+
+        if (RSTART) {
+            red = matches[1]
+            green = matches[2]
+            blue = matches[3]
+            color = tolower(red green blue)
+
+            # Only add unique colors
+            if (!(color in palette)) {
+                palette[color] = valid_count
+                valid_count++
+                print "DEBUG: Added palette entry -> Color: " color ", Index: " palette[color] > "/dev/stderr"
+            } else {
+                print "DEBUG: Duplicate color skipped -> Color: " color ", Existing Index: " palette[color] > "/dev/stderr"
+            }
+        } else {
+            print "DEBUG: Skipping invalid line: " line > "/dev/stderr"
+        }
     }
+    close("palette.tmp")
+}
+
+{
+    # Start the scanline with "db"
+    printf "        db  "
+
+    output_line = ""
+    for (i = 1; i <= length($0); i += 6) {
+        # Extract RGB values
+        r = substr($0, i, 2)
+        g = substr($0, i+2, 2)
+        b = substr($0, i+4, 2)
+        color = tolower(sprintf("%s%s%s", r, g, b))
+
+        # Find palette index
+        if (color in palette) {
+            idx = palette[color]
+            print "DEBUG: Match found for pixel color: " color " -> Index: " idx > "/dev/stderr"
+        } else {
+            idx = 0 # Default to black (index 0) if no match
+            print "DEBUG: No match for pixel color: " color " -> Defaulting to index 0" > "/dev/stderr"
+        }
+
+        # Convert to 4-bit and pack nibbles
+        if ((i - 1) % 12 == 0) {  # Start of a new byte
+            high_nibble = idx
+        } else {
+            low_nibble = idx
+            output_line = output_line ((output_line == "") ? "" : ", ") sprintf("0x%02x", (high_nibble * 16) + low_nibble)
+        }
+    }
+
+    # Handle cases with odd width (if last nibble is missing)
+    if (length($0) % 12 != 0) {
+        output_line = output_line ((output_line == "") ? "" : ", ") sprintf("0x%02x", high_nibble * 16)
+    }
+
+    # Print the packed scanline
+    print output_line
     printf "\n"
 }' >> "$OUTPUT_FILE"
 

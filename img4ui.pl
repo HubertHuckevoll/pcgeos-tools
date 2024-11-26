@@ -3,6 +3,52 @@ use strict;
 use warnings;
 
 #
+# Step 0: Subs
+#
+
+sub packbits_compress {
+    my @data = @_;
+    my @compressed;
+    my $i = 0;
+
+    while ($i < @data) {
+        # Check for runs of identical bytes
+        my $run_start = $i;
+        while ($i + 1 < @data && $data[$i] == $data[$i + 1] && ($i - $run_start) < 127) {
+            $i++;
+        }
+
+        if ($i > $run_start) {
+            # Found a run of identical bytes
+            my $run_length = $i - $run_start + 1;
+            push @compressed, -(($run_length - 1) & 0x7f);  # Signed 8-bit negative
+            push @compressed, $data[$run_start];
+            $i++;
+        } else {
+            # Handle unique byte sequence
+            my $unique_start = $i;
+            while (
+                $i + 1 < @data &&
+                ($data[$i] != $data[$i + 1] || $i == $unique_start) &&
+                ($i - $unique_start) < 127
+            ) {
+                $i++;
+            }
+
+            my $unique_length = $i - $unique_start + 1;
+            push @compressed, ($unique_length - 1) & 0x7f;  # Unsigned 8-bit positive
+            push @compressed, @data[$unique_start .. $i];
+            $i++;
+        }
+    }
+
+    # Ensure all values are 8-bit
+    @compressed = map { $_ & 0xff } @compressed;
+
+    return @compressed;
+}
+
+#
 # Step 1: Dependencies and Input Validation
 #
 
@@ -64,7 +110,7 @@ visMoniker $variable_name = {
         GSBeginString
         GSDrawBitmapAtCP <(${variable_name}End - ${variable_name}Start)>
         ${variable_name}Start	label	byte
-        CBitmap <<$width,$height,BMC_UNCOMPACTED,BMF_4BIT or mask BMT_MASK or mask BMT_PALETTE or mask BMT_COMPLEX>, 0, $height, 0, 70, 20, 72, 72>
+        CBitmap <<$width, $height, BMC_PACKBITS, BMF_4BIT or mask BMT_MASK or mask BMT_PALETTE or mask BMT_COMPLEX>, 0, $height, 0, 70, 20, 72, 72>
         word    16
 HEADER
 
@@ -169,24 +215,16 @@ while (read($pixels, my $row, $width * 3)) {
     # Combine mask and pixel data into a single line
     my @line_data = (@mask_data, @pixel_data);
 
-    # Calculate expected bytes
-    my $expected_mask_bytes = int(($width + 7) / 8);   # 1 mask byte per 8 pixels
-    my $expected_pixel_bytes = int(($width + 1) / 2);  # 4-bit pixels => 2 pixels per byte
-    my $expected_total_bytes = $expected_mask_bytes + $expected_pixel_bytes;
+    # Apply PackBits compression
+    my @compressed_data = packbits_compress(@line_data);
 
-    # Validate the number of bytes matches the expected width in pixels
-    if (scalar(@line_data) != $expected_total_bytes) {
-        die "Error: Row $row_count has unexpected byte count: " . scalar(@line_data) .
-            " instead of $expected_total_bytes (mask: $expected_mask_bytes, pixels: $expected_pixel_bytes).\n";
-    }
-
-    # Format line data for output
-    my $line = join(", ", map { sprintf("0x%02x", $_) } @line_data);
+    # Format compressed data for output
+    my $line = join(", ", map { sprintf("0x%02x", $_) } @compressed_data);
 
     # Remove trailing comma from the last line
     $line =~ s/, $//;
 
-    # Print the completed row
+    # Print the compressed row
     print $out "        db $line\n";
 }
 

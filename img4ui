@@ -80,12 +80,11 @@ cat palette.tmp >> "$OUTPUT_FILE"
 convert reduced.png -depth 8 rgb:- | xxd -p -c "$((WIDTH * 3))" | awk -v width="$WIDTH" -v maskout="ff00ff" '
 BEGIN {
     valid_count = 0  # Initialize the valid entry counter
+    maskout_index = -1  # Placeholder for the transparent color index
 
     # Load the palette
     while ((getline line < "palette.tmp") > 0) {
-        # Match RGB values, handle whitespace
         match(line, /[[:space:]]*RGBValue < 0x([0-9a-fA-F]{2}),[[:space:]]*0x([0-9a-fA-F]{2}),[[:space:]]*0x([0-9a-fA-F]{2}) >[[:space:]]*/, matches)
-
         if (RSTART) {
             red = matches[1]
             green = matches[2]
@@ -95,6 +94,9 @@ BEGIN {
             # Only add unique colors
             if (!(color in palette)) {
                 palette[color] = valid_count
+                if (color == maskout) {
+                    maskout_index = valid_count  # Store the maskout index
+                }
                 valid_count++
             } else {
                 print "Duplicate color skipped -> Color: " color ", Existing Index: " palette[color] > "/dev/stderr"
@@ -104,16 +106,20 @@ BEGIN {
         }
     }
     close("palette.tmp")
+
+    if (maskout_index == -1) {
+        print "ERROR: Maskout color (" maskout ") not found in palette. Exiting." > "/dev/stderr"
+        exit 1
+    }
 }
 
 {
-    # Start the scanline with "db"
     printf "        db  "
-
     output_line = ""
     mask_line = ""
-    mask_bit = 1
     mask = 0
+    mask_bit_pos = 7  # Start with MSB (bit 7)
+    pixel_pair = ""   # Buffer for assembling pixel pairs
 
     for (i = 1; i <= length($0); i += 6) {
         # Extract RGB values
@@ -122,47 +128,46 @@ BEGIN {
         b = substr($0, i+4, 2)
         color = tolower(sprintf("%s%s%s", r, g, b))
 
-        # Find palette index
+        # Determine the index
         if (color in palette) {
             idx = palette[color]
         } else {
-            idx = 0  # Default to black (index 0) if no match
-            print "DEBUG: No match for pixel color: " color " -> Defaulting to index 0" > "/dev/stderr"
+            idx = maskout_index  # Default to the transparent color index
+            print "DEBUG: No match for pixel color: " color " -> Defaulting to maskout" > "/dev/stderr"
         }
 
         # Build the mask
-        if (idx > 0) {  # Set mask bit for non-transparent pixels
-            mask = mask + mask_bit
+        if (idx != maskout_index) {  # Non-transparent pixel
+            mask += (2 ^ mask_bit_pos)
         }
 
-        # Convert to 4-bit and pack nibbles
-        if ((i - 1) % 12 == 0) {  # Start of a new byte
-            high_nibble = idx
-        } else {
-            low_nibble = idx
-            output_line = output_line ((output_line == "") ? "" : ", ") sprintf("0x%02x", (high_nibble * 16) + low_nibble)
+        # Handle pixel pairs
+        if (mask_bit_pos % 2 == 1) {  # Odd bit position: store high nibble
+            pixel_pair = idx * 16  # Shift left by 4 (high nibble)
+        } else {  # Even bit position: combine with low nibble and flush
+            pixel_pair += idx  # Add the low nibble
+            output_line = output_line ((output_line == "" ? "" : ", ") sprintf("0x%02x", pixel_pair))
+            pixel_pair = ""  # Reset pixel pair buffer
         }
 
-        # Update mask bit and handle mask byte
-        mask_bit *= 2
-        if (mask_bit == 256) {  # Mask byte is complete
-            mask_line = mask_line ((mask_line == "") ? "" : ", ") sprintf("0x%02x", mask)
+        # Decrement mask bit position
+        mask_bit_pos--
+        if (mask_bit_pos < 0) {  # Mask byte complete
+            mask_line = mask_line ((mask_line == "" ? "" : ", ") sprintf("0x%02x", mask))
             mask = 0
-            mask_bit = 1
+            mask_bit_pos = 7  # Reset to MSB
         }
     }
 
-    # Handle remaining mask bits (if any)
-    if (mask_bit > 1) {
-        mask_line = mask_line ((mask_line == "") ? "" : ", ") sprintf("0x%02x", mask)
+    # Handle any remaining mask bits or odd nibble
+    if (mask_bit_pos < 7) {
+        mask_line = mask_line ((mask_line == "" ? "" : ", ") sprintf("0x%02x", mask))
+        if (pixel_pair != "") {  # Handle leftover high nibble
+            output_line = output_line ((output_line == "" ? "" : ", ") sprintf("0x%02x", pixel_pair))
+        }
     }
 
-    # Handle cases with odd width (if last nibble is missing)
-    if (length($0) % 12 != 0) {
-        output_line = output_line ((output_line == "") ? "" : ", ") sprintf("0x%02x", high_nibble * 16)
-    }
-
-    # Print the mask and packed scanline
+    # Print the mask and pixel data
     print mask_line ", " output_line
 }' >> "$OUTPUT_FILE"
 

@@ -2,6 +2,36 @@
 use strict;
 use warnings;
 
+# -----------------------------------------------------------------------------
+# Description:
+#
+# This script processes an image file to generate a 4-bit / 16 color bitmap
+# with custom palette for PC/GEOS in UIC/ESP. PC/GEOS knows how to handle 4-Bit 
+# images with custom palette, but none of the tools supports ouputting this very 
+# efficient format.
+#
+# The script performs the following steps:
+#
+# 1. Validates dependencies (ImageMagick's `convert` utility) and input arguments.
+# 2. Reduces the image to a 16-color palette using ImageMagick.
+# 3. Extracts image dimensions and creates a palette mapping for 4-bit indexed colors.
+# 4. Converts pixel data into 4-bit indexed format, including handling a transparency
+#    mask, and applies PackBits compression to optimize memory usage.
+# 5. Generates an output file with the compressed bitmap and metadata, formatted for
+#    use in PC/GEOS.
+#
+# Dependencies:
+# - ImageMagick (`convert` and `identify`)
+# - Perl (obviously)
+#
+# Usage:
+#   perl script.pl <input_file> <variable_name>
+#
+# Example:
+#   perl script.pl input.png iconVariable
+#
+# -----------------------------------------------------------------------------
+
 #
 # Step 0: Subs
 #
@@ -246,5 +276,6 @@ print $out <<"FOOTER";
 FOOTER
 
 close $out;
-unlink $temp_file, "palette.tmp";
+unlink "palette.tmp";
+#unlink $temp_file;
 print "Conversion complete. Output written to $output_file.\n";

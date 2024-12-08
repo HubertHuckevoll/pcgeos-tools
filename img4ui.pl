@@ -129,12 +129,15 @@ die "Error: Unable to determine dimensions.\n" unless $width && $height;
 # Open output file
 open my $out, '>', $output_file or die "Error: Cannot open $output_file: $!\n";
 
+#
+# we need to set "color = color8" as we are using an 8 bit color space!
+#
 print $out <<"HEADER";
 visMoniker $variable_name = {
     size = standard;
     style = icon;
     aspectRatio = normal;
-    color = color4;
+    color = color8;
     cachedSize = $width, $height;
     gstring {
         GSBeginString

@@ -15,4 +15,4 @@ yes | clean
 pmake -L 4
 
 # Build product
-prodshiny
+shinyprod

@@ -29,7 +29,7 @@ cd ~
 if [ ! -d "$WATCOM/binl" ]; then
     echo "Downloading Open Watcom..."
     wget https://github.com/open-watcom/open-watcom-v2/releases/download/2020-12-01-Build/ow-snapshot.tar.gz
-    tar -xzf ow-snapshot.tar.gz -C "$WATCOM" --strip-components=1
+    tar -xzf ow-snapshot.tar.gz -C "$WATCOM"
     rm ow-snapshot.tar.gz
 fi
 
@@ -45,8 +45,17 @@ cd ~
 if [ ! -d "$BASEBOX_DIR" ]; then
     echo "Downloading pcgeos-basebox..."
     wget https://github.com/bluewaysw/pcgeos-basebox/releases/download/CI-latest-issue-2/pcgeos-basebox.zip
-    unzip pcgeos-basebox.zip -d "$BASEBOX_DIR"
+
+    # Temporär entpacken
+    mkdir -p tmp_basebox_unzip
+    unzip pcgeos-basebox.zip -d tmp_basebox_unzip
     rm pcgeos-basebox.zip
+
+    # Nur den Inhalt der inneren pcgeos-basebox verschieben
+    mkdir -p "$BASEBOX_DIR"
+    mv tmp_basebox_unzip/pcgeos-basebox/* "$BASEBOX_DIR/"
+    rmdir tmp_basebox_unzip/pcgeos-basebox
+    rmdir tmp_basebox_unzip
 fi
 
 # 5. Umgebungsvariablen in .bash_profile eintragen

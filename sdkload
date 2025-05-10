@@ -37,7 +37,7 @@ fi
 cd ~
 if [ ! -d "pcgeos" ]; then
     echo "Cloning PC/GEOS repo..."
-    git clone https://github.com/bluewaysw/pcgeos.git
+    git clone https://github.com/HubertHuckevoll/pcgeos
 fi
 
 # 4. basebox herunterladen und komplett entpacken
@@ -75,8 +75,8 @@ add_env_var "LOCAL_ROOT" "$LOCAL_ROOT"
 add_env_var "BASEBOX" "$BASEBOX_DIR/binl64/basebox"
 
 # PATH-Einträge
-if ! grep -qxF 'export PATH=$WATCOM/binl:$ROOT_DIR/bin:$HOME/pcgeos-basebox/binl64:$PATH' "$BASH_PROFILE"; then
-    echo 'export PATH=$WATCOM/binl:$ROOT_DIR/bin:$HOME/pcgeos-basebox/binl64:$PATH' >> "$BASH_PROFILE"
+if ! grep -qxF 'export PATH=$WATCOM/binl:$ROOT_DIR/bin:$HOME/pcgeos-basebox/binl64:$HOME/pcgeos-tools:$PATH' "$BASH_PROFILE"; then
+    echo 'export PATH=$WATCOM/binl:$ROOT_DIR/bin:$HOME/pcgeos-basebox/binl64:$HOME/pcgeos-tools:$PATH' >> "$BASH_PROFILE"
 fi
 
 echo "Setup complete."

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build your project afresh
+# Build a project geode afresh
 yes | clean
 mkmf
 pmake depend

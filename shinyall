@@ -9,8 +9,5 @@ wmake install
 cd ~/pcgeos/Installed/Tools
 pmake install
 
-# Build all the geodes
-shinygeo
-
-# Build product
-shinyprod
+# Build all the geodes and the product
+shinygeodes

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# if in Installed dir, switch to source dir and vice versa
 # this script must be run using the source command:
 # source cdi BbxBrow
 

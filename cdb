@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# switches to the installed (cd "binary") directory of the Geode passed as parameter
 # this script must be run using the source command:
 # source cdb BbxBrow
 

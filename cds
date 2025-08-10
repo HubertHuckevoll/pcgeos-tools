@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# switch to source dir of geode
 # this script must be run using the source command:
 # source cds BbxBrow
 

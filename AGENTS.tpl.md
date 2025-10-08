@@ -24,7 +24,7 @@ GEOS Coding and Behavior Guidelines:
 - Generated code must follow the C89 standard: Variables must be declared at the **top of functions** (not blocks!), no new blocks are introduced solely for the purpose of introducing variables mid-function.
 - Cast all void pointers like this: `(void*)0`.
 - Declare functions as _pascal by default.
-- Keep stacks small: no big local varaibles (use MemHandles or LMemHeaps instead), use early returns whenever possible.
+- Keep stacks small: no big local variables (use MemHandles or LMemHeaps instead), use early returns whenever possible.
 - Use small buffers, usually not more than 8 kb, 32 kb at most.
 - When creating librarys, don't use globals, but context structures that are passed to every function.
 - Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern, not "malloc", "free".

@@ -29,6 +29,7 @@ GEOS Coding and Behavior Guidelines:
 - When creating librarys, don't use globals, but context structures that are passed to every function.
 - Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern, not "malloc" / "free".
 - Use `WWFixed` math instead of `float` whenever applicable.
+- Don't re-create aliases for the HIGHC compiler, even if you find them in the source code.
 - Use typedef's for defining callback functions instead of the PCM macro also found in the source code, like this:
 `
 ...

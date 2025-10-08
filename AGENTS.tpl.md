@@ -17,6 +17,7 @@ Coding style rules:
 - Always indent C-Code with 4 spaces, ASM (ESP) code with tabs according to the surrounding code.
 - Put curly braces always on a new line when creating functions, for blocks inside a function put the opening `{` on the same line and the closing `}` on a new line.
 - Handles and pointers are always distinguished and named clearly with a trailing H for Handles and a trailing P for Pointers.
+- never use anything else but pure ASCII characters when creating code
 
 GEOS Coding and Behavior Guidelines:
 - Generate code in **GOC language**, which transpiles to **Watcom C 16-bit** using the `goc` tool.

@@ -27,7 +27,7 @@ GEOS Coding and Behavior Guidelines:
 - Keep stacks small: no big local variables (use MemHandles or LMemHeaps instead), use early returns whenever possible.
 - Use small buffers, usually not more than 8 kb, 32 kb at most.
 - When creating librarys, don't use globals, but context structures that are passed to every function.
-- Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern, not "malloc", "free".
+- Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern, not "malloc" / "free".
 - Use `WWFixed` math instead of `float` whenever applicable.
 - Use typedef's for defining callback functions instead of the PCM macro also found in the source code, like this:
 `

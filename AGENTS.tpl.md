@@ -2,16 +2,16 @@ This monorepo is for creating code for the 16-bit PC/GEOS operating environment 
 GeoWorks Ensemble, Breadbox Ensemble, NewDeal Office.
 
 The layout of the repo is:
-Appl/ – sample + system apps (GeoWrite/GeoDraw-style code lives around here)
-Library/ – GEOS libraries (UI, graphics, VM/DB, etc.)
-Driver/ – DOS/video/mouse/printer drivers
-Include/ - headers for ESP, the PC/GEOS object oriented assembler and link defs
-CInclude/ – headers for GOC/C and link defs
-Tools/ – source of build/debug tools (pmake, swat pieces, build scripts)
-Loader/ – boot/loader bits
-TechDocs/ – the SDK docs (use TechDocs/Markdown first, as it contains the latest version of the docs)
-Installed/ - this folder contains "Appl", "Library" and "Driver" again. Code is being built here.
-bin/ – where the tools land once they have been built.
+- Appl/ – sample + system apps (GeoWrite/GeoDraw-style code lives around here)
+- Library/ – GEOS libraries (UI, graphics, VM/DB, etc.)
+- Driver/ – DOS/video/mouse/printer drivers
+- Include/ - headers for ESP, the PC/GEOS object oriented assembler and link defs
+- CInclude/ – headers for GOC/C and link defs
+- Tools/ – source of build/debug tools (pmake, swat pieces, build scripts)
+- Loader/ – boot/loader bits
+- TechDocs/ – the SDK docs (use TechDocs/Markdown first, as it contains the latest version of the docs)
+- Installed/ - this folder contains "Appl", "Library" and "Driver" again. Code is being built here.
+- bin/ – where the tools land once they have been built.
 
 Coding style rules:
 - Always indent C-Code with 4 spaces, ASM (ESP) code with tabs according to the surrounding code.

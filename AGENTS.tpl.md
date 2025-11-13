@@ -30,6 +30,7 @@ GEOS Coding and Behavior Guidelines:
 - Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern, not "malloc" / "free".
 - Use `WWFixed` math instead of `float` whenever applicable.
 - Don't re-create aliases for the HIGHC compiler, even if you find them in the source code.
+- Don't work on `Makefile` and `dependencies.mk` - these files are regenerated automatically when compiling.
 - Use typedef's for defining callback functions instead of the PCM macro also found in the source code, like this:
 `
 ...

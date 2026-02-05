@@ -44,7 +44,7 @@ fi
 cd ~
 if [ ! -d "$BASEBOX_DIR" ]; then
     echo "Downloading pcgeos-basebox..."
-    wget https://github.com/bluewaysw/pcgeos-basebox/releases/download/CI-latest-issue-2/pcgeos-basebox.zip
+    wget https://github.com/bluewaysw/pcgeos-basebox/releases/download/CI-latest-issue-13/pcgeos-basebox.zip
 
     # Temporär entpacken
     mkdir -p tmp_basebox_unzip

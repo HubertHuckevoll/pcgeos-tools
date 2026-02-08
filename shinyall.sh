@@ -10,4 +10,4 @@ cd ~/pcgeos/Installed/Tools
 pmake install
 
 # Build all the geodes and the product
-shinygeodes
+shinygeodes.sh

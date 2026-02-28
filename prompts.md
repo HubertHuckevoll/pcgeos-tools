@@ -1,7 +1,7 @@
 IMPLEMENTATION PLAN EVALUATION
 Evaluate an implementation plan I’ll paste after this.
 Output requirements:
-- Return the original plan as plain text (no Markdown). Reflow line breaks to 70
+- Return the original plan as plain text (no Markdown). Reflow line breaks to 80
 characters.
 - Otherwise do not rewrite, reorder, delete, or add anything except TODO lines.
 - Insert TODO lines only where ambiguity would genuinely block implementation.

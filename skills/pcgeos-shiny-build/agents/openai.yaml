@@ -1,0 +1,4 @@
+interface:
+  display_name: "PC/GEOS Shiny Build"
+  short_description: "Shiny rebuild in Installed/"
+  default_prompt: "Rebuild the current PC/GEOS project from its Installed/<project> folder using the shiny workflow."

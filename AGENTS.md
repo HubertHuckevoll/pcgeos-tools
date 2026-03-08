@@ -1,4 +1,4 @@
-This monorepo is for creating code for the 16-bit PC/GEOS operating environment for DOS from the late 80s, early 90, also known as
+This monorepo in ~/pcgeos/ is for creating code for the 16-bit PC/GEOS operating environment for DOS from the late 80s, early 90, also known as
 GeoWorks Ensemble, Breadbox Ensemble, NewDeal Office.
 
 The layout of the repo is:
@@ -10,7 +10,7 @@ The layout of the repo is:
 - Tools/ – source of build/debug tools (pmake, swat pieces, build scripts)
 - Loader/ – boot/loader bits
 - TechDocs/ – the SDK docs (use TechDocs/Markdown first, as it contains the latest version of the docs)
-- Installed/ - this folder contains "Appl", "Library" and "Driver" again. Code is being built here.
+- Installed/ - this folder contains the build artifacts for "Appl", "Library" and "Driver" again. Code is ONLY being built there.
 - bin/ – where the tools land once they have been built.
 
 Coding style rules:

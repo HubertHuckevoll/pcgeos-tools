@@ -25,10 +25,10 @@ use warnings;
 # - Perl (obviously)
 #
 # Usage:
-#   perl script.pl <input_file> <variable_name>
+#   perl script.pl <input_file> <variable_name> [asm|goc]
 #
 # Example:
-#   perl script.pl input.png iconVariable
+#   perl script.pl input.png iconVariable goc
 #
 # -----------------------------------------------------------------------------
 
@@ -78,6 +78,97 @@ sub packbits_compress {
     return @compressed;
 }
 
+sub usage {
+    return "Usage: $0 <input_file> <variable_name> [asm|goc]\n";
+}
+
+sub count_bytes {
+    my ($rows_ref) = @_;
+    my $count = 0;
+    for my $row_ref (@$rows_ref) {
+        $count += scalar(@$row_ref);
+    }
+    return $count;
+}
+
+sub emit_asm {
+    my ($output_file, $variable_name, $width, $height, $palette_ref, $rows_ref) = @_;
+    open my $out, ">", $output_file or die "Error: Cannot open $output_file: $!\n";
+
+    print $out <<"HEADER";
+visMoniker $variable_name = {
+    size = standard;
+    style = icon;
+    aspectRatio = normal;
+    color = color8;
+    cachedSize = $width, $height;
+    gstring {
+        GSBeginString
+        GSDrawBitmapAtCP <(${variable_name}End - ${variable_name}Start)>
+        ${variable_name}Start	label	byte
+        CBitmap <<$width, $height, BMC_PACKBITS, BMF_4BIT or mask BMT_MASK or mask BMT_PALETTE or mask BMT_COMPLEX>, 0, $height, 0, 70, 20, 72, 72>
+        word    16
+HEADER
+
+    for my $entry (@$palette_ref) {
+        print $out "        RGBValue < $entry->[0], $entry->[1], $entry->[2] >\n";
+    }
+
+    for my $row_ref (@$rows_ref) {
+        my $line = join(", ", map { sprintf("0x%02x", $_) } @$row_ref);
+        print $out "        db $line\n";
+    }
+
+    print $out <<"FOOTER";
+        ${variable_name}End    label    byte
+        GSEndString
+    }
+}
+FOOTER
+
+    close $out;
+}
+
+sub emit_goc {
+    my ($output_file, $variable_name, $width, $height, $palette_ref, $rows_ref) = @_;
+    open my $out, ">", $output_file or die "Error: Cannot open $output_file: $!\n";
+
+    my $compressed_bytes = count_bytes($rows_ref);
+    my $bitmap_payload_bytes = 14 + 2 + (16 * 3) + $compressed_bytes;
+    my $gstring_bytes = 6 + $bitmap_payload_bytes;
+
+    print $out <<"HEADER";
+\@visMoniker $variable_name = {
+    size = standard;
+    style = icon;
+    aspectRatio = normal;
+    color = color8;
+    cachedSize = $width, $height;
+    gstring {
+		GSDrawBitmapAtCP($gstring_bytes),
+		Bitmap ($width,$height,BMC_PACKBITS,(BMF_4BIT | BMT_MASK | BMT_PALETTE | BMT_COMPLEX)),
+		0, 0, $height, 0, 0, 0, 70, 0, 20, 0, 72, 0, 72, 0,
+		16, 0, /* palette length */
+HEADER
+
+    for my $entry (@$palette_ref) {
+        print $out "\t\t$entry->[0], $entry->[1], $entry->[2],\n";
+    }
+
+    for my $row_ref (@$rows_ref) {
+        my $line = join(", ", map { sprintf("0x%02x", $_) } @$row_ref);
+        print $out "\t\t$line,\n";
+    }
+
+    print $out <<"FOOTER";
+		GSEndString()
+    }
+}
+FOOTER
+
+    close $out;
+}
+
 #
 # Step 1: Dependencies and Input Validation
 #
@@ -90,15 +181,20 @@ if (!$convert_path) {
 }
 
 # Check for input arguments
-if (@ARGV < 2) {
-    die "Usage: $0 <input_file> <variable_name>\n";
+if (@ARGV < 2 || @ARGV > 3) {
+    die usage();
 }
 
 # Input file and variables
 my $input_file = $ARGV[0];
 my $variable_name = $ARGV[1];
+my $mode = defined($ARGV[2]) ? lc($ARGV[2]) : "goc";
+if ($mode ne "asm" && $mode ne "goc") {
+    die "Error: Invalid mode '$mode'. Valid modes: asm, goc.\n" . usage();
+}
+
 my $temp_file = "reduced.gif";
-my $output_file = "${variable_name}.ui";
+my $output_file = ($mode eq "asm") ? "${variable_name}.ui" : "${variable_name}.goh";
 my $maskout = "ff00ff";
 
 # Identify the input file
@@ -123,162 +219,105 @@ chomp(my $height = `identify -format "%h" $temp_file`);
 die "Error: Unable to determine dimensions.\n" unless $width && $height;
 
 #
-# Step 3: Start Writing the Output File
+# Step 3: Extract and Reorder Palette
 #
 
-# Open output file
-open my $out, '>', $output_file or die "Error: Cannot open $output_file: $!\n";
-
-#
-# we need to set "color = color8" as we are using an 8 bit color space!
-#
-print $out <<"HEADER";
-visMoniker $variable_name = {
-    size = standard;
-    style = icon;
-    aspectRatio = normal;
-    color = color8;
-    cachedSize = $width, $height;
-    gstring {
-        GSBeginString
-        GSDrawBitmapAtCP <(${variable_name}End - ${variable_name}Start)>
-        ${variable_name}Start	label	byte
-        CBitmap <<$width, $height, BMC_PACKBITS, BMF_4BIT or mask BMT_MASK or mask BMT_PALETTE or mask BMT_COMPLEX>, 0, $height, 0, 70, 20, 72, 72>
-        word    16
-HEADER
-
-#
-# Step 4: Extract and Reorder Palette in Perl
-#
-
-# Declare variables at the top of the file where possible
-my $maskout_index;
-
-# Parse the colormap using identify output
-open my $palette_tmp, '>', "palette.tmp" or die "Error: Cannot open palette.tmp: $!\n";
 my %palette;
 my %color_to_index;
 
-# Process colormap from identify output
 open my $identify, "-|", "identify -verbose $temp_file" or die "Error: Cannot run identify.\n";
 while (<$identify>) {
     if (/^\s*(\d+):\s*\(([^)]+)\)\s*#([0-9A-Fa-f]{6})/) {
-        my ($index, $rgb, $hex) = ($1, $2, lc($3));
-        my ($r, $g, $b) = map { "0x$_" } unpack("(A2)*", $hex);
-        $palette{$index} = sprintf("        RGBValue < %s, %s, %s >", $r, $g, $b);
+        my ($index, $hex) = ($1, lc($3));
+        my @channels = map { "0x$_" } unpack("(A2)*", $hex);
+        $palette{$index} = \@channels;
         $color_to_index{$hex} = $index;
     }
 }
 close $identify;
 
-# Assign maskout_index based on $maskout color
-$maskout_index = $color_to_index{$maskout} // die "Error: Maskout color ($maskout) not found in palette.\n";
+my $maskout_index = $color_to_index{$maskout}
+    // die "Error: Maskout color ($maskout) not found in palette.\n";
 
-
-# Write the palette to file
+my @palette_entries;
 for my $i (0 .. 15) {
     if (exists $palette{$i}) {
-        print $palette_tmp "$palette{$i}\n";
+        push @palette_entries, $palette{$i};
     } else {
-        print $palette_tmp "        RGBValue < 0x00, 0x00, 0x00 >\n";
+        push @palette_entries, [ "0x00", "0x00", "0x00" ];
     }
 }
-close $palette_tmp;
-
-# Append palette to the output file
-open my $palette_in, '<', "palette.tmp" or die "Error: Cannot read palette.tmp: $!\n";
-print $out $_ while <$palette_in>;
-close $palette_in;
-
 
 #
-# Step 5: Extract Pixel Data
+# Step 4: Extract and Compress Pixel Data
 #
 
-# Extract pixel data in 4-bit format, perform reverse lookup
 open my $pixels, "-|", "convert $temp_file -depth 8 rgb:-" or die "Error: Cannot extract pixels.\n";
 
-my $row_count = 0;  # Track number of rows processed
+my $row_count = 0;
+my @compressed_rows;
 while (read($pixels, my $row, $width * 3)) {
-    $row_count++;  # Increment row count for each row read
+    $row_count++;
 
-    # Break the row into 6-character (RGB) segments
     my @pixels = unpack("(A6)*", unpack("H*", $row));
 
     my $mask = 0;
-    my $mask_bit_pos = 7;  # Start with MSB
-    my $pixel_pair = "";   # Buffer for combining nibbles
-    my @pixel_data;        # Store 4-bit pixel pairs
-    my @mask_data;         # Store mask bytes
+    my $mask_bit_pos = 7;
+    my $pixel_pair = "";
+    my @pixel_data;
+    my @mask_data;
 
-    foreach my $color (@pixels) {
-        $color = lc($color);  # Normalize color to lowercase
+    for my $color (@pixels) {
+        $color = lc($color);
         my $index = exists $color_to_index{$color} ? $color_to_index{$color} : $maskout_index;
 
-        # Update mask byte for non-transparent pixels
         if ($index != $maskout_index) {
             $mask |= (1 << $mask_bit_pos);
         }
 
-        # Handle 4-bit pixel pairing
-        if ($mask_bit_pos % 2 == 1) {  # High nibble
+        if ($mask_bit_pos % 2 == 1) {
             $pixel_pair = $index << 4;
-        } else {  # Low nibble, combine and flush
+        } else {
             $pixel_pair |= $index;
-            push @pixel_data, $pixel_pair;  # Store full byte
-            $pixel_pair = "";  # Reset buffer
+            push @pixel_data, $pixel_pair;
+            $pixel_pair = "";
         }
 
         $mask_bit_pos--;
-        if ($mask_bit_pos < 0) {  # Flush mask byte
+        if ($mask_bit_pos < 0) {
             push @mask_data, $mask;
             $mask = 0;
             $mask_bit_pos = 7;
         }
     }
 
-    # Handle leftovers at the end of the row
     if ($mask_bit_pos < 7) {
-        push @mask_data, $mask;  # Flush the last mask byte
+        push @mask_data, $mask;
     }
-    if ($pixel_pair ne "") {  # Flush the last pixel nibble
+    if ($pixel_pair ne "") {
         push @pixel_data, $pixel_pair;
     }
 
-    # Combine mask and pixel data into a single line
     my @line_data = (@mask_data, @pixel_data);
-
-    # Apply PackBits compression
     my @compressed_data = packbits_compress(@line_data);
-
-    # Format compressed data for output
-    my $line = join(", ", map { sprintf("0x%02x", $_) } @compressed_data);
-
-    # Remove trailing comma from the last line
-    $line =~ s/, $//;
-
-    # Print the compressed row
-    print $out "        db $line\n";
+    push @compressed_rows, \@compressed_data;
 }
 
 close $pixels;
 
-# Validate the row count matches the image height
 if ($row_count != $height) {
     die "Error: Number of rows processed ($row_count) does not match image height ($height).\n";
 }
 
 #
-# Step 6: Finalize and Cleanup
+# Step 5: Emit requested output format
 #
-print $out <<"FOOTER";
-        ${variable_name}End    label    byte
-        GSEndString
-    }
-}
-FOOTER
 
-close $out;
-unlink "palette.tmp";
+if ($mode eq "asm") {
+    emit_asm($output_file, $variable_name, $width, $height, \@palette_entries, \@compressed_rows);
+} else {
+    emit_goc($output_file, $variable_name, $width, $height, \@palette_entries, \@compressed_rows);
+}
+
 #unlink $temp_file;
 print "Conversion complete. Output written to $output_file.\n";

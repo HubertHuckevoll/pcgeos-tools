@@ -1,5 +1,6 @@
-The monorepo in ~/pcgeos/ is for creating code for the 16-bit PC/GEOS operating environment for DOS from the late 80s, early 90, also known as
-GeoWorks Ensemble, Breadbox Ensemble, NewDeal Office.
+### Scope
+The monorepo in ~/pcgeos/ contains the source code, tools, documentation for the 16-bit PC/GEOS operating environment for DOS from the late 80s, early 90, also known as GeoWorks Ensemble, Breadbox Ensemble, NewDeal Office. The repo also holds many of the applications that were ever written for the
+system.
 
 ### The layout of the repo is:
 - Appl/ – sample + system apps (GeoWrite/GeoDraw-style code lives around here)

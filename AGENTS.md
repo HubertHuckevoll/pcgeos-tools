@@ -1,6 +1,5 @@
 ### Scope
-The monorepo in ~/pcgeos/ contains the source code, tools and documentation for the 16-bit PC/GEOS operating environment for DOS from the late 80s, early 90, also known as GeoWorks Ensemble, Breadbox Ensemble, NewDeal Office. The repo also holds most of the applications that were ever written for the
-system.
+The monorepo in ~/pcgeos/ contains the source code, tools and documentation for the 16-bit PC/GEOS operating environment for DOS from the late 80s, early 90, also known as GeoWorks Ensemble, Breadbox Ensemble, NewDeal Office. The repo also holds most of the applications that were ever written for the system.
 
 ### The layout of the repo is:
 - Appl/ – GEOS apps (GeoWrite/GeoDraw-style code lives around here)
@@ -25,6 +24,8 @@ system.
 - Keep in mind that handles are rare, don't waste them. This is also true for file handles, as DOS doesn't wllow too many open files at once.
 - never use anything else but pure ASCII characters when creating code and comments
 - if creating new system applications or APIs make sure to propose documentation in the markdown version of the TechDocs
+- when creating plans for new features, make sure to output them as plain text, don't use markdown features like
+backticks, lists, images, etc.
 
 ### Coding Behavior and Style rules for GOC/C:
 - Generated code must follow the C89 standard: Variables must be declared at the **top of functions** (not blocks!), no new blocks are introduced solely for the purpose of introducing variables mid-function.
@@ -60,11 +61,12 @@ if(((pcfm_ProgressCallback *)ProcCallFixedOrMovable_pascal)(pct,callback))
 ### Coding Behaviour and Styles rules for ASM (ESP):
 - `push ds, dx` in ASM/ESP code requires `pop ds, dx` and not `pop dx, ds`.
 - Always indent ASM (ESP) code with 1 tab for pure comment lines and 2 tabs for actual code lines. Put a tab between the asm instruction and the first parameter.
-- comment the ESP / ASM code that you create
+- carefully comment the ESP / ASM code that you create
 
-### Always compile a geode when adding new code (sample):
+### How to compile a geode
 
-If we have an app called "Bounce" in the Appl folder,
+Always try to compile the geodes we are working on.
+Sample: If we have an app called "Bounce" in the Appl folder,
 we need to switch to the Installed/Appl/Bounce directory first:
 cd ~/pcgeos/Installed/Appl/Bounce
 

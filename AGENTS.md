@@ -10,7 +10,7 @@ The monorepo in ~/pcgeos/ contains the source code, tools and documentation for 
 - Tools/ – source of build/debug tools (pmake, the debugger Swat along with its TCL scripts, build scripts)
 - Loader/ – boot/loader bits
 - TechDocs/ – the SDK docs (use TechDocs/Markdown first, as it contains the latest version of the docs)
-- Installed/ - this folder contains the build artifacts for "Appl", "Library" and "Driver" again. Code is ONLY being built there.
+- Installed/ - this folder contains the build artifacts for "Appl", "Library" and "Driver" again. Code is ONLY being built there
 - bin/ – where the tools land once they have been built.
 
 ### General GEOS Coding Guidelines:
@@ -18,13 +18,13 @@ The monorepo in ~/pcgeos/ contains the source code, tools and documentation for 
 - Keep stacks small: no big local variables (use MemHandles or LMemHeaps instead).
 - Use early returns whenever possible.
 - Use small buffers, usually not more than 8 kb, 32 kb at most.
-- Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern (in C/GOC never use "malloc" / "free").
-- Try to implement patches in existing code as minimal as possible
-- Don't exaggerate on checks and helpers. If a helper would only be used once, avoid it and implement inline.
-- Keep in mind that handles are rare, don't waste them. This is also true for file handles, as DOS doesn't wllow too many open files at once.
-- never use anything else but pure ASCII characters when creating code and comments
-- if creating new system applications or APIs make sure to propose documentation in the markdown version of the TechDocs
-- when creating plans for new features, make sure to output them as plain text, don't use markdown features like
+- Memory management must follow the `MemAlloc` (always use `HAF_ZERO_INIT` as the last parameter), `MemLock/MemUnlock`, and `MemFree` pattern (in C/GOC, never use "malloc" / "free").
+- Implement patches in existing code as minimal and surgical as possible.
+- Don't exaggerate on checks and helpers. If a helper is used only once, avoid it and implement inline.
+- Keep in mind that handles are rare, don't waste them. This is also true for file handles, as DOS doesn't allow too many open files at once.
+- Never use anything else but pure ASCII characters when creating code and comments.
+- If creating new system applications or APIs make sure to propose documentation in the markdown version of the TechDocs.
+- When creating plans for new features, make sure to output them as plain text, don't use markdown features like
 backticks, lists, images, etc.
 
 ### Coding Behavior and Style rules for GOC/C:

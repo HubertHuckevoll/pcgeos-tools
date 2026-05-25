@@ -68,7 +68,14 @@ if(((pcfm_ProgressCallback *)ProcCallFixedOrMovable_pascal)(pct,callback))
 ### Coding Behaviour and Styles rules for ASM (ESP):
 - `push ds, dx` in ASM/ESP code requires `pop ds, dx` and not `pop dx, ds`.
 - Always indent ASM (ESP) code with 1 tab for pure comment lines and 2 tabs for actual code lines. Put a tab between the asm instruction and the first parameter.
-- carefully comment the ESP / ASM code that you create, add comments behind every non-trivial ASM instruction.
+- Introduce each block of asm functionality with a comment in the form of:
+(1 tab);
+(1 tab); <description>
+(1 tab);
+- carefully add comments behind every non-trivial and non-intuitive ASM instruction
+- the procedure name and labels are never indented
+- "uses", ".enter" and ".leave" are indented with 1 tab
+- when using macros like < EC > make sure to never put comments starting with ";" inside of the macro, but behind it
 
 ### How to compile a geode
 

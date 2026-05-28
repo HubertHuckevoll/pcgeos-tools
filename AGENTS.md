@@ -42,7 +42,7 @@ backticks, images, etc, just headlines, paragraphs and list items.
 - Put curly braces always on a new line when creating functions, for blocks inside a function put the opening `{` on the same line and the closing `}` on a new line.
 - Handles and pointers are always distinguished and named clearly with a trailing H for Handles and a trailing P for Pointers.
 - Don't re-create aliases for the HIGHC compiler, even if you find them in the source code.
-- Don't work on `Makefile` and `dependencies.mk` files. These are created by mkmf in the subdirectories of the Installed folder and never in the project folder itself.
+- Don't MANUALLY work on `Makefile` and `dependencies.mk` files. These are AUTOMATICALLY created by mkmf in the subdirectories of the Installed folder and never in the project folder itself. If you run mkmf and these files are created, ignore them when doing changes.
 - When creating librarys, don't use globals, but a context structure that is passed to functions.
 - Use `WWFixed` math instead of `float` whenever applicable.
 - Prefer GOC objects / messages / instance variables over helper functions.

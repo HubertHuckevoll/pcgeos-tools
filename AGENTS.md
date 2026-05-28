@@ -89,3 +89,21 @@ yes | clean
 mkmf
 pmake depend
 pmake -L 4 full
+
+### Running apps
+
+Run apps with Codex Swat debugging helper: target-codex. The PC/GEOS repository must not contain Codex-specific helper files in source. Those files are in ~/pcgeos-tools and are deployed into ~/pcgeos only by the getagentsmd.sh script.
+
+Use ~/pcgeos/bin/target-codex when Codex needs to drive Swat. It starts the normal target launcher inside a shared tmux session, loads codex.tcl through an isolated temporary swat.rc, and opens a Swat viewer terminal when possible so the developer can watch Codex commands and Swat output live (don't use --no-window).
+
+Common commands:
+- ~/pcgeos/bin/target-codex
+- ~/pcgeos/bin/target-codex -n
+- ~/pcgeos/bin/target-codex --no-window
+- ~/pcgeos/bin/target-codex --watch
+- ~/pcgeos/bin/target-codex --session my-swat --log /tmp/my-swat.log
+
+Inside Swat, Codex can use codex-ping, codex-marker <token>, and
+codex-stop-summary to frame command output and summarize the current stop.
+
+Use the Swat commands from the documentation to launch apps, manage their live cycle, and debug them.

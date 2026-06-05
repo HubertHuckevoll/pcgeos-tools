@@ -79,16 +79,25 @@ if(((pcfm_ProgressCallback *)ProcCallFixedOrMovable_pascal)(pct,callback))
 
 ### How to compile a geode
 
-Always try to compile the geodes you are working on.
+Always try to compile the geodes you are working on. To do
+this, switch to the folder of the geode in the Installed/ folder.
+
 Sample: If there is an app called "Bounce" in the Appl folder,
 switch to Installed/Appl/Bounce first:
 cd ~/pcgeos/Installed/Appl/Bounce
 
-Then run the following commands:
-yes | clean
+If this is a new app, we now must create a Makefile and a
+dependencies.mk file first:
 mkmf
 pmake depend
+(only do this if this is a new app)
+
+To actually compile the app, we now must run:
 pmake -L 4 full
+
+If a geode has gained new dependencies after editing it, run the
+following command before calling mkmf, pmake depend and pmake -L 4 full:
+yes | clean
 
 ### Running apps
 

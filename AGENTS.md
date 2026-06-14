@@ -41,6 +41,7 @@ in the sources, but this is outdated terminology).
 - bin/ – where the tools land once they have been built.
 
 ### General GEOS Coding Guidelines:
+- before doing any changes, check files for the line ending characters used and make sure to never change them
 - By default, for new applications / libraries, generate code in **GOC language**, which transpiles to **Watcom C 16-bit** (using the `goc` tool).
 - Drivers should use **ESP** (the PC/GEOS object oriented assembler).
 - Keep stacks small: no big local variables (use MemHandles or LMemHeaps instead).
@@ -97,6 +98,7 @@ if(((pcfm_ProgressCallback *)ProcCallFixedOrMovable_pascal)(pct,callback))
 - the procedure name and labels are never indented
 - "uses", ".enter" and ".leave" are indented with 1 tab
 - when using macros like < EC > make sure to never put comments starting with ";" inside of the macro, but behind it
+- if ESP whines about jumps that had to be transformed to double or triple jumps, fix with the LONG macro
 
 ### How to compile a geode
 

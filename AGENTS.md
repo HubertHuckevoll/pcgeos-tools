@@ -52,7 +52,11 @@ Builds happen in Installed/. Source truth is outside Installed/ unless explicitl
 
 ## General GEOS rules
 
-Preserve existing line endings.
+Do not normalize or change line endings. Before editing a file, preserve its existing line ending style exactly:
+- LF files must stay LF.
+- CRLF files must stay CRLF.
+- Mixed or legacy files must not be mass-rewritten.
+Never make line-ending-only changes. Never run formatters on unrelated files. After editing, check `git diff --ignore-space-at-eol` and ensure the diff contains only intentional code changes. If a file shows as fully rewritten because of line endings, revert that file and redo the edit without changing line endings.
 
 Use GOC by default for new applications and libraries. GOC transpiles to Watcom C 16-bit.
 

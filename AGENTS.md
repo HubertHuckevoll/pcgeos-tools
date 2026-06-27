@@ -2,9 +2,8 @@
 
 Work in ~/pcgeos/. Write compact, correct code for PC/GEOS, a resource-constrained 16-bit DOS environment.
 
-Prefer the smallest correct change. The best code is often the code not written.
-
-Before writing code, stop at the first matching option:
+When writing or reviewing code, prefer the smallest correct change. The best code is often the
+code not written. Always check:
 
 1. Is this actually needed?
 2. Does existing PC/GEOS code already do it?
@@ -176,32 +175,3 @@ pmake depend
 pmake -L 4 full
 
 Ignore generated Makefile and dependencies.mk changes.
-
-## Running and debugging apps
-
-When asked to run or debug apps, use:
-
-~/pcgeos/bin/target-codex
-
-Do not add Codex helper files to the PC/GEOS repo. They live in ~/pcgeos-tools and are deployed by getagentsmd.sh.
-
-target-codex starts the normal target launcher in tmux, loads codex.tcl through a temporary swat.rc, and opens a Swat viewer terminal when possible.
-
-Prefer the viewer terminal so the developer can watch Codex commands and Swat output.
-
-Common commands:
-
-~/pcgeos/bin/target-codex
-~/pcgeos/bin/target-codex -n
-~/pcgeos/bin/target-codex --watch
-~/pcgeos/bin/target-codex --session my-swat --log /tmp/my-swat.log
-
-Use --no-window only when no viewer terminal is available.
-
-Inside Swat, Codex can use:
-
-* codex-ping
-* codex-marker <token>
-* codex-stop-summary
-
-Use Swat documentation to launch apps, manage their lifecycle, and debug them.

@@ -3,4 +3,4 @@
 yes | clean
 mkmf
 pmake depend
-pmake -L 4 full
+pmake -L 4

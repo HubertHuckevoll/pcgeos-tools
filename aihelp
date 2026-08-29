@@ -137,6 +137,22 @@ def find_asm_block(lines, symbol, hit_line):
     return None
 
 
+def likely_definition_line(symbol, text):
+    """Cheap conservative filter before brace-block extraction."""
+    m = symbol_pattern(symbol).search(text)
+    if not m:
+        return False
+    before = text[: m.start()].strip()
+    after = text[m.end() :]
+    if not re.match(r"\s*\(", after):
+        return False
+    if any(ch in before for ch in "=.;{}"):
+        return False
+    if re.search(r"\b(?:return|if|while|for|switch|case)\b", before):
+        return False
+    return True
+
+
 def classify(repo, symbol, hit):
     path, line_no, text = hit
     low = text.lower()
@@ -152,11 +168,9 @@ def classify(repo, symbol, hit):
     if suffix in (".h", ".goh"):
         return "DECL"
 
-    lines = read_lines(repo, path)
-    if lines and find_brace_block(lines, line_no):
-        # A function/method name is normally near the beginning of its own block.
-        block = find_brace_block(lines, line_no)
-        if block and block[0] <= line_no - 1 <= min(block[0] + 12, block[1]):
+    if likely_definition_line(symbol, text):
+        lines = read_lines(repo, path)
+        if lines and find_brace_block(lines, line_no):
             return "DEF"
 
     if re.search(r"\bcall\s+" + re.escape(symbol) + r"\b", text, re.I):
@@ -164,7 +178,6 @@ def classify(repo, symbol, hit):
     if re.search(re.escape(symbol) + r"\s*\(", text):
         return "CALL"
     return "REF"
-
 
 def extract_definition(repo, symbol, hit):
     path, line_no, _ = hit

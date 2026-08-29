@@ -150,7 +150,7 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-Use Luna as a subagent for implemnting proposed changes and plans, follwed by an independent review by yourself afterwards.
+Use Luna as a subagent for implementing proposed changes and plans, follwed by an independent review by yourself afterwards.
 
 End each implementation round with one extremely tight summary that could be used as a commit message.
 

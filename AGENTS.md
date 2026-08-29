@@ -152,6 +152,8 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 Use Luna as a subagent for implemnting proposed changes and plans, follwed by an independent review by yourself afterwards.
 
+End each implementation round with one extremely tight summary that could be used as a commit message.
+
 ## Building geodes
 
 Always try to compile the geode you changed.
@@ -167,15 +169,20 @@ For a new geode, or when generated build files are missing:
 mkmf
 pmake depend
 
-To build:
+Then, to build the EC variant:
 
-pmake -L 4 full
+pmake -L 4
+
+Afterwards, to build the NC variant:
+
+pmake -n -L 4
 
 If dependencies changed:
 
 yes | clean
 mkmf
 pmake depend
-pmake -L 4 full
+pmake -L 4
+pmake -n -L 4
 
 Ignore generated Makefile and dependencies.mk changes.

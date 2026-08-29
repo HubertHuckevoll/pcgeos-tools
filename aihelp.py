@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 SOURCE_SUFFIXES = {".c", ".h", ".goc", ".goh", ".asm", ".def", ".gp", ".ui", ".uih"}
-MAX_BLOCK_LINES = 220
+MAX_BLOCK_LINES = 2000
 ERROR_RE = re.compile(
     r"(?:\b(?:fatal|error)\b|Error!\s*[A-Z]?\d+|\*\*\*|undefined|unresolved)",
     re.IGNORECASE,
@@ -96,7 +96,7 @@ def read_lines(repo, relpath):
 def find_brace_block(lines, hit_line):
     start = hit_line - 1
     brace_line = None
-    for i in range(start, min(len(lines), start + 16)):
+    for i in range(start, min(len(lines), start + 64)):
         if "{" in lines[i]:
             brace_line = i
             break
@@ -228,12 +228,12 @@ def cmd_get(repo, symbol):
 
     if groups["DECL"]:
         print("\nDECL")
-        for hit in groups["DECL"][:3]:
+        for hit in groups["DECL"]:
             print_location(hit)
 
     if groups["EXPORT"]:
         print("\nEXPORT")
-        for hit in groups["EXPORT"][:3]:
+        for hit in groups["EXPORT"]:
             print_location(hit)
 
     if groups["CALL"]:
@@ -243,10 +243,8 @@ def cmd_get(repo, symbol):
 
     if not definition and not groups["DECL"] and not groups["EXPORT"]:
         print("\nREFERENCES")
-        for hit in hits[:12]:
+        for hit in hits:
             print_location(hit)
-        if len(hits) > 12:
-            print(f"... {len(hits) - 12} more references omitted")
 
     return 0
 

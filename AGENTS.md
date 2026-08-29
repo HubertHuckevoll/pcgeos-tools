@@ -67,12 +67,12 @@ Keep stacks small. No big local variables. Use MemHandles or LMemHeaps.
 
 Use small buffers. Usually stay at or below 8 KB. Use 32 KB only when truly needed.
 
-Use GEOS memory management:
+Use GEOS memory management, which basically follows the pattern of:
 
-* MemAlloc
-* MemLock
-* MemUnlock
-* MemFree
+* MemAlloc (create a handle for a memory block)
+* MemLock (lock the memory block and get a pointer to the locked block)
+* MemUnlock (allow the system to move the memory block around)
+* MemFree (free the memory block)
 
 Do not use malloc or free.
 
@@ -150,13 +150,13 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-Use Luna as a subagent for implementing proposed changes and plans, follwed by an independent review by yourself afterwards.
+If you are ChatGPT Codex: Use Luna as a subagent for implementing proposed changes and plans, follwed by an independent review by yourself afterwards.
 
 End each implementation round with one extremely tight summary that could be used as a commit message.
 
 ## Building geodes
 
-Always try to compile the geode you changed.
+Always try to compile the geodes you changed.
 
 Build from the matching Installed/ folder.
 

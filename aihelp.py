@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 SOURCE_SUFFIXES = {".c", ".h", ".goc", ".goh", ".asm", ".def", ".gp", ".ui", ".uih"}
-MAX_CALLERS = 3
 MAX_BLOCK_LINES = 220
 ERROR_RE = re.compile(
     r"(?:\b(?:fatal|error)\b|Error!\s*[A-Z]?\d+|\*\*\*|undefined|unresolved)",
@@ -239,11 +238,8 @@ def cmd_get(repo, symbol):
 
     if groups["CALL"]:
         print("\nCALLERS")
-        for hit in groups["CALL"][:MAX_CALLERS]:
+        for hit in groups["CALL"]:
             print_location(hit)
-        omitted = len(groups["CALL"]) - MAX_CALLERS
-        if omitted > 0:
-            print(f"... {omitted} more callers omitted")
 
     if not definition and not groups["DECL"] and not groups["EXPORT"]:
         print("\nREFERENCES")

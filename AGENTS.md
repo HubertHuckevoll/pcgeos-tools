@@ -148,6 +148,10 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 
 If ESP warns about double or triple jumps, fix with LONG.
 
+## Implementation
+
+Use Luna as a subagent for implemnting proposed changes and plans, follwed by an independent review by yourself afterwards.
+
 ## Building geodes
 
 Always try to compile the geode you changed.

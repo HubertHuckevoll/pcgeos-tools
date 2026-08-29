@@ -150,39 +150,23 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-If you are ChatGPT Codex: Use Luna as a subagent for implementing proposed changes and plans, follwed by an independent review by yourself afterwards.
+Use ~/pcgeos-tools/aihelp.py to reduce repository-search and build output:
+
+    ~/pcgeos-tools/aihelp.py get <symbol>
+    ~/pcgeos-tools/aihelp.py build [path]
+
+Prefer aihelp.py get before broad source searches. Prefer aihelp.py build over invoking pmake directly so normal build noise stays out of the model context.
 
 End each implementation round with one extremely tight summary that could be used as a commit message.
 
 ## Building geodes
 
-Always try to compile the geodes you changed.
+Always try to compile the geodes you changed through aihelp.py:
 
-Build from the matching Installed/ folder.
+    ~/pcgeos-tools/aihelp.py build [source-or-module-path]
 
-Example:
+aihelp.py maps source paths to the matching Installed/ directory, runs pmake as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log.
 
-cd ~/pcgeos/Installed/Appl/Bounce
-
-For a new geode, or when generated build files are missing:
-
-mkmf
-pmake depend
-
-Then, to build the EC variant:
-
-pmake -L 4
-
-Afterwards, to build the NC variant:
-
-pmake -n -L 4
-
-If dependencies changed:
-
-yes | clean
-mkmf
-pmake depend
-pmake -L 4
-pmake -n -L 4
+For a new geode, or when generated build files are missing, create them manually first in the matching Installed/ directory with mkmf and pmake depend, then use aihelp.py build.
 
 Ignore generated Makefile and dependencies.mk changes.

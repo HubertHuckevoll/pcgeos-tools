@@ -13,7 +13,11 @@ import sys
 from pathlib import Path
 
 SOURCE_SUFFIXES = {".c", ".h", ".goc", ".goh", ".asm", ".def", ".gp", ".ui", ".uih"}
-MAX_BLOCK_LINES = 2000
+MAX_CALLERS = 3
+MAX_DECLARATIONS = 3
+MAX_REFERENCES = 12
+MAX_BLOCK_LINES = 220
+MAX_DIAGNOSTICS = 80
 ERROR_RE = re.compile(
     r"(?:\b(?:fatal|error)\b|Error!\s*[A-Z]?\d+|\*\*\*|undefined|unresolved)",
     re.IGNORECASE,
@@ -73,7 +77,9 @@ def grep_hits(repo, symbol):
 
     exact = symbol_pattern(symbol)
     hits = []
-    for raw in p.stdout.splitlines():
+    for raw in p.stdout.split("\n"):
+        if raw.endswith("\r"):
+            raw = raw[:-1]
         try:
             path, line, text = raw.split(":", 2)
             line_no = int(line)
@@ -88,7 +94,10 @@ def grep_hits(repo, symbol):
 
 def read_lines(repo, relpath):
     try:
-        return (repo / relpath).read_text(encoding="latin-1").splitlines()
+        # Git counts LF characters; splitlines() also treats form-feeds as lines.
+        data = (repo / relpath).read_bytes().decode("latin-1")
+        lines = data.split("\n")
+        return [line[:-1] if line.endswith("\r") else line for line in lines]
     except (OSError, UnicodeError):
         return []
 
@@ -136,7 +145,7 @@ def find_asm_block(lines, symbol, hit_line):
     return None
 
 
-def likely_definition_line(symbol, text):
+def likely_definition_line(symbol, text, lines=None, hit_line=None):
     """Cheap conservative filter before brace-block extraction."""
     m = symbol_pattern(symbol).search(text)
     if not m:
@@ -149,6 +158,13 @@ def likely_definition_line(symbol, text):
         return False
     if re.search(r"\b(?:return|if|while|for|switch|case)\b", before):
         return False
+    if lines is not None and hit_line is not None and not before and hit_line > 1:
+        previous = lines[hit_line - 2].strip()
+        if previous and (
+            any(ch in previous for ch in "=.;{}")
+            or re.search(r"\b(?:if|while|for|switch|case|return)\b", previous)
+        ):
+            return False
     return True
 
 
@@ -169,7 +185,11 @@ def classify(repo, symbol, hit):
 
     if likely_definition_line(symbol, text):
         lines = read_lines(repo, path)
-        if lines and find_brace_block(lines, line_no):
+        if (
+            lines
+            and likely_definition_line(symbol, text, lines, line_no)
+            and find_brace_block(lines, line_no)
+        ):
             return "DEF"
 
     if re.search(r"\bcall\s+" + re.escape(symbol) + r"\b", text, re.I):
@@ -200,6 +220,10 @@ def print_location(hit):
 
 
 def cmd_get(repo, symbol):
+    if not symbol.strip():
+        print("ERROR: symbol must not be empty")
+        return 2
+
     hits = grep_hits(repo, symbol)
     if not hits:
         print(f"ERROR: symbol not found: {symbol}")
@@ -228,23 +252,39 @@ def cmd_get(repo, symbol):
 
     if groups["DECL"]:
         print("\nDECL")
-        for hit in groups["DECL"]:
+        for hit in groups["DECL"][:MAX_DECLARATIONS]:
             print_location(hit)
+        omitted = len(groups["DECL"]) - MAX_DECLARATIONS
+        if omitted > 0:
+            print(f"... {omitted} more declarations omitted")
 
     if groups["EXPORT"]:
         print("\nEXPORT")
-        for hit in groups["EXPORT"]:
+        for hit in groups["EXPORT"][:MAX_DECLARATIONS]:
             print_location(hit)
+        omitted = len(groups["EXPORT"]) - MAX_DECLARATIONS
+        if omitted > 0:
+            print(f"... {omitted} more exports omitted")
 
     if groups["CALL"]:
         print("\nCALLERS")
-        for hit in groups["CALL"]:
+        for hit in groups["CALL"][:MAX_CALLERS]:
             print_location(hit)
+        omitted = len(groups["CALL"]) - MAX_CALLERS
+        if omitted > 0:
+            print(f"... {omitted} more callers omitted")
 
-    if not definition and not groups["DECL"] and not groups["EXPORT"]:
+    if definition or groups["DECL"] or groups["EXPORT"]:
+        reference_hits = groups["REF"]
+    else:
+        reference_hits = hits
+    if reference_hits:
         print("\nREFERENCES")
-        for hit in hits:
+        for hit in reference_hits[:MAX_REFERENCES]:
             print_location(hit)
+        omitted = len(reference_hits) - MAX_REFERENCES
+        if omitted > 0:
+            print(f"... {omitted} more references omitted")
 
     return 0
 
@@ -303,16 +343,22 @@ def build_once(build_dir, nc):
 def diagnostic_lines(output):
     lines = output.splitlines()
     selected = []
-    for i, line in enumerate(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r"^\s*warn(?:ing)?\b", line, re.IGNORECASE):
+            i += 1
+            continue
         if ERROR_RE.search(line):
             # Keep a continuation line when the compiler prints source/detail below it.
             selected.append(line.rstrip())
             if i + 1 < len(lines):
                 nxt = lines[i + 1].rstrip()
-                if nxt and (nxt.startswith((" ", "\t", "^")) or ERROR_RE.search(nxt)):
+                if nxt and nxt.startswith((" ", "\t", "^")):
                     selected.append(nxt)
-    # Stable deduplication.
-    return list(dict.fromkeys(selected))
+                    i += 1
+        i += 1
+    return selected
 
 
 def cmd_build(repo, value, full=False):
@@ -328,7 +374,10 @@ def cmd_build(repo, value, full=False):
             print(f"BUILD FAILED {variant} {rel}")
             diagnostics = diagnostic_lines(result.stdout)
             if diagnostics:
-                print("\n".join(diagnostics))
+                print("\n".join(diagnostics[:MAX_DIAGNOSTICS]))
+                omitted = len(diagnostics) - MAX_DIAGNOSTICS
+                if omitted > 0:
+                    print(f"... {omitted} more diagnostics omitted")
             else:
                 tail = result.stdout.splitlines()[-20:]
                 print("\n".join(tail))

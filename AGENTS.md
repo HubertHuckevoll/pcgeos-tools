@@ -150,7 +150,7 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-Use Luna for actual implementation work. Delegate to Luna early, before extensive parent-agent investigation. Only trivial, highly localized changes may be implemented directly when delegation overhead would clearly exceed the work. Keep the delegated context minimal: pass only the task, relevant constraints, and needed repository paths. Let Luna inspect the repository and use aihelp.py directly. The parent agent should primarily orchestrate, review the resulting diff, and run builds/tests. Do not duplicate substantial analysis in both the parent agent and Luna.
+If a coding task seems simple enough, use Luna for the actual implementation work. Delegate to Luna early, before extensive parent-agent investigation. Keep the delegated context minimal: pass only the task, relevant constraints, and needed repository paths. Let Luna inspect the repository and use aihelp.py directly. The parent agent should primarily orchestrate, review the resulting diff, and run builds/tests. Do not duplicate substantial analysis in both the parent agent and Luna.
 
 Use ~/pcgeos-tools/aihelp.py to reduce repository-search and build output:
 

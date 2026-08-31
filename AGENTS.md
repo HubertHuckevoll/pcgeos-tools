@@ -183,7 +183,7 @@ Use ~/pcgeos-tools/aihelp.py to reduce repository-search and build output:
 
 Prefer aihelp.py get before broad source searches. Prefer aihelp.py build over invoking pmake directly so normal build noise stays out of the model context.
 
-End each implementation round with one extremely tight summary that could be used as a commit message.
+End each implementation round with a tight summary that can be used as a commit message.
 
 ## Building geodes
 

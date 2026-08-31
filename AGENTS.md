@@ -49,6 +49,30 @@ Main folders:
 
 Builds happen in Installed/. Source truth is outside Installed/ unless explicitly stated.
 
+## GEOS knowledge base
+
+Persistent knowledge about PC/GEOS that you discover while woking on / with it
+is stored in `~/pcgeos-tools/wiki/`.
+
+Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
+
+When you discover a non-obvious, reusable fact about GEOS while working on
+a task, update the appropriate document in `~/pcgeos-tools/wiki/`.
+
+Only record facts that are supported by the source tree or authoritative
+documentation. Include enough information to find the evidence again:
+file paths, function/message names, structures, constants, or relevant
+source locations.
+
+Do not record:
+- guesses or unresolved hypotheses
+- task-specific implementation details
+- temporary branch state
+- facts obvious from a single local function
+
+Prefer correcting an existing entry over adding a contradictory one.
+Keep entries concise.
+
 ## General GEOS rules
 
 Do not normalize or change line endings. Before editing a file, preserve its existing line ending style exactly:

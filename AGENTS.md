@@ -174,16 +174,23 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-If a coding task seems simple enough, use "Luna Xhigh" for the actual implementation work. Delegate to Luna early, before extensive parent-agent investigation. Keep the delegated context minimal: pass only the task, relevant constraints, and needed repository paths. Let Luna inspect the repository and use aihelp.py directly. The parent agent should primarily orchestrate, review the resulting diff, and run builds/tests. Do not duplicate substantial analysis in both the parent agent and Luna.
+Choose deliberately between implementing yourself and delegating to **Luna Xhigh**.
 
-Use ~/pcgeos-tools/aihelp.py to reduce repository-search and build output:
+- **Implement directly in Sol** when the change is trivial, requires architectural/repository-wide reasoning, or is too ambiguous to delegate safely.
+- **Delegate early to Luna Xhigh** when the task is reasonably well-scoped, localized, and mainly implementation/debugging work. Do this before duplicating substantial investigation in the parent agent.
+- If unsure, do only enough investigation to define the task and relevant constraints, then decide.
 
-    ~/pcgeos-tools/aihelp.py get <symbol>
-    ~/pcgeos-tools/aihelp.py build [path]
+When delegating, pass only the task, important constraints, and relevant repository paths. Let Luna inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, and run final builds/tests.
 
-Prefer aihelp.py get before broad source searches. Prefer aihelp.py build over invoking pmake directly so normal build noise stays out of the model context.
+Prefer:
+`~/pcgeos-tools/aihelp.py get <symbol>`
+over broad source searches, and:
+`~/pcgeos-tools/aihelp.py build [path]`
+over direct `pmake`.
 
-End each implementation round with a tight summary that can be used as a commit message.
+Avoid doing the same substantial analysis in both Sol and Luna.
+
+End each implementation round with a tight summary suitable as a commit message.
 
 ## Building geodes
 

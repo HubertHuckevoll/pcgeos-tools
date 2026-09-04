@@ -174,7 +174,7 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-Choose deliberately between implementing yourself and delegating to **Luna Xhigh**.
+Choose deliberately between implementing yourself and delegating to **Luna Max**.
 
 - **Implement directly in Sol** when the change is trivial, requires architectural/repository-wide reasoning, or is too ambiguous to delegate safely.
 - **Delegate early to Luna Xhigh** when the task is reasonably well-scoped, localized, and mainly implementation/debugging work. Do this before duplicating substantial investigation in the parent agent.

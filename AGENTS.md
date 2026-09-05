@@ -49,6 +49,57 @@ Main folders:
 
 Builds happen in Installed/. Source truth is outside Installed/ unless explicitly stated.
 
+## Semantic code explanations
+
+When explaining existing code, prefer a compact semantic trace over line-by-line
+source narration.
+
+Show:
+
+1. the relevant call chain,
+2. the important data/state entering each step,
+3. how that data/state is transformed,
+4. important side effects, ownership, locks, messages, or failure paths.
+
+Assign temporary short references to every significant symbol or semantic item:
+
+@1 FunctionName
+@2 SomeStructure.field
+@3 OtherFunction
+
+Use these references consistently for the remainder of the current task so the user
+can refer to items as `@1`, `@2`, etc.
+
+Example:
+
+@1 BbxImageLoad
+  receives: image URL, load state
+  calls -> @2
+
+@2 ImagePreflight
+  reads: @3 image.type
+  if unsupported:
+    sets state = unsupported
+    skips network request
+  otherwise:
+    calls -> @4
+
+@3 ImageInfo.type
+@4 StartImageRequest
+
+When the user says `explain @2`, expand only @2 and the minimum surrounding context
+needed to understand it.
+
+Default to a middle abstraction level: function/data-flow semantics, not syntax and
+not ELI5 prose.
+
+For PC/GEOS, never hide correctness-relevant details involving handles, locks,
+ownership, object/message context, segments, callbacks, or failure cleanup.
+
+Prefer:
+~/pcgeos-tools/aihelp.py get <symbol>
+before broad repository searches.
+
 ## GEOS knowledge base
 
 Persistent knowledge about PC/GEOS that you discover while woking on / with it
@@ -171,19 +222,6 @@ Comment every non-trivial or non-intuitive instruction.
 Do not put semicolon comments inside macros like < EC >. Put comments behind the macro instead.
 
 If ESP warns about double or triple jumps, fix with LONG.
-
-## Semantic Coding
-
-For code understanding, design, modification, and review tasks, use:
-
-~/pcgeos-tools/semantic-coding/SKILL.md
-
-Read this skill before substantial investigation or implementation when the task
-benefits from semantic modeling of existing code.
-
-Prefer working through stable semantic blocks, structured pseudocode, semantic diffs,
-and post-implementation audits rather than jumping directly from a feature request
-to source edits.
 
 ## Implementation
 

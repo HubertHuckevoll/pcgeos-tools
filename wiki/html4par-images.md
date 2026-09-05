@@ -14,3 +14,9 @@ erase an existing extension hint. `ImpGraphProbeDetect()` detects the actual
 byte format in `Library/Breadbox/ImpGraph/IMPBMP/impprobe.goc`, but
 `MimeGraphicProbeData` in `CInclude/htmldrv.h` exposes only dimensions, not
 the detected format.
+
+`ParseImage()` tokenizes a selected `SRCSET` URL in place with
+`NamePoolTokenizeLenDOS()` and its explicit byte length. Avoid adding another
+URL-sized local buffer there: the DBCS implementation of
+`NamePoolTokenizeLenDOS()` already uses a 128-character stack conversion
+buffer in `Library/Breadbox/Html4Par/wwwtools/namepool.goc`.

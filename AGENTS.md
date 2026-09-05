@@ -51,54 +51,32 @@ Builds happen in Installed/. Source truth is outside Installed/ unless explicitl
 
 ## Semantic code explanations
 
-When explaining existing code, prefer a compact semantic trace over line-by-line
-source narration.
+When explaining code, prefer a compact semantic trace: call chain, relevant data/state, transformations, side effects, ownership/locks/messages, and failure paths.
 
-Show:
+Assign every relevant source-level referent a temporary `@n` handle: functions, methods, variables, fields, structures, types, constants, macros, messages, classes, objects, globals, etc.
 
-1. the relevant call chain,
-2. the important data/state entering each step,
-3. how that data/state is transformed,
-4. important side effects, ownership, locks, messages, or failure paths.
-
-Assign temporary short references to every significant symbol or semantic item:
-
-@1 FunctionName
-@2 SomeStructure.field
-@3 OtherFunction
-
-Use these references consistently for the remainder of the current task so the user
-can refer to items as `@1`, `@2`, etc.
+Each `@n` MUST link to its actual source definition when known; otherwise link to the most relevant source location. Keep handles stable for the current task and never reuse them for another item.
 
 Example:
 
-@1 BbxImageLoad
-  receives: image URL, load state
-  calls -> @2
+```text
+@1 [LoadImage](path/file.goc#L120)
+  reads @2
+  unsupported -> @3
+  otherwise -> @4
 
-@2 ImagePreflight
-  reads: @3 image.type
-  if unsupported:
-    sets state = unsupported
-    skips network request
-  otherwise:
-    calls -> @4
+@2 [ImageInfo.type](path/image.goh#L42)
+@3 [ShowPlaceholder](path/ui.goc#L80)
+@4 [StartRequest](path/net.goc#L310)
+```
 
-@3 ImageInfo.type
-@4 StartImageRequest
+The user may refer to items only by handle, e.g. `explain @2`, `trace @2 through @1`, or `change @1 so @2 never reaches @4`.
 
-When the user says `explain @2`, expand only @2 and the minimum surrounding context
-needed to understand it.
+Expand only the requested item plus necessary context. Default to function/data-flow semantics, not syntax-level narration.
 
-Default to a middle abstraction level: function/data-flow semantics, not syntax and
-not ELI5 prose.
+For PC/GEOS, never hide correctness-relevant handles, locks, ownership/lifetime, object/message context, callbacks, segments/threads, or failure cleanup.
 
-For PC/GEOS, never hide correctness-relevant details involving handles, locks,
-ownership, object/message context, segments, callbacks, or failure cleanup.
-
-Prefer:
-~/pcgeos-tools/aihelp.py get <symbol>
-before broad repository searches.
+Prefer `~/pcgeos-tools/aihelp.py get <symbol>` before broad repository searches.
 
 ## GEOS knowledge base
 

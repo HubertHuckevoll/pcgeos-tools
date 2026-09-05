@@ -172,6 +172,19 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 
 If ESP warns about double or triple jumps, fix with LONG.
 
+## Semantic Coding
+
+For code understanding, design, modification, and review tasks, use:
+
+~/pcgeos-tools/skills/semantic-coding/SKILL.md
+
+Read this skill before substantial investigation or implementation when the task
+benefits from semantic modeling of existing code.
+
+Prefer working through stable semantic blocks, structured pseudocode, semantic diffs,
+and post-implementation audits rather than jumping directly from a feature request
+to source edits.
+
 ## Implementation
 
 Choose deliberately between implementing yourself and delegating to **Luna Max**.

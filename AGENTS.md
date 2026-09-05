@@ -187,21 +187,20 @@ to source edits.
 
 ## Implementation
 
-Choose deliberately between implementing yourself and delegating to **Luna Max**.
-
+(The following lines are only for the Codex agent:)
+Choose deliberately between implementing yourself and delegating to a subagent.
 - **Implement directly in Sol** when the change is trivial, requires architectural/repository-wide reasoning, or is too ambiguous to delegate safely.
-- **Delegate early to Luna Xhigh** when the task is reasonably well-scoped, localized, and mainly implementation/debugging work. Do this before duplicating substantial investigation in the parent agent.
+- **Delegate early to Luna Max** when the task is reasonably well-scoped, localized, and mainly implementation/debugging work. Do this before duplicating substantial investigation in the parent agent.
 - If unsure, do only enough investigation to define the task and relevant constraints, then decide.
 
-When delegating, pass only the task, important constraints, and relevant repository paths. Let Luna inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, and run final builds/tests.
+When delegating, pass only the task, important constraints, and relevant repository paths. Let Luna inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, and run final builds/tests. Avoid doing the same substantial analysis in both Sol and Luna.
 
+(Now again for any agent:)
 Prefer:
 `~/pcgeos-tools/aihelp.py get <symbol>`
 over broad source searches, and:
 `~/pcgeos-tools/aihelp.py build [path]`
 over direct `pmake`.
-
-Avoid doing the same substantial analysis in both Sol and Luna.
 
 End each implementation round with a tight summary suitable as a commit message.
 

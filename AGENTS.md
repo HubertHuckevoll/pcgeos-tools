@@ -176,7 +176,7 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 For code understanding, design, modification, and review tasks, use:
 
-~/pcgeos-tools/skills/semantic-coding/SKILL.md
+~/pcgeos-tools/semantic-coding/SKILL.md
 
 Read this skill before substantial investigation or implementation when the task
 benefits from semantic modeling of existing code.

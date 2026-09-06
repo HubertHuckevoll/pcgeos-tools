@@ -51,30 +51,12 @@ Builds happen in Installed/. Source truth is outside Installed/ unless explicitl
 
 ## Semantic code explanations
 
-When explaining code, prefer a compact semantic trace: call chain, relevant data/state, transformations, side effects, ownership/locks/messages, and failure paths.
+When explaining code, the idea is to combine syntax-level narration with function/data-flow
+semantics in a concise way.
 
-Assign every relevant source-level referent a temporary `@n` handle: functions, methods, variables, fields, structures, types, constants, macros, messages, classes, objects, globals, etc.
-
-Each `@n` MUST link to its actual source definition when known; otherwise link to the most relevant source location. Keep handles stable for the current task and never reuse them for another item.
-
-Example:
-
-```text
-@1 [LoadImage](path/file.goc#L120)
-  reads @2
-  unsupported -> @3
-  otherwise -> @4
-
-@2 [ImageInfo.type](path/image.goh#L42)
-@3 [ShowPlaceholder](path/ui.goc#L80)
-@4 [StartRequest](path/net.goc#L310)
-```
-
-The user may refer to items only by handle, e.g. `explain @2`, `trace @2 through @1`, or `change @1 so @2 never reaches @4`.
-
-Expand only the requested item plus necessary context. Default to function/data-flow semantics, not syntax-level narration.
-
-For PC/GEOS, never hide correctness-relevant handles, locks, ownership/lifetime, object/message context, callbacks, segments/threads, or failure cleanup.
+Prefer a compact semantic trace: call chain, relevant data/state, transformations, side effects, ownership/locks/messages, and failure paths. Briefly explain relevant data structures first, then the call stack: FunctionA => FunctionB => FunctionC ...
+Afterwards, explain how the call stack changes relevant data structures.
+Make sure each function /method name is displayed as a link into the actual source file.
 
 Prefer `~/pcgeos-tools/aihelp.py get <symbol>` before broad repository searches.
 

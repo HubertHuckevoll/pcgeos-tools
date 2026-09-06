@@ -23,6 +23,16 @@ Cleaning up in both messages over-releases the name token while
 `HTMLimageData.HID_resolvedURL` still holds it, causing the next page detach to
 fail in `NamePoolReleaseToken`.
 
+With `fetchWhileImport` enabled, the fetch thread does not wait for the UI to
+handle `MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS`; it can choose a progress result
+before the callback is cleared. `LoadProgressData.LPD_request` links that
+notification to its `URLTextRequestGraphic`, whose `progressCanceled` flag lets
+`MSG_URL_TEXT_GRAPHIC_FETCHED` perform the same cleanup for either a file or an
+already-selected progress result. Successful handoffs leave the flag clear and
+remain owned by the import thread. Keeping the pending request until one of
+those owners completes also ensures `URLFetchExtraMemoryFree` runs before fetch
+shutdown frees `G_allocBlock`.
+
 Evidence:
 
 - `Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc`,
@@ -33,5 +43,8 @@ Evidence:
 - `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`,
   `MSG_HTML_TEXT_FORMATTING_ENDED`, `MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS`,
   `MSG_URL_TEXT_GRAPHIC_FETCHED`, and `MSG_URL_TEXT_DEC_PENDING`
+- `Appl/Breadbox/BbxBrow/urlfetch/URLFETCH.goc`, `URLFetchEngineStop`,
+  `URLFetchExtraMemoryAlloc`, and `URLFetchExtraMemoryFree`
+- `CInclude/htmlprog.h`, `LoadProgressData.LPD_request`
 - `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`, loading-progress callback
   handling around `LPCT_OPEN` and final `URL_RET_PROGRESS`

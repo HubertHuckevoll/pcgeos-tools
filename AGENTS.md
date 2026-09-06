@@ -58,6 +58,9 @@ Prefer a compact semantic trace: call chain, relevant data/state, transformation
 Afterwards, explain how the call stack changes relevant data structures.
 Make sure each function /method name is displayed as a link into the actual source file.
 
+When outputting lists, options, variants, etc. make sure to give them a very brief title/handle
+that can be unambigously referenced in follow up messages in this chat.
+
 Prefer `~/pcgeos-tools/aihelp.py get <symbol>` before broad repository searches.
 
 ## GEOS knowledge base

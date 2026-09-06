@@ -53,7 +53,7 @@ Builds happen in Installed/. Source truth is outside Installed/ unless explicitl
 
 For non-trivial code understanding or modification tasks, use a compact `CODE BRIEF`.
 
-Before substantial work, provide an initial brief so the user can follow what the agent is about to inspect or change. For explanation-only requests, use the same format for current behavior. After implementation, update the brief to reflect the actual resulting code.
+Before substantial work, provide an initial brief so the user can follow what the agent is about to inspect or change. For explanation-only requests, use the same format for current behavior.
 
 Include:
 
@@ -65,6 +65,8 @@ Include:
 Explain behavior, data flow, state transformation, ownership, locks, messages, callbacks, and failure paths where relevant. Do not narrate syntax or diffs line by line.
 
 When outputting lists, options, variants, etc., give each a brief unambiguous title/handle that can be referenced in follow-up messages.
+
+After implementation, update the brief to reflect the actual resulting code. Show relevant code samples inline.
 
 Prefer `~/pcgeos-tools/aihelp.py get <symbol>` before broad repository searches.
 

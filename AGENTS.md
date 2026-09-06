@@ -56,7 +56,7 @@ semantics in a concise way.
 
 Prefer a compact semantic trace: call chain, relevant data/state, transformations, side effects, ownership/locks/messages, and failure paths. Briefly explain relevant data structures first, then the call stack: FunctionA => FunctionB => FunctionC ...
 Afterwards, explain how the call stack changes relevant data structures.
-Make sure each function /method name is displayed as a link into the actual source file.
+Make sure each function / method name is displayed as a link into the actual source file.
 
 When outputting lists, options, variants, etc. make sure to give them a very brief title/handle
 that can be unambigously referenced in follow up messages in this chat.

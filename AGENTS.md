@@ -58,7 +58,7 @@ Before substantial work, provide an initial brief so the user can follow what th
 Include:
 
 - **Overview** — one short paragraph explaining the relevant behavior, problem, or intended change.
-- **Relevant structures** — only the data structures, fields, state, constants, messages, ownership relationships, etc. needed to understand the task, with direct source links where possible.
+- **Relevant structures** — only the data structures, fields, state, constants, messages, ownership relationships, etc. needed to understand the task, with direct source links and line numbers where possible.
 - **Call path** — the main execution path in compact form, e.g. `[FunctionA](path/file.goc#L123) => [FunctionB](path/file.goc#L456) => [FunctionC](path/file.goc#L789)`. Include only important branches.
 - **Key points** — concise semantic facts or changes. Each item should link directly to the relevant function, method, structure, field, constant, or source location and explain why it matters.
 

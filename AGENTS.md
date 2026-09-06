@@ -209,7 +209,7 @@ Choose deliberately between implementing yourself and delegating to a subagent.
 - **Delegate early to Luna XHigh** when the task is reasonably well-scoped, localized, and mainly implementation work. Do this before duplicating substantial investigation in the parent agent.
 - If unsure, do only enough investigation to define the task and relevant constraints, then decide.
 
-When delegating, pass only the task, important constraints, and relevant repository paths. Let Luna inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, debug,and run final builds/tests. Avoid doing the same substantial analysis in both Sol and Luna.
+When delegating, pass only the task, important constraints, and relevant repository paths. Let Luna inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, debug and run final builds/tests. Avoid doing the same substantial analysis in both Sol and Luna.
 
 (Now again for any agent:)
 Prefer:
@@ -218,7 +218,7 @@ over broad source searches, and:
 `~/pcgeos-tools/aihelp.py build [path]`
 over direct `pmake`.
 
-End each implementation round with a tight summary, suitable as a commit message.
+End each implementation round with a tight summary suitable as a commit message.
 
 ## Building geodes
 

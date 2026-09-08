@@ -49,27 +49,6 @@ Main folders:
 
 Builds happen in Installed/. Source truth is outside Installed/ unless explicitly stated.
 
-## Code briefs
-
-For non-trivial code understanding or modification tasks, use a compact `CODE BRIEF`.
-
-Before substantial work, provide an initial brief so the user can follow what the agent is about to inspect or change. For explanation-only requests, use the same format for current behavior.
-
-Include:
-
-- **Overview** — one short paragraph explaining the relevant behavior, problem, or intended change.
-- **Relevant structures** — only the data structures, fields, state, constants, messages, ownership relationships, etc. needed to understand the task, with direct source links and line numbers where possible.
-- **Call path** — the main execution path in compact form, e.g. `[FunctionA](path/file.goc#L123) => [FunctionB](path/file.goc#L456) => [FunctionC](path/file.goc#L789)`. Include only important branches.
-- **Key points** — concise semantic facts or changes. Each item should link directly to the relevant function, method, structure, field, constant, or source location and explain why it matters.
-
-Explain behavior, data flow, state transformation, ownership, locks, messages, callbacks, and failure paths where relevant. Do not narrate syntax or diffs line by line.
-
-When outputting lists, options, variants, etc., give each a brief unambiguous title/handle that can be referenced in follow-up messages.
-
-After implementation, update the brief to reflect the actual resulting code. Show relevant code samples inline.
-
-Prefer `~/pcgeos-tools/aihelp.py get <symbol>` before broad repository searches.
-
 ## GEOS knowledge base
 
 Persistent knowledge about PC/GEOS that you discover while woking on / with it

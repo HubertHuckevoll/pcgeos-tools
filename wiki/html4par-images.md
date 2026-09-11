@@ -1,19 +1,19 @@
 # Html4Par images
 
-`HTMLimageData.imageALT` may contain a generated filename or `Submit`
-fallback. Code that needs authored, non-empty ALT text must also require
-`HTML_IDF_ALT_EXPLICIT`. See `ParseImage()` and `TokenizeImageLabel()` in
-`Library/Breadbox/Html4Par/htmlpars/opentags.goc`, and the flag definition in
+`HTMLimageData.imageALT` contains the authored `ALT` value, including an empty
+one, or the literal fallback `Image` when the attribute is absent. There is no
+separate flag in the current public structure that distinguishes the fallback.
+See `ParseImage()` in
+`Library/Breadbox/Html4Par/htmlpars/opentags.goc` and `HTMLimageData` in
 `CInclude/html4par.goh`.
 
-Compact placeholder format labels are seeded from the resolved URL extension
-in `ImageURLGetUnsupportedFormat()` and may be replaced by a recognized HTTP
-MIME type through `URLTextImageFormatFromMime()` in
-`Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`. An unknown MIME type must not
-erase an existing extension hint. `ImpGraphProbeDetect()` detects the actual
-byte format in `Library/Breadbox/ImpGraph/IMPBMP/impprobe.goc`, but
-`MimeGraphicProbeData` in `CInclude/htmldrv.h` exposes only dimensions, not
-the detected format.
+`ImageURLGetUnsupportedFormat()` in
+`Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` returns true only when the final
+URL path extension maps to an image MIME type and no installed MIME driver
+handles that type. Query strings and fragments are ignored; unknown and
+extensionless URLs still reach the URL driver. `InitNavigation()` seeds known
+unsupported-format associations before `LoadMimeTypes()`, so an installed
+driver remains authoritative.
 
 `ParseImage()` tokenizes a selected `SRCSET` URL in place with
 `NamePoolTokenizeLenDOS()` and its explicit byte length. Avoid adding another

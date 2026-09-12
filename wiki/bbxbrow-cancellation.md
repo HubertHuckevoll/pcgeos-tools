@@ -48,3 +48,11 @@ Evidence:
 - `CInclude/htmlprog.h`, `LoadProgressData.LPD_request`
 - `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`, loading-progress callback
   handling around `LPCT_OPEN` and final `URL_RET_PROGRESS`
+
+Loading-progress callback reads must use the same LPD_sem as asynchronous
+cancellation writes. Wmg3Http captures the callback under that semaphore and
+releases it before invocation: LoadGraphicProgressCallback itself acquires
+LPD_sem for READ/WRITE/CLOSE. A captured callback may finish after cancellation;
+the fetch child remains busy until LoadURLToFile returns, keeping its stream
+state alive. See WMG3HTTP.goc LoadProgressCallbackSnapshot/HTTPGet and
+BbxBrow/urlfetch/URLFETCH.goc URLFetchEngineChild.

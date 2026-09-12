@@ -20,3 +20,16 @@ driver remains authoritative.
 URL-sized local buffer there: the DBCS implementation of
 `NamePoolTokenizeLenDOS()` already uses a 128-character stack conversion
 buffer in `Library/Breadbox/Html4Par/wwwtools/namepool.goc`.
+
+`ImportLockCacheToken()` in `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`
+leaves one cache reference owned by the import request and acquires another
+for the caller/notification. The normal final replacement drops the request
+reference and transfers the other to
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which releases it. A cancellation
+message carries only a name token and cannot release either of those cache
+references; it releases only references stored in matching image records.
+`ObjCacheAddURL(..., TRUE, TRUE)` creates a locked non-cacheable entry, and
+`ObjCacheUnlockItem()` destroys its VM chain when the last reference goes away.
+Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
+`MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`, and
+`ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/NAVCACHE.goc`.

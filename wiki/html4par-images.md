@@ -33,3 +33,23 @@ references; it releases only references stored in matching image records.
 Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`, and
 `ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/NAVCACHE.goc`.
+
+Intelligent image admission probes the completed source file in
+`ImportThreadEngineClass::MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` before
+decoding. A nonzero `T_importGraphicRequest.imageProbeMaxPixels` calls
+`ToolsProbeGraphicByDriver(..., INTELLIGENT_IMAGE_PROBE_BYTES, ...)`; unknown,
+zero-sized, or over-limit images are deferred, while memory-limit import
+failures are also deferred. `Wmg3Http` performs no header or streaming
+admission, so oversized images still download and may remain in the source
+cache but avoid decoder/import work. The retained MIME probe entry accepts a
+reserved `LoadProgressData *`, but BbxBrow always passes null.
+
+`MSG_URL_TEXT_GRAPHIC_FETCHED` classifies unsupported `image/*` response MIME
+types after download with `ImageMIMEGetUnsupportedFormat()` and marks document
+images as compact unsupported placeholders without invoking an importer.
+Extension preflight remains separate and installed MIME associations remain
+authoritative. Streaming HTTP admission is a possible later optimization.
+
+Evidence: `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`,
+`htmlview/LoadURL.goc`, and `urltext/URLTEXT.goc`; `CInclude/htmldrv.h`; and
+`Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`.

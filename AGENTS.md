@@ -177,10 +177,10 @@ If ESP warns about double or triple jumps, fix with LONG.
 (The following lines are only for the Codex agent:)
 Choose deliberately between implementing yourself and delegating to a subagent.
 - **Implement directly in Sol** when the change is trivial, requires architectural/repository-wide reasoning, is about debugging or is too ambiguous to delegate safely.
-- **Delegate early to Luna XHigh** when the task is reasonably well-scoped, localized, and mainly implementation work. Do this before duplicating substantial investigation in the parent agent.
+- **Delegate early to Terra XHigh** when the task is reasonably well-scoped, localized, and mainly implementation work. Do this before duplicating substantial investigation in the parent agent.
 - If unsure, do only enough investigation to define the task and relevant constraints, then decide.
 
-When delegating, pass only the task, important constraints, and relevant repository paths. Let Luna inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, debug and run final builds/tests. Avoid doing the same substantial analysis in both Sol and Luna.
+When delegating, pass only the task, important constraints, and relevant repository paths. Let Terra inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, debug and run final builds/tests. Avoid doing the same substantial analysis in both Sol and Terra.
 
 (Now again for any agent:)
 Prefer:

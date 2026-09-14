@@ -53,3 +53,12 @@ authoritative. Streaming HTTP admission is a possible later optimization.
 Evidence: `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`,
 `htmlview/LoadURL.goc`, and `urltext/URLTEXT.goc`; `CInclude/htmldrv.h`; and
 `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`.
+
+Without `PROGRESS_DISPLAY`, MIME discovery in `LoadMimeTypes()` and
+`LoadNewMimeDriver()` first requests protocol 4, then falls back to protocol
+3 for legacy drivers. `ImportGraphicByNative()` reads the actual loaded
+protocol and selects the old eight-argument graphic entry below major 4;
+protocol-4 drivers receive the reserved ninth, null progress argument. The
+public protocol declarations are in `CInclude/htmldrv.h`, and discovery and
+dispatch are in `init/INIT.goc`, `navigate/NAVIGATE.goc`, and
+`htmlview/LoadURL.goc`.

@@ -16,3 +16,11 @@ message list is emitted as an enum at lines 1167-1185. The GOC documentation
 also describes messages as compile-time 16-bit enumerated values in
 `TechDocs/html/Programming/GOCLanguage/combo.htm` around lines 1611 and
 1890-1905.
+
+For a library header using `@protominor`, wrap the public declarations in
+`@deflib <library>` and `@endlib`. The defining library must suppress only
+the `@protominor`/matching `@protoreset` pair with a private `XGOCFLAGS`
+build macro; external clients keep those directives and emit the library
+dependency. The library's normal `LIBNAME` handling already supplies its
+`-L` option, so do not add a duplicate. Evidence: `CInclude/html4par.goh`
+and `Library/Breadbox/Html4Par/local.mk`.

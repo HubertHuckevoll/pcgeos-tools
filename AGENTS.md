@@ -174,22 +174,32 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-(The following lines are only for the Codex agent:)
-Choose deliberately between implementing yourself and delegating to a subagent.
-- **Implement directly in Sol** when the change is trivial, requires architectural/repository-wide reasoning, is about debugging or is too ambiguous to delegate safely.
-- **Delegate early to Terra XHigh** when the task is reasonably well-scoped, localized, and mainly implementation work. Do this before duplicating substantial investigation in the parent agent.
-- If unsure, do only enough investigation to define the task and relevant constraints, then decide.
+(The following applies only to the Codex parent agent.)
 
-When delegating, pass only the task, important constraints, and relevant repository paths. Let Terra inspect the code and use `aihelp.py` itself. Sol should primarily orchestrate, review the diff, debug and run final builds/tests. Avoid doing the same substantial analysis in both Sol and Terra.
+Choose deliberately between implementing directly and delegating. Avoid duplicating substantial investigation between the parent and worker.
 
-(Now again for any agent:)
+- **Implement directly in Sol** when the change is trivial, requires architectural or repository-wide reasoning, involves debugging, or is too ambiguous to delegate safely.
+- **Delegate early** when the task is well-scoped, localized, and mainly implementation work. Do only enough investigation to define the task, constraints, and relevant paths, then invoke:
+
+  `~/pcgeos-tools/or-worker.sh MODEL`
+
+  Pass the complete implementation brief via stdin. Let the worker inspect the code and use `aihelp.py` itself. The worker may edit, build, and test, but cannot commit or push.
+
+After delegation, Sol should inspect and review the resulting diff, debug as needed, and run the final builds/tests.
+
+(From here on, applies to every agent.)
+
 Prefer:
+
 `~/pcgeos-tools/aihelp.py get <symbol>`
+
 over broad source searches, and:
+
 `~/pcgeos-tools/aihelp.py build [path]`
+
 over direct `pmake`.
 
-End each implementation round with a tight summary suitable as a commit message.
+End each implementation round with a concise summary suitable as a commit message.
 
 ## Building geodes
 

@@ -121,6 +121,7 @@ EOF
 exec opencode run \
     --auto \
     --agent build \
+    --variant high \
     --model "$MODEL" \
     --dir "$PWD" \
     "$WORKER_PROMPT"

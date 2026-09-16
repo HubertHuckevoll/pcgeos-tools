@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# or-worker - One-shot coding worker using OpenCode + OpenRouter
+# oc-job.sh - One-shot coding worker using OpenCode
 #
 # Usage:
-#   or-worker MODEL "prompt"
+#   oc-job.sh MODEL "prompt"
 #
 # Recommended for long prompts:
-#   or-worker MODEL <<'EOF'
+#   oc-job.sh MODEL <<'EOF'
 #   Implement ...
 #   EOF
 #
@@ -14,46 +14,29 @@
 set -euo pipefail
 
 if ! command -v opencode >/dev/null 2>&1; then
-    echo "or-worker: opencode not found in PATH" >&2
+    echo "oc-job: opencode not found in PATH" >&2
     exit 127
 fi
 
-if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
-    echo "or-worker: OPENROUTER_API_KEY is not set" >&2
-    exit 1
-fi
-
 if [[ $# -lt 1 ]]; then
-    echo "Usage: or-worker MODEL [PROMPT...]" >&2
+    echo "Usage: oc-job.sh MODEL [PROMPT...]" >&2
     exit 2
 fi
 
 MODEL="$1"
 shift
 
-# Accept either:
-#
-#   deepseek/deepseek-v4.1-flash
-#
-# or:
-#
-#   openrouter/deepseek/deepseek-v4.1-flash
-#
-if [[ "$MODEL" != openrouter/* ]]; then
-    MODEL="openrouter/$MODEL"
-fi
-
 # Require a Git repository.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
 if [[ -z "$REPO_ROOT" ]]; then
-    echo "or-worker: not inside a Git repository" >&2
+    echo "oc-job: not inside a Git repository" >&2
     exit 1
 fi
 
 # For PC/GEOS we never want a worker without repository instructions.
 if [[ ! -f "$REPO_ROOT/AGENTS.md" ]]; then
-    echo "or-worker: no AGENTS.md at repository root:" >&2
+    echo "oc-job: no AGENTS.md at repository root:" >&2
     echo "  $REPO_ROOT" >&2
     exit 1
 fi
@@ -64,7 +47,7 @@ if [[ $# -gt 0 ]]; then
 elif [[ ! -t 0 ]]; then
     PROMPT="$(cat)"
 else
-    echo "or-worker: no prompt supplied" >&2
+    echo "oc-job: no prompt supplied" >&2
     exit 2
 fi
 
@@ -119,6 +102,7 @@ EOF
 )"
 
 exec opencode run \
+    --pure \
     --auto \
     --agent build \
     --variant high \

@@ -181,7 +181,7 @@ Choose deliberately between implementing directly and delegating. Avoid duplicat
 - **Implement directly in Sol** when the change is trivial, requires architectural or repository-wide reasoning, involves debugging, or is too ambiguous to delegate safely.
 - **Delegate early** when the task is well-scoped, localized, and mainly implementation work. Do only enough investigation to define the task, constraints, and relevant paths, then invoke:
 
-  `~/pcgeos-tools/or-worker.sh deepseek/deepseek-v4.1-flash`
+  `~/pcgeos-tools/oc-job.sh openrouter/deepseek/deepseek-v4.1-flash`
 
   Pass the complete implementation brief via stdin. Let the worker inspect the code and use `aihelp.py` itself. The worker may edit, build, and test, but cannot commit or push.
 

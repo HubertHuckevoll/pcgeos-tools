@@ -26,6 +26,12 @@ fi
 MODEL="$1"
 shift
 
+if [[ "$MODEL" == *:exacto ]] &&
+   [[ ! "$MODEL" =~ ^openrouter/[A-Za-z0-9._~-]+(/[A-Za-z0-9._~-]+)+:exacto$ ]]; then
+    echo "oc-job: invalid Exacto model: $MODEL" >&2
+    exit 2
+fi
+
 # Require a Git repository.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
@@ -58,10 +64,26 @@ fi
 # git push are explicitly denied.  The broad rule must come first because
 # OpenCode uses the LAST matching rule.
 #
-export OPENCODE_CONFIG_CONTENT='
-{
-  "$schema": "https://opencode.ai/config.json",
+MODEL_CONFIG=
+if [[ "$MODEL" == *:exacto ]]; then
+    OPENROUTER_MODEL="${MODEL#openrouter/}"
+    MODEL_CONFIG="$(cat <<EOF
+  "provider": {
+    "openrouter": {
+      "models": {
+        "$OPENROUTER_MODEL": {}
+      }
+    }
+  },
+EOF
+)"
+fi
 
+export OPENCODE_CONFIG_CONTENT="$(cat <<EOF
+{
+  "\$schema": "https://opencode.ai/config.json",
+
+${MODEL_CONFIG}
   "permission": {
     "bash": {
       "*": "allow",
@@ -71,7 +93,8 @@ export OPENCODE_CONFIG_CONTENT='
     }
   }
 }
-'
+EOF
+)"
 
 #
 # Reinforce the policy in the task itself.  The permission rules above are

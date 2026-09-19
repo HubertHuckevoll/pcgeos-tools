@@ -3,10 +3,10 @@
 # oc-job.sh - One-shot coding worker using OpenCode
 #
 # Usage:
-#   oc-job.sh MODEL "prompt"
+#   oc-job.sh "prompt"
 #
 # Recommended for long prompts:
-#   oc-job.sh MODEL <<'EOF'
+#   oc-job.sh <<'EOF'
 #   Implement ...
 #   EOF
 #
@@ -18,13 +18,13 @@ if ! command -v opencode >/dev/null 2>&1; then
     exit 127
 fi
 
-if [[ $# -lt 1 ]]; then
-    echo "Usage: oc-job.sh MODEL [PROMPT...]" >&2
-    exit 2
-fi
-
-MODEL="$1"
-shift
+#
+# Hardcode the model for now.
+#
+#MODEL=openrouter/deepseek/deepseek-v4.1-flash
+#MODEL=openrouter/z-ai/glm-5.3-flash
+MODEL=openrouter/~z-ai/glm-flash-latest
+#MODEL=openrouter/openai/gpt-5.6-luna-pro
 
 if [[ "$MODEL" == *:exacto ]] &&
    [[ ! "$MODEL" =~ ^openrouter/[A-Za-z0-9._~-]+(/[A-Za-z0-9._~-]+)+:exacto$ ]]; then
@@ -32,7 +32,9 @@ if [[ "$MODEL" == *:exacto ]] &&
     exit 2
 fi
 
+#
 # Require a Git repository.
+#
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
 if [[ -z "$REPO_ROOT" ]]; then
@@ -40,14 +42,18 @@ if [[ -z "$REPO_ROOT" ]]; then
     exit 1
 fi
 
+#
 # For PC/GEOS we never want a worker without repository instructions.
+#
 if [[ ! -f "$REPO_ROOT/AGENTS.md" ]]; then
     echo "oc-job: no AGENTS.md at repository root:" >&2
     echo "  $REPO_ROOT" >&2
     exit 1
 fi
 
+#
 # Prompt from arguments or stdin.
+#
 if [[ $# -gt 0 ]]; then
     PROMPT="$*"
 elif [[ ! -t 0 ]]; then
@@ -61,12 +67,14 @@ fi
 # Per-run OpenCode policy.
 #
 # Everything required for implementation is allowed, but git commit and
-# git push are explicitly denied.  The broad rule must come first because
+# git push are explicitly denied. The broad rule must come first because
 # OpenCode uses the LAST matching rule.
 #
 MODEL_CONFIG=
+
 if [[ "$MODEL" == *:exacto ]]; then
     OPENROUTER_MODEL="${MODEL#openrouter/}"
+
     MODEL_CONFIG="$(cat <<EOF
   "provider": {
     "openrouter": {
@@ -97,7 +105,7 @@ EOF
 )"
 
 #
-# Reinforce the policy in the task itself.  The permission rules above are
+# Reinforce the policy in the task itself. The permission rules above are
 # the actual enforcement; this tells the model what workflow is expected.
 #
 WORKER_PROMPT="$(cat <<EOF
@@ -124,7 +132,13 @@ ${PROMPT}
 EOF
 )"
 
-exec opencode run \
+#
+# Do not exec here: we want to regain control after OpenCode finishes so
+# we can notify the user and preserve OpenCode's exit status.
+#
+set +e
+
+opencode run \
     --pure \
     --auto \
     --agent build \
@@ -132,3 +146,19 @@ exec opencode run \
     --model "$MODEL" \
     --dir "$PWD" \
     "$WORKER_PROMPT"
+
+RC=$?
+
+set -e
+
+#
+# The worktree is the result. The supervising Codex agent will inspect the
+# diff itself after the user tells it that the worker has finished.
+#
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send \
+        "OpenCode worker" \
+        "Finished with exit code $RC"
+fi
+
+exit "$RC"

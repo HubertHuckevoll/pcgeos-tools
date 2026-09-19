@@ -181,11 +181,21 @@ Choose deliberately between implementing directly and delegating. Avoid duplicat
 - **Implement directly in Sol** when the change is trivial, requires architectural or repository-wide reasoning, involves debugging, or is too ambiguous to delegate safely.
 - **Delegate early** when the task is well-scoped, localized, and mainly implementation work. Do only enough investigation to define the task, constraints, and relevant paths, then invoke:
 
-  `~/pcgeos-tools/oc-job.sh openrouter/z-ai/glm-5.3-flash`
+  `~/pcgeos-tools/oc-job.sh`
 
-  Pass the complete implementation brief via stdin. Let the worker inspect the code and use `aihelp.py` itself. The worker may edit, build, and test, but cannot commit or push.
+When delegating through `oc-job.sh`:
 
-After delegation, Sol should inspect and review the resulting diff, debug as needed, and run the final builds/tests.
+- Pass the complete implementation brief via stdin. Let the worker inspect the code and use `aihelp.py` itself.
+- The worker may edit, build, and test, but cannot commit or push.
+- Always launch the worker fully detached using `systemd-run --user`.
+- Treat the working tree as the worker's result; no separate result file is required.
+- Never wait for the worker.
+- Never poll its process, output, status, or the working tree for completion.
+- Never use `write_stdin` or similar mechanisms to check whether it has finished.
+- End your turn immediately after successfully launching the worker.
+- I will send another message when the worker has finished.
+
+When I tell you that the worker is finished, inspect and review the resulting working-tree changes, debug as needed, and run the final builds/tests yourself.
 
 (From here on, applies to every agent.)
 

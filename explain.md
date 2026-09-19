@@ -2,7 +2,7 @@
 
 Explain `<problem / feature / function / branch difference>` in a way that helps me build a good **mental model** of the relevant code.
 
-First Describe the mechanism ("Mental Model") at a conceptual level so that I can mentally modify it and reason about the consequences of a change.
+Start with a short description that explains the central idea of the mechanism. Then describe the mechanism ("Mental Model") at a conceptual level so that I can mentally modify it and reason about the consequences of a change.
 
 Focus on the complete relevant mechanism, not incidental implementation details. Clearly distinguish verified behavior from the source from assumptions or uncertainty.
 

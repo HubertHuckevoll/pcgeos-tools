@@ -39,10 +39,16 @@ Intelligent image admission probes the completed source file in
 decoding. A nonzero `T_importGraphicRequest.imageProbeMaxPixels` calls
 `ToolsProbeGraphicByDriver(..., INTELLIGENT_IMAGE_PROBE_BYTES, ...)`; unknown,
 zero-sized, or over-limit images are deferred, while memory-limit import
-failures are also deferred. `Wmg3Http` performs no header or streaming
-admission, so oversized images still download and may remain in the source
-cache but avoid decoder/import work. The retained MIME probe entry accepts a
-reserved `LoadProgressData *`, but BbxBrow always passes null.
+failures are also deferred. For the same Intelligent-mode inline requests,
+BbxBrow passes `UFF_LIMIT_SIZE` through `URLFetchRequest()` and
+`LoadURLToFile()` to `URB_RQ_LIMIT_SIZE`. Wmg3Http enforces the configured
+`[http] downloadSizeLimitKB` before creating a file for known lengths and
+before each write for unknown or chunked lengths. Compact-image activation
+uses `UFF_IGNORE_SIZE_LIMIT` with `ULM_CACHE`, so transfer-size deferrals can
+download on explicit activation while intrinsic-size deferrals reuse the
+already cached source file. Backgrounds and Automatic mode pass no limit.
+The retained MIME probe entry accepts a reserved `LoadProgressData *`, but
+BbxBrow always passes null.
 
 `MSG_URL_TEXT_GRAPHIC_FETCHED` classifies unsupported `image/*` response MIME
 types after download with `ImageMIMEGetUnsupportedFormat()` and marks document

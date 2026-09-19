@@ -174,7 +174,7 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-(The following applies only to the Codex parent agent.)
+(The following applies only to a Codex parent coding agent.)
 
 Choose deliberately between implementing directly and delegating. Avoid duplicating substantial investigation between the parent and worker.
 

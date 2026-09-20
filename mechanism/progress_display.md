@@ -1,128 +1,74 @@
-## Mental model
+The central idea: these are two independent policy axes.
 
-There are two distinct kinds of progress:
+- `IMAGE_LOAD_AUTOMATIC` and `IMAGE_LOAD_INTELLIGENT` decide whether an image is admitted for loading.
+- `PROGRESS_DISPLAY` enables progressive-image support at compile time.
+- `[HTMLView] progressDisplay` chooses how an admitted image appears while loading/importing.
 
-1. Download progress: decode/import starts while HTTP is still receiving bytes.
-2. Import progress: the complete file already exists, but the decoder publishes the bitmap incrementally as scanlines are decoded.
+The overlapping numeric values are coincidental: `IMAGE_LOAD_INTELLIGENT == 2` does not imply `progressDisplay == 2`.
 
-A third mode disables both: download the file, decode it completely, then replace the placeholder once.
+`IMAGE_LOAD_AUTOMATIC` requests every supported image without Intelligent's size limits. `IMAGE_LOAD_INTELLIGENT` adds a 480,000 decoded-pixel limit and, for HTTP, a compressed-download limit; rejected images remain compact clickable placeholders. See [`ImageLoadMode`](/home/konstantinmeyer/pcgeos/CInclude/html4par.goh:139).
 
-`PROGRESS_DISPLAY` is the compile-time capability switch. The INI values select runtime behavior within a build containing that capability.
+When `PROGRESS_DISPLAY` is enabled, [`InitNavigation()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/init/INIT.goc:613) reads `[HTMLView] progressDisplay` into [`imageProgressMode`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview.goh:453):
 
-Your hypothesis is correct: for a cache miss, `progressDisplay=false` downloads first, imports afterward, and shows the image only after the import finishes.
+- `0`, `IMAGE_PROGRESS_FINAL`: only show the completed image.
+- `1`, `IMAGE_PROGRESS_IMPORT`: download completely, then display progressively while decoding/importing.
+- `2`, `IMAGE_PROGRESS_STREAM`: stream download data into the importer when eligible; otherwise fall back to mode 1.
 
-## The two progress mechanisms
+The code and product template both default to `2`; missing, malformed, or out-of-range values retain that default. Legacy Boolean values are rewritten as integer `2`. See [`InitNavigation()` initialization](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/init/INIT.goc:785) and the [`geos.ini` template](/home/konstantinmeyer/pcgeos/Tools/build/product/bbxensem/Template/geos.ini:287).
 
-The important state structures are:
+The important coupling is in [`ProcessSingleGraphic()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:779):
 
-- [`LoadProgressData`](/home/konstantinmeyer/pcgeos/CInclude/htmlprog.h:41): producer/consumer stream between the HTTP fetch thread and the image import thread. Non-null means "decode while downloading."
-- [`ImportProgressData`](/home/konstantinmeyer/pcgeos/CInclude/htmldrv.h:108): partial bitmap state, including `IPD_bitmap`, `IPD_firstLine`, `IPD_lastLine`, and `IPD_callback`. A non-null callback means "publish decoded scanlines."
+- Automatic gives `imageProbeMaxPixels == 0`. With `progressDisplay=2`, eligible inline images receive `LoadProgressData` and can begin importing before download completion.
+- Intelligent inline images give `imageProbeMaxPixels == 480000`. They are deliberately fetched without `LoadProgressData`, regardless of `progressDisplay`, because the completed source file must first pass the intrinsic-size probe.
+- Once an Intelligent image passes that probe, `progressDisplay=1` and `2` both provide progressive display during completed-file import. Only live download streaming is suppressed.
+- `progressDisplay=0` provides no intermediate display in either image-load mode.
 
-The complete flow is:
+Thus the effective behavior is:
 
-[ProcessSingleGraphic()](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:779)
-`  | optionally creates LoadProgressData`
-`  v`
-[URLFetchRequest()](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urlfetch/URLFETCH.goc:386)
-`  | passes it to the URL driver`
-`  v`
-[HTTPGet()](/home/konstantinmeyer/pcgeos/Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc:1494)
-`  | LPCT_OPEN starts importer`
-`  | LPCT_WRITE supplies received bytes`
-`  v`
-[LoadGraphicProgressCallback()](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:463)
-`  | importer reads bytes with LPCT_READ`
-`  v`
-[ImportThreadRequestImportGraphic()](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview/ImportG.goc:464)
-`  | sets IPD_callback`
-`  v`
-[MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview/ImportG.goc:660)
-`  | decoder produces scanline ranges`
-`  v`
-[ImportGraphicProgressCallback()](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview/ImportG.goc:375)
-`  v`
-[MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:1791)
-`  v`
-[IReplaceGraphic()](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:1574)
-`  v`
-[MSG_HTML_TEXT_RESOLVE_IMAGE](/home/konstantinmeyer/pcgeos/Library/Breadbox/Html4Par/htmlclas/htmlclas.goc:2496)
-`  | updates the image and invalidates firstLine..lastLine`
+- Automatic + 0: final image only.
+- Automatic + 1: progressive import after complete download.
+- Automatic + 2: live streaming when eligible, otherwise progressive import after download.
+- Intelligent + 0: complete download, probe, then final image.
+- Intelligent + 1 or 2: complete download, probe, then progressive import. Mode 2 cannot stream ordinary Intelligent inline images.
 
-In the streaming case, HTTP still writes the cache file, but also copies received blocks into the `LoadProgressData` memory stream. The importer reads from that stream and may block waiting for more bytes.
+Streaming has further eligibility checks: reserved-position images and known images below `progressMinHeight` do not receive load-progress data, and [`LoadGraphicProgressCallback()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:463) currently starts streaming only for JPEG and GIF. Other formats, such as PNG, fall back to completed-file progressive import.
 
-In the completed-file case, [`MSG_URL_TEXT_GRAPHIC_FETCHED`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:1249) receives `URL_RET_FILE` and starts the importer with `loadProgressDataP == NULL`. The importer reads the finished file normally. If `IPD_callback` is enabled, scanlines are nevertheless displayed progressively during decoding.
-
-The final completed bitmap is always sent through [`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:1596), even when intermediate updates were disabled or coalesced.
-
-## What the switches actually do
-
-[`PROGRESS_DISPLAY`](/home/konstantinmeyer/pcgeos/Include/product.def:78) is currently enabled. At compile time it adds:
-
-- `LoadProgressData` transport support.
-- Multiple import threads associated with fetch threads.
-- Import progress callbacks and partial-bitmap replacement.
-- `URL_RET_PROGRESS` completion handling.
-- The related runtime INI processing.
-
-[`InitNavigation()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/init/INIT.goc:614) reads the two booleans at [INIT.goc:782](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/init/INIT.goc:782).
-
-Current behavior is:
-
-- `progressDisplay=false`, regardless of `imagesWhileLoading`:
-  - No download/import overlap.
-  - No partial bitmap updates.
-  - Download complete, then full import, then display once.
-
-- `progressDisplay=true`, `imagesWhileLoading=false`:
-  - Eligible images are still imported and displayed while downloading.
-  - Completed-file imports are not displayed progressively.
-  - Thus the result depends on whether streaming was available.
-
-- `progressDisplay=true`, `imagesWhileLoading=true`:
-  - Eligible images are imported and displayed while downloading.
-  - Completed-file imports are also displayed progressively during decoding.
-
-That behavior follows directly from the callback condition in [`ImportThreadRequestImportGraphic()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview/ImportG.goc:524):
-
-```c
-progressDisplay &&
-    (loadProgressDataP || imagesWhileLoading)
+```text
+MSG_URL_FRAME_SET_IMAGE_LOAD_MODE [1]
+    |
+    | Automatic or Intelligent starts processing
+    v
+MSG_URL_TEXT_PROCESS_GRAPHICS [2]
+    |
+    | Automatic:   imageProbeMaxPixels = 0
+    | Intelligent: imageProbeMaxPixels = 480000 for inline images
+    v
+ProcessSingleGraphic [3]
+    |
+    +--> Intelligent limit active
+    |       fetch without LoadProgressData
+    |       complete download -> intrinsic-size probe
+    |
+    `--> No Intelligent limit
+            progressDisplay == 2 and eligible?
+                |
+                +--> LoadGraphicProgressCallback [4]
+                |       -> MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS [5]
+                |
+                `--> complete download
+                         |
+                         v
+ImportThreadRequestImportGraphic [6]
+    |
+    | progressDisplay == 0: no import callback
+    | progressDisplay == 1/2: ImportGraphicProgressCallback
+    v
+MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC [7]
+    |
+    +--> Intelligent probe rejected -> compact placeholder
+    `--> imported image -> intermediate updates, then final replacement
 ```
 
-Therefore, the current `imagesWhileLoading` name is misleading. It does not enable or disable importing while downloading. `loadProgressDataP` does that. The setting enables progressive display when `loadProgressDataP` is null, meaning after the complete file is available.
+References: [1] [`MSG_URL_FRAME_SET_IMAGE_LOAD_MODE`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc:1115), [2] [`MSG_URL_TEXT_PROCESS_GRAPHICS`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:1058), [3] [`ProcessSingleGraphic()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:779), [4] [`LoadGraphicProgressCallback()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:463), [5] [`MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:228), [6] [`ImportThreadRequestImportGraphic()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview/ImportG.goc:464), [7] [`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/htmlview/ImportG.goc:655).
 
-This completed-file functionality exists because [`COMPILE_OPTION_IMPORT_PROGRESS_LOCAL`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/options.goh:354) is enabled.
-
-## Streaming limitations
-
-Even with both settings true, streaming is conditional:
-
-- [`ProcessSingleGraphic()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:878) deliberately disables it for Intelligent-mode requests.
-- Reserved/background images and images below `progressMinHeight` do not receive `LoadProgressData`.
-- HTTP disables streaming below the configured `contentLength` threshold at [WMG3HTTP.goc:2433](/home/konstantinmeyer/pcgeos/Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc:2433).
-- [`LoadGraphicProgressCallback()`](/home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc:482) accepts streaming only for JPEG and GIF.
-- PNG supports progressive decoding of a finished file, publishing every ten scanlines at [imppng.goc:103](/home/konstantinmeyer/pcgeos/Library/Breadbox/ImpGraph/IMPBMP/imppng.goc:103), but not network streaming.
-- An object-cache hit is displayed immediately and needs neither process.
-
-So "stream while downloading" must always have "progressively decode after download" as its fallback.
-
-## Recommendation
-
-The three-state mental model is correct:
-
-- `final`: download, import fully, display once.
-- `decode`: download fully, then import/display progressively.
-- `stream`: import/display while downloading; fall back to `decode`.
-
-But I would not change the existing `progressDisplay` boolean into a three-valued setting. The existing two booleans can already express the hierarchy cleanly with a smaller, backward-compatible change:
-
-- `progressDisplay=false`: `final`
-- `progressDisplay=true`, `imagesWhileLoading=false`: `decode`
-- `progressDisplay=true`, `imagesWhileLoading=true`: `stream`, falling back to `decode`
-
-To achieve that, the wiring should conceptually become:
-
-- `ProcessSingleGraphic()` supplies `LoadProgressData` only when both `progressDisplay` and `imagesWhileLoading` are true.
-- `ImportThreadRequestImportGraphic()` enables `IPD_callback` whenever `progressDisplay` is true, including completed-file imports.
-
-That would make the existing key names match their behavior. If a single user-facing setting is strongly preferred, introduce a new `imageProgressMode = final|decode|stream` setting and retain the old booleans as compatibility fallback rather than changing the type of the historical `progressDisplay` key.
+Without `PROGRESS_DISPLAY`, the entire progress-mode machinery and INI read are compiled out. Automatic and Intelligent admission still work, including Intelligent's limits, but images are exposed only through final replacement. The current product headers enable `PROGRESS_DISPLAY` by default in [`product.h`](/home/konstantinmeyer/pcgeos/CInclude/product.h:70).

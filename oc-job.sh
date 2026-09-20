@@ -20,6 +20,7 @@ fi
 #MODEL=openrouter/z-ai/glm-5.3-flash
 MODEL=openrouter/~z-ai/glm-flash-latest
 #MODEL=openrouter/openai/gpt-5.6-luna-pro
+#MODEL=openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
 
 if [[ "$MODEL" == *:exacto ]] &&
    [[ ! "$MODEL" =~ ^openrouter/[A-Za-z0-9._~-]+(/[A-Za-z0-9._~-]+)+:exacto$ ]]; then

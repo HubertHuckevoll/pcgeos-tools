@@ -2,13 +2,8 @@
 #
 # oc-job.sh - One-shot coding worker using OpenCode
 #
-# Usage:
-#   oc-job.sh "prompt"
-#
-# Recommended for long prompts:
-#   oc-job.sh <<'EOF'
-#   Implement ...
-#   EOF
+# Normally launched by oc-start-job.sh.
+# The implementation prompt is read from stdin.
 #
 
 set -euo pipefail

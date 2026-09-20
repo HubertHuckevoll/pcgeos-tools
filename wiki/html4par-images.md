@@ -56,6 +56,30 @@ images as compact unsupported placeholders without invoking an importer.
 Extension preflight remains separate and installed MIME associations remain
 authoritative. Streaming HTTP admission is a possible later optimization.
 
+Image progress is a three-state mode selected by the integer
+`[HTMLView] progressDisplay` entry: `ImageProgressMode` with
+`IMAGE_PROGRESS_FINAL` (0, final replacement only), `IMAGE_PROGRESS_IMPORT`
+(1, progressive display only while importing completely downloaded files),
+and `IMAGE_PROGRESS_STREAM` (2, the default; live streaming when eligible,
+otherwise the same completed-file progressive import as mode 1). The type and
+type lives in `Appl/Breadbox/BbxBrow/htmlview.goh`; the default is set in
+`init/INIT.goc`, where `InitNavigation()` reads the entry with
+`InitFileReadInteger()` and keeps the default on missing, malformed, or
+out-of-range values. If integer parsing fails but `InitFileReadBoolean()`
+recognizes a legacy Boolean value, initialization replaces it with integer
+mode 2 before continuing. `ProcessSingleGraphic()`
+in `urltext/URLTEXT.goc` passes `LoadProgressData` to the fetch only in
+streaming mode (plus the existing reserved-position and minimum-height
+restrictions). `ImportThreadRequestImportGraphic()` in `htmlview/ImportG.goc`
+installs `IPD_callback` for any mode above final, so completed-file import
+progress is unconditional capability under `PROGRESS_DISPLAY`; the former
+`COMPILE_OPTION_IMPORT_PROGRESS_LOCAL` switch is gone. Template
+`[HTMLView] progressDisplay = 2` in
+`Tools/build/product/bbxensem/Template/geos.ini` supplies the default without
+changing `HTML_VIEW_INI_VERSION_NUMBER` or resetting the HTMLView category.
+Without `PROGRESS_DISPLAY`, behavior is unchanged: no load or import progress
+data and no mode global exists.
+
 Evidence: `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`,
 `htmlview/LoadURL.goc`, and `urltext/URLTEXT.goc`; `CInclude/htmldrv.h`; and
 `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`.

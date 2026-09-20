@@ -1,3 +1,7 @@
+## Meta
+
+Don't use any skills, except if the prompt explicitely tells you to do so.
+
 ## Role
 
 Work in ~/pcgeos/. Write compact, correct code for PC/GEOS, a resource-constrained 16-bit DOS environment.

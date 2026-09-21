@@ -73,6 +73,18 @@ and keeps `LPD_callback` installed so Wmg3Http completes the source file and
 returns its normal progress acknowledgement. The HTTP transfer is never
 cancelled and Wmg3Http knows nothing about image dimensions.
 
+`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` must call
+`MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE(FALSE)` after installing every progress
+bitmap, including streamed ones. Restricting that layout step to completed-file
+imports leaves streamed images as placeholders until final page layout.
+When a live stream updates an image during an already-active page layout, it
+must also call `MSG_HTML_TEXT_CALCULATE_LAYOUT()`; that method sets
+`HTS_LAYOUT_RESTART_REQUESTED`, causing the next layout event to revisit and
+draw the changed cell instead of waiting for the layout's final extra pass or
+Stop. `LoadProgressData.LPD_layoutRestartRequested`, reset by `LPCT_OPEN`,
+limits this to the first progress bitmap in each stream. Later scanline slices
+use direct invalidation and do not repeatedly reformat the page.
+
 When the separate Wmg3Http transfer-size cap is active, a known final
 Content-Length that passed the pre-body cap may still stream. An unknown or
 chunked length remains download-first because it can cross the byte cap only

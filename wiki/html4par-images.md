@@ -34,12 +34,22 @@ Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`, and
 `ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/NAVCACHE.goc`.
 
-Intelligent image admission probes the completed source file in
-`ImportThreadEngineClass::MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` before
-decoding. A nonzero `T_importGraphicRequest.imageProbeMaxPixels` calls
-`ToolsProbeGraphicByDriver(..., INTELLIGENT_IMAGE_PROBE_BYTES, ...)`; unknown,
-zero-sized, or over-limit images are deferred, while memory-limit import
-failures are also deferred. For the same Intelligent-mode inline requests,
+Intelligent image admission happens at import time. BbxBrow passes
+`T_importGraphicRequest.imageMaxPixels` (800L*600L for Intelligent-mode
+inline images, 0 elsewhere) into the import and the MIME drivers:
+`ToolsImportGraphicByDriver()` gains a `maxPixels` argument,
+`ImportGraphicByNative()` reads the loaded driver protocol and calls MIME
+entry 4 (`MimeDrvGraphicEx2`, protocol 4.3) with `extFlags` 0 and
+`maxPixels`; older drivers set `MIME_STATUS_DEFERRED` (0x2000) and import
+nothing. ImpGraph entries 0 and 3 forward `maxPixels` 0 to a common
+dispatcher; entry 4 threads `maxPixels` through ImpGIF/ImpJPG/ImpPNG, which
+reject images whose width exceeds `maxPixels / height` after reading the
+format header and before any bitmap work, setting `MIME_STATUS_DEFERRED`
+with no bitmap (zero dimensions are an ordinary format failure, not
+deferred). `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` always imports and
+sends `MSG_URL_TEXT_INTERNAL_DEFER_LIKE_GRAPHICS` when the constrained
+import reports DEFERRED or MEMORY_LIMIT; ordinary failures mark the image
+broken. For the same Intelligent-mode inline requests,
 BbxBrow passes `UFF_LIMIT_SIZE` through `URLFetchRequest()` and
 `LoadURLToFile()` to `URB_RQ_LIMIT_SIZE`. Wmg3Http enforces the configured
 `[http] downloadSizeLimitKB` before creating a file for known lengths and
@@ -47,8 +57,27 @@ before each write for unknown or chunked lengths. Compact-image activation
 uses `UFF_IGNORE_SIZE_LIMIT` with `ULM_CACHE`, so transfer-size deferrals can
 download on explicit activation while intrinsic-size deferrals reuse the
 already cached source file. Backgrounds and Automatic mode pass no limit.
-The retained MIME probe entry accepts a reserved `LoadProgressData *`, but
-BbxBrow always passes null.
+
+Constrained GIF/JPEG imports stream like unconstrained ones:
+`ProcessSingleGraphic()` no longer suppresses `LoadProgressData` for
+constrained requests (PNG stays download-first because
+`LoadGraphicProgressCallback` only installs streaming for JPEG/GIF), and
+`MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS` forwards `imageMaxPixels` from
+`LPD_request` to `ImportThreadRequestImportGraphic()`. When such a streamed
+import returns DEFERRED (or a constrained MEMORY_LIMIT with no bitmap),
+`ImportG` invokes the appended `LPCT_DISCARD` load-progress callback before
+sending the deferred UI: under `LPD_sem` it purges the buffered
+HugeArray/MemStream bytes, resets the counters/state, sets
+`LoadProgressData.LPD_discard` so later `LPCT_WRITE` callbacks ignore data,
+and keeps `LPD_callback` installed so Wmg3Http completes the source file and
+returns its normal progress acknowledgement. The HTTP transfer is never
+cancelled and Wmg3Http knows nothing about image dimensions.
+
+When the separate Wmg3Http transfer-size cap is active, a known final
+Content-Length that passed the pre-body cap may still stream. An unknown or
+chunked length remains download-first because it can cross the byte cap only
+after reception has begun; this prevents publishing a partial bitmap before
+`URL_RET_TOO_LARGE`.
 
 `MSG_URL_TEXT_GRAPHIC_FETCHED` classifies unsupported `image/*` response MIME
 types after download with `ImageMIMEGetUnsupportedFormat()` and marks document
@@ -88,7 +117,9 @@ Without `PROGRESS_DISPLAY`, MIME discovery in `LoadMimeTypes()` and
 `LoadNewMimeDriver()` first requests protocol 4, then falls back to protocol
 3 for legacy drivers. `ImportGraphicByNative()` reads the actual loaded
 protocol and selects the old eight-argument graphic entry below major 4;
-protocol-4 drivers receive the reserved ninth, null progress argument. The
+protocol-4 drivers receive the reserved ninth, null progress argument, and
+constrained requests (`maxPixels != 0`) additionally require protocol 4.3
+for MIME entry 4, deferring on older drivers. The
 public protocol declarations are in `CInclude/htmldrv.h`, and discovery and
 dispatch are in `init/INIT.goc`, `navigate/NAVIGATE.goc`, and
 `htmlview/LoadURL.goc`.

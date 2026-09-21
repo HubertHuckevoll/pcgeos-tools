@@ -17,10 +17,11 @@ fi
 # Hardcode the model for now.
 #
 #MODEL=openrouter/deepseek/deepseek-v4.1-flash
-#MODEL=openrouter/z-ai/glm-5.3-flash
 MODEL=openrouter/~z-ai/glm-flash-latest
 #MODEL=openrouter/openai/gpt-5.6-luna-pro
-#MODEL=openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+#MODEL=openrouter/qwen/qwen3.8-27b
+#MODEL=openrouter/qwen/qwen3.8-flash
+#MODEL=openrouter/google/gemini-3.8-flash
 
 if [[ "$MODEL" == *:exacto ]] &&
    [[ ! "$MODEL" =~ ^openrouter/[A-Za-z0-9._~-]+(/[A-Za-z0-9._~-]+)+:exacto$ ]]; then

@@ -77,13 +77,37 @@ cancelled and Wmg3Http knows nothing about image dimensions.
 `MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE(FALSE)` after installing every progress
 bitmap, including streamed ones. Restricting that layout step to completed-file
 imports leaves streamed images as placeholders until final page layout.
-When a live stream updates an image during an already-active page layout, it
-must also call `MSG_HTML_TEXT_CALCULATE_LAYOUT()`; that method sets
-`HTS_LAYOUT_RESTART_REQUESTED`, causing the next layout event to revisit and
-draw the changed cell instead of waiting for the layout's final extra pass or
-Stop. `LoadProgressData.LPD_layoutRestartRequested`, reset by `LPCT_OPEN`,
-limits this to the first progress bitmap in each stream. Later scanline slices
-use direct invalidation and do not repeatedly reformat the page.
+For streamed progress it also calls `MSG_HTML_TEXT_CALCULATE_LAYOUT()`; while
+layout is active, that method can set `HTS_LAYOUT_RESTART_REQUESTED`.
+`HTMLTextUpdateImageGeometry()` separately marks the cell and ancestor tables
+dirty and sets `LS_currentMasterCellGotImage` or `LS_oneMorePass` when needed.
+Evidence: `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` and
+`Library/Breadbox/Html4Par/htmlclas/htmltpos.goc` / `htmlclas.goc`.
+
+`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE` changes unresolved inline images to
+compact label dimensions in Intelligent mode, writing both `HID_size` and
+the embedded `VisTextGraphic.VTG_size`; if any size changes, it sets
+`HTS_LAYOUT_DIRTY` and `HTS_LAYOUT_NEED_TO_BLAST_HARD_MIN_WIDTHS`.
+At `MSG_HTML_TEXT_LAYOUT_START`, the blast flag runs
+`IBlastTableAndCellMinWidths()`, which resets and marks every cell and table
+dirty, not only the image's owning cell.
+The normal `MSG_HTML_TEXT_CALCULATE_LAYOUT` path calls
+`CalculateCellArrayLongestLines()` before `MSG_HTML_TEXT_LAYOUT_START`, so
+the blast can discard the widths just measured; `ICalculateCellMinMax()`
+then runs on the reset values. `MINIMUM_COLUMN_WIDTH` is 1 and
+`REGION_MINIMUM_WIDTH` is 3 (`Library/Breadbox/Html4Par/internal.h`).
+`MSG_HTML_TEXT_RESOLVE_IMAGE` later restores the imported dimensions via
+`HTMLTextUpdateImageGeometry()`, which dirties layout only if the graphic's
+size differs from its current size. `MSG_URL_TEXT_DEC_PENDING` invokes
+`MSG_HTML_TEXT_CALCULATE_LAYOUT` when the pending count reaches zero, but
+that method begins a new pass only for a changed view width or dirty layout.
+Consequently, an authored-size image that resolves at exactly its authored
+size can take a different final-layout path in Automatic mode (no geometry
+change) and Intelligent mode (compact-to-real geometry change). Evidence:
+`htmlclas/htmlclas.goc` (`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`,
+`HTMLTextUpdateImageGeometry`), `htmlclas/htmltpos.goc`
+(`MSG_HTML_TEXT_CALCULATE_LAYOUT`), and `urltext/URLTEXT.goc`
+(`MSG_URL_TEXT_DEC_PENDING`).
 
 When the separate Wmg3Http transfer-size cap is active, a known final
 Content-Length that passed the pre-body cap may still stream. An unknown or

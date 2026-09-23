@@ -19,6 +19,7 @@ fi
 #MODEL=openrouter/deepseek/deepseek-v4.1-flash
 MODEL=openrouter/~z-ai/glm-flash-latest
 #MODEL=openrouter/openai/gpt-5.6-luna-pro
+#MODEL=openrouter/openai/gpt-6-luna-pro
 #MODEL=openrouter/qwen/qwen3.8-27b
 #MODEL=openrouter/qwen/qwen3.8-flash
 #MODEL=openrouter/google/gemini-3.8-flash

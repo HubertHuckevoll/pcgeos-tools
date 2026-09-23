@@ -19,3 +19,10 @@ Evidence: `Tools/glue/library.c`, `Library_ExportAs` assigns
 at lines 1926-2012. `TechDocs/html/LRef/GPKey/index.htm` documents `incminor`
 at lines 243-268, and `TechDocs/html/Kernel/Geodes/Geodes_9.htm` explains that
 relocated entry points need a major protocol change at lines 95-113.
+
+For a newly built library, run `pmake lib` in its `Installed/Library/...`
+directory after building it. The default build can leave its `.ldf` only in
+that directory; `pmake lib` copies it to `Installed/Include`, where dependent
+geodes find it. Evidence: the `LIBOBJ` and `lib` rules in
+`CInclude/geode.mk` around lines 178-221; `aihelp.py`'s `build_once` runs the
+default `pmake` target in `~/pcgeos-tools/aihelp.py`.

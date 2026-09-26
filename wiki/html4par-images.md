@@ -1,5 +1,23 @@
 # Html4Par images
 
+Inline image sizing has two stages. `ParseImage()` in
+`Library/Breadbox/Html4Par/htmlpars/opentags.goc` stores authored pixel
+`WIDTH`/`HEIGHT` in `HTMLimageData.size` and creates the initial
+`VisTextGraphic.VTG_size`/`HID_size` placeholder, using 20-pixel defaults for
+unspecified dimensions. After import, `URLTextInitializeImageGeometry()` in
+`Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` combines those authored dimensions
+with intrinsic dimensions into drawing scales and `HID_size`; resolution then
+updates the variable graphic and layout through `MSG_HTML_TEXT_RESOLVE_IMAGE`
+and `HTMLTextUpdateImageGeometry()` in `htmlclas/htmlclas.goc`. BbxBrow parses
+the page before `MSG_URL_FRAME_FLIP_PAGE` attaches it and calls
+`MSG_URL_TEXT_PROCESS_GRAPHICS` (`urlframe/URLFRAME.goc`).
+
+`ICalculateViewSize()` in `htmlclas/htmltcel.goc` derives layout width from
+`MSG_GEN_VIEW_GET_VISIBLE_RECT` but adds back a vertical scrollbar's width;
+it is therefore not the exact currently visible width. GenView's visible-rect
+message returns document coordinates and zero dimensions for an off-screen
+view (`TechDocs/Markdown/Objects/ogenvew.md`, section 9.4.2.4).
+
 `HTMLimageData.imageALT` contains the authored `ALT` value, including an empty
 one, or the literal fallback `Image` when the attribute is absent. There is no
 separate flag in the current public structure that distinguishes the fallback.

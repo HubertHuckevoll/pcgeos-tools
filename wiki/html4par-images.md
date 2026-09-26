@@ -18,6 +18,14 @@ it is therefore not the exact currently visible width. GenView's visible-rect
 message returns document coordinates and zero dimensions for an off-screen
 view (`TechDocs/Markdown/Objects/ogenvew.md`, section 9.4.2.4).
 
+BbxBrow records the first nonzero visible rectangle in its URLText object.
+`MSG_URL_TEXT_DEC_PENDING` applies `MSG_HTML_TEXT_CLAMP_IMAGES_TO_VIEWPORT`
+only when the pending count reaches zero, before the existing final layout
+call. The Html4Par method updates inline image records and graphic runs in a
+batch, then sets layout dirty and complete-redraw flags once; it does not add
+each image to the waiting-image list. See `urltext/URLTEXT.goc` and
+`htmlclas/htmlclas.goc`.
+
 `HTMLimageData.imageALT` contains the authored `ALT` value, including an empty
 one, or the literal fallback `Image` when the attribute is absent. There is no
 separate flag in the current public structure that distinguishes the fallback.

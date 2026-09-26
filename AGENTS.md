@@ -184,10 +184,9 @@ Choose deliberately between implementing directly and delegating. Avoid duplicat
 
 - **Implement directly in Sol** when the change is trivial, requires architectural or repository-wide reasoning, involves debugging, or is too ambiguous to delegate safely.
 
-- **Delegate early** when the task is well-scoped, localized, and mainly implementation work. Do only enough investigation to define the task, constraints, and relevant paths, then invoke a worker agent
-with **Luna XHigh**.  Make the worker write a file with the name "done" when it is finished.End your turn immediately after successfully launching the worker.
+- **Delegate early** when the task is well-scoped, localized, and mainly implementation work. Do only enough investigation to define the task, constraints, and relevant paths, then invoke a worker agent with **Luna XHigh**. Instruct the worker to write a file with the name "done.txt" in the ~/pcgeos folder when it is finished. End your turn immediately after successfully launching the worker.
 
-I will send another message when the worker has finished. You should then inspect and review the resulting working-tree changes, debug as needed, and run the final builds/tests yourself.
+I will send another message when the worker has finished. You should then inspect and review the resulting working-tree changes, debug as needed, and run the final builds/tests yourself. Afterwards "done.txt" must be deleted.
 
 (From here on, applies to every agent.)
 

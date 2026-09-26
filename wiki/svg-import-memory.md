@@ -10,6 +10,12 @@ Evidence: `Library/SvgLib/Import/svg.h` (`SVGScratch` and `SVG_*` limits),
 `svgPath.goc` (`SvgPathHandle`, `SvgPathEmitSubpath`), and `svgShape.goc`
 (`SvgShapeHandlePolyline`, `SvgShapeHandlePolygon`).
 
+`SvgShapeHandleRect()` keeps zero-radius rectangles on the four-point stack
+path. Rounded rectangles reuse the scratch `Point` block for a 48-point
+outline, after defaulting and clamping `rx`/`ry`; every point goes through
+the world matrix before `SvgRendererPolygon()`. Evidence:
+`Library/SvgLib/Import/svgShape.goc` (`SvgShapeHandleRect`).
+
 BbxBrow calls `SvgImport()` through ImpGraph's `ImpSVG()`. The SVG
 `IBP_maxPixels` check occurs after import and GString bounds calculation;
 `TE_OUT_OF_MEMORY` from `SvgImport()` sets `MIME_STATUS_MEMORY_LIMIT` and

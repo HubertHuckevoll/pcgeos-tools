@@ -180,23 +180,26 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 (The following applies only to a Codex parent coding agent.)
 
-Choose deliberately between implementing directly and delegating. Avoid duplicating substantial investigation between the parent and worker.
+Minimize total token consumption, including review and rework. Avoid duplicating investigation between parent and worker.
 
-- **Implement directly in Sol** when the change is trivial, requires architectural or repository-wide reasoning, involves debugging, or is too ambiguous to delegate safely.
+- **Implement directly in Sol** for trivial changes, interactive debugging, or tasks that cannot be delegated safely.
+- **Delegate to Luna High** whenever implementation can be separated from architectural decisions, including larger refactorings.
 
-- **Delegate early** when the task is well-scoped, localized, and mainly implementation work. Do only enough investigation to define the task, constraints, and relevant paths, then invoke a worker agent with **Luna XHigh**. Instruct the worker to write a file with the name "done.txt" in the ~/pcgeos folder when it is finished. End your turn immediately after successfully launching the worker.
+Before delegating, investigate enough to establish the critical architectural decisions, relevant interfaces, constraints, and acceptance criteria. Keep the implementation brief concise. Leave detailed planning, source investigation, and implementation to Luna.
 
-I will send another message when the worker has finished. You should then inspect and review the resulting working-tree changes, debug as needed, and run the final builds/tests yourself. Afterwards "done.txt" must be deleted.
+Instruct the worker to implement, build, test, and self-review its changes without committing or pushing. It must respect the parent's architectural decisions and report any necessary deviations rather than improvising a different design.
+
+When finished, the worker must create `~/pcgeos/done.txt` with a concise summary, test results, deviations, and outstanding issues.
+
+**End your turn immediately after launching the worker.** Never wait, poll, or inspect its progress.
+
+I will send another message when the worker has finished. Then read `done.txt`, review the working-tree diff, fix issues as necessary, run final builds/tests, and delete `done.txt`.
 
 (From here on, applies to every agent.)
 
-To look for symbols in the pcgeos source tree, prefer:
+For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
 
-`~/pcgeos-tools/aihelp.py get <symbol>`
-
-over broad source searches.
-
-End each implementation round with a concise summary suitable as a commit message.
+End each implementation round with a concise, commit-message-style summary.
 
 ## Building geodes
 

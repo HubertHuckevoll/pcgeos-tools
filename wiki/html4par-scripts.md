@@ -6,6 +6,12 @@ enables script/event collection and AutoBrowse analysis. External `SCRIPT
 SRC` content is fetched and read directly from its HugeArray by
 `HandleExternalScript()` in `htmlpars/htmlpars.goc`.
 
+`PopStyle()` runs its tag-specific close handling before shifting that tag
+out of the parser stack. `EnclosingCount()` called from a close handler
+therefore still sees the closing tag and its enclosing tags. Evidence:
+`Library/Breadbox/Html4Par/htmlpars/parstags.goc` (`PopStyle`,
+`EnclosingCount`).
+
 `SkipRawTextContent()` is shared by every build variant. `HandleTag()` must
 resolve `tagStyle` before filtering attributes, use the raw-text path for
 `STYLE`, and use it for `SCRIPT` whenever `HTML_JAVASCRIPT` is disabled.

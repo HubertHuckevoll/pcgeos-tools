@@ -10,6 +10,14 @@ Evidence: `Library/SvgLib/Import/svg.h` (`SVGScratch` and `SVG_*` limits),
 `svgPath.goc` (`SvgPathHandle`, `SvgPathEmitSubpath`), and `svgShape.goc`
 (`SvgShapeHandlePolyline`, `SvgShapeHandlePolygon`).
 
+The SvgLib parser's source-file operations are concentrated at its input
+boundary: `SvgImportParse()` seeks to find source length and resets to the
+start, `SvgParserScanNextTag()` refills a 1024-byte buffer with `FileRead()`,
+and progress/debug reporting queries `FilePos()`. Rendering writes a VM
+GString independently of that source. Evidence: `Library/SvgLib/Import/svg.goc`
+(`SvgImportParse`), `svgParse.goc` (`SvgParserScanNextTag`), and `svgApi.goc`
+(`SvgImport`).
+
 `SvgShapeHandleRect()` keeps zero-radius rectangles on the four-point stack
 path. Rounded rectangles reuse the scratch `Point` block for a 48-point
 outline, after defaulting and clamping `rx`/`ry`; every point goes through

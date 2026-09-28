@@ -1,5 +1,55 @@
 # Html4Par images
 
+Inline `<svg>` is captured as raw bytes by the `SVG` path in
+`Library/Breadbox/Html4Par/htmlpars/htmlpars.goc` and stored in the
+page-owned `HTBH_svgSourceData` HugeArray. Image records carry a source
+offset and dword length, so reloading a cached page can import it again.
+The parser appends source in 1024-byte chunks while it scans through the
+closing tag; the source size is bounded only by the VM HugeArray capacity.
+`OBJ_CACHE_MINOR_VERSION` in `Appl/Breadbox/BbxBrow/htmlview.goh` is bumped
+when the persistent image-record layout changes; `AttachToObjCache()` in
+`navigate/NAVCACHE.goc` recreates cache files on a protocol mismatch.
+Imported graphics are stored as `OCT_GSTRING` VM chains by
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `htmlview/ImportG.goc`.
+`ObjCacheForceCachable()` retains completed graphics when object caching is
+enabled. `ObjCacheCheckPersist()` in `navigate/NAVCACHE.goc` drops text items
+at detach and may also drop small graphics; an image-cache entry is not a
+guaranteed permanent copy of a page's image source.
+`HandleTag()` in `htmlpars/htmlpars.goc` resolves HTML tag names through
+`StyleNum()` and parses only listed HTML attributes; `HTMLgetc()` also
+normalizes line endings/control characters and decodes UTF-8. Thus an inline
+SVG source must be captured from the raw `HTMLgetcLow()` byte stream before
+ordinary HTML parsing consumes or changes it. In contrast, external `.svg`
+images already pass through BbxBrow's normal image path: `InitNavigation()`
+associates SVG with `image/svg+xml`, `ImpSVG()` in
+`Library/Breadbox/ImpGraph/MAIN/impgraph.goc` calls
+`SvgImport(FileHandle, VMFileHandle, ...)`, and `URLTextClass` displays the
+result as a GString. `FileCreateTempFile()` can supply the importer with a
+file handle, but its caller owns explicit close and deletion; see
+`TechDocs/Markdown/Concepts/cfile.md`.
+`ProcessInlineSVG()` in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` passes an
+absolute temporary-file path to the import thread. A relative path would
+depend on that thread's current directory. Queued imports set
+`temporary=TRUE`; `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` deletes the file
+after success, failure, or cancellation.
+The Html4Par scanner records whether inline SVG contains a shape SvgLib can
+draw and whether it contains `<use>`, `<text>`, `<image>`, `<script>`, or
+`<foreignObject>`. Such unsupported or shape-less sources remain in the VM
+array but carry `HTML_IDF_SVG_UNSUPPORTED`; BbxBrow leaves their broken
+placeholders without queuing a temporary-file import. SvgLib's own dispatch
+and unsupported-element behavior are in `Library/SvgLib/Import/svg.goc`.
+`ProcessPendingInlineSVG()` in BbxBrow keeps at most two inline SVG imports
+active per text object and refills the queue after each result. A campaign
+holds one pending page reference through each eight-result batch and its
+30-tick timer pause; individual imports hold their own references. Outstanding
+import name tokens are tracked on the text object so cancellation can balance
+the count after navigation replaces the image array. Ordinary URL images
+already pass through the two URL fetch children.
+`IMarkAllImagesUnresolved()` in `htmlclas/htmlclas.goc` clears every
+transferred image's resolved flag, cache token, VM file, and VM block when
+loading a page. SVG source offsets and lengths are parser fields above this
+reset, so the source remains available after transfer-item loading.
+
 Inline image sizing has two stages. `ParseImage()` in
 `Library/Breadbox/Html4Par/htmlpars/opentags.goc` stores authored pixel
 `WIDTH`/`HEIGHT` in `HTMLimageData.size` and creates the initial
@@ -18,12 +68,14 @@ it is therefore not the exact currently visible width. GenView's visible-rect
 message returns document coordinates and zero dimensions for an off-screen
 view (`TechDocs/Markdown/Objects/ogenvew.md`, section 9.4.2.4).
 
-BbxBrow records the first nonzero visible rectangle in its URLText object.
-`MSG_URL_TEXT_DEC_PENDING` applies `MSG_HTML_TEXT_CLAMP_IMAGES_TO_VIEWPORT`
-when the pending count reaches zero, including after Stop, before the existing
-final layout call. The Html4Par method updates inline image records
-and graphic runs in a batch, then sets layout dirty and complete-redraw flags
-once; it does not add each image to the waiting-image list. See
+BbxBrow updates its stored visible rectangle when the view changes. Inline
+SVGs are fitted in `MSG_HTML_TEXT_RESOLVE_IMAGE` before their size enters
+layout, and `MSG_HTML_TEXT_CLAMP_IMAGES_TO_VIEWPORT` rechecks them when a
+rectangle first appears, on shrink, and at batch completion. At zero pending,
+the existing final path clamps all images before layout. The Html4Par clamp
+method updates image records and graphic runs in a batch, then sets layout
+dirty and complete-redraw flags once; it does not add each image to the
+waiting-image list. See
 `urltext/URLTEXT.goc` and
 `htmlclas/htmlclas.goc`.
 

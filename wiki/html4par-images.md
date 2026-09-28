@@ -181,12 +181,21 @@ size differs from its current size. `MSG_URL_TEXT_DEC_PENDING` invokes
 `MSG_HTML_TEXT_CALCULATE_LAYOUT` when the pending count reaches zero, but
 that method begins a new pass only for a changed view width or dirty layout.
 Consequently, an authored-size image that resolves at exactly its authored
-size can take a different final-layout path in Automatic mode (no geometry
-change) and Intelligent mode (compact-to-real geometry change). Evidence:
+size avoids a geometry-driven layout pass when its placeholder stayed at that
+size; compact placeholders require a pass when they grow. Evidence:
 `htmlclas/htmlclas.goc` (`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`,
 `HTMLTextUpdateImageGeometry`), `htmlclas/htmltpos.goc`
 (`MSG_HTML_TEXT_CALCULATE_LAYOUT`), and `urltext/URLTEXT.goc`
 (`MSG_URL_TEXT_DEC_PENDING`).
+
+In Intelligent mode, unresolved supported images with authored `WIDTH` and
+`HEIGHT` can keep the parser's target geometry while loading. Actual geometry
+changes from dimensionless images mark cells dirty; their layout requests can
+be batched, while unchanged progressive bitmap updates need no layout. The
+initial text-show layout remains immediate. Evidence: `HTMLimageData.size` in
+`CInclude/html4par.goh` and `MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`,
+`HTMLTextUpdateImageGeometry`, and `MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE` in
+`Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`.
 
 When the separate Wmg3Http transfer-size cap is active, a known final
 Content-Length that passed the pre-body cap may still stream. An unknown or

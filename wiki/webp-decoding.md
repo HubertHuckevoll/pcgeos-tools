@@ -49,3 +49,10 @@ single luma block is 49152 bytes and the single chroma block is 24576 bytes.
 the input block is held only while decoding macroblocks. `WebPlan.md` states a
 below-32-KB allocation goal but explicitly calculates this 49152-byte luma
 cache later in its memory-layout section.
+
+`ImpWebP()` reserves width * height * 3 units in BbxBrow's `AllocWatcher`
+before decoding. When a decode error follows a published progress bitmap,
+the progress cache owns that partial VM bitmap, but the importer returns no
+bitmap to `ImportG`; therefore the importer itself must release the watcher
+reservation. See `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` and
+`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`.

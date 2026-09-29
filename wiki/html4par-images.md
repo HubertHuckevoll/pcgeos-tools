@@ -109,6 +109,11 @@ message carries only a name token and cannot release either of those cache
 references; it releases only references stored in matching image records.
 `ObjCacheAddURL(..., TRUE, TRUE)` creates a locked non-cacheable entry, and
 `ObjCacheUnlockItem()` destroys its VM chain when the last reference goes away.
+If import returns no bitmap after publishing progress, ImportG releases the
+request's cache reference before reporting failure or cancellation. A queued
+`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` still owns its separate reference and
+must release it even after `HTI_imageArray` is cleared; the message's data
+block must be unlocked before it is freed.
 Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`, and
 `ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/NAVCACHE.goc`.

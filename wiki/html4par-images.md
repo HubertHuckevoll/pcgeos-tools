@@ -231,7 +231,11 @@ progress is unconditional capability under `PROGRESS_DISPLAY`; the former
 `Tools/build/product/bbxensem/Template/geos.ini` supplies the default without
 changing `HTML_VIEW_INI_VERSION_NUMBER` or resetting the HTMLView category.
 Without `PROGRESS_DISPLAY`, behavior is unchanged: no load or import progress
-data and no mode global exists.
+data and no mode global exists. Both streamed and completed-file import progress
+use forced-queued delivery to the same `textObj`; the import thread does not wait
+for HTML layout in the UI thread. The final full-image replacement is queued to
+that object after decoding, while each progress notification owns a cache reference
+until the receiver transfers it to `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`.
 
 Evidence: `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`,
 `htmlview/LoadURL.goc`, and `urltext/URLTEXT.goc`; `CInclude/htmldrv.h`; and

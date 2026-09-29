@@ -251,3 +251,11 @@ for MIME entry 4, deferring on older drivers. The
 public protocol declarations are in `CInclude/htmldrv.h`, and discovery and
 dispatch are in `init/INIT.goc`, `navigate/NAVIGATE.goc`, and
 `htmlview/LoadURL.goc`.
+
+`ImpWebP()` in `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` calls the import
+progress callback after each decoded macroblock row with output lines. In
+BbxBrow, `ImportGraphicProgressCallback()` in `htmlview/ImportG.goc` coalesces
+pending updates for the same bitmap; each delivered
+`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTEXT.goc` calls
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which scans `HTI_imageArray`
+for matching URLs, then calls `MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE(FALSE)`.

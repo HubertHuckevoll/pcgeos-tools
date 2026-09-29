@@ -264,3 +264,8 @@ pending updates for the same bitmap; each delivered
 `MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTEXT.goc` calls
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which scans `HTI_imageArray`
 for matching URLs, then calls `MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE(FALSE)`.
+The callback also invokes `EnforceObjCacheHandleLimits()` before coalescing,
+because an already-cached bitmap can add VM blocks throughout progressive
+decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
+first created; its implementation in `navigate/NAVCACHE.goc` updates and
+trims the cache VM files when global free handles drop below 500.

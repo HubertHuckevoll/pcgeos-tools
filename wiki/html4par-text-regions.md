@@ -28,6 +28,15 @@ an empty region; it does not itself identify a corrupt region. Evidence:
 `ECValidateRegionAndLineHeights`, `ECValidatePreviousRegion`,
 `FigureNextRegionChangeAndComputeRippleHeight`).
 
+An EC-only check after `RippleToNextRegion()` warns with
+`WARNING_RIPPLED_REGION_HEIGHT_MISMATCH` when the just-completed region's
+stored height differs from its line-height sum. At
+`ECWarnCompletedRegionHeightMismatch`, `cx` is the completed region,
+`bp.bl` the line-height sum, and `dx.al` the stored height. The existing
+fatal validator still runs; this warning locates a divergence at the
+ripple boundary. Evidence: `Library/Text/Text/textCalcObject.asm`
+(`RippleLinesToNextRegion`, `ECWarnCompletedRegionHeight`).
+
 In large text, `TR_RegionSetTopLine` can redistribute line counts across
 multiple neighboring regions through `LargeRegionSetTopSomething`, while
 `TR_RegionAdjustHeight` changes each region's `VLTRAE_calcHeight` separately.

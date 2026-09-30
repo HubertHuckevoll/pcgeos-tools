@@ -35,8 +35,8 @@ after success, failure, or cancellation.
 The Html4Par scanner records whether inline SVG contains a shape SvgLib can
 draw and whether it contains `<use>`, `<text>`, `<image>`, `<script>`, or
 `<foreignObject>`. Such unsupported or shape-less sources remain in the VM
-array but carry `HTML_IDF_SVG_UNSUPPORTED`; BbxBrow leaves their broken
-placeholders without queuing a temporary-file import. SvgLib's own dispatch
+array but carry `HTML_IDF_SVG_UNSUPPORTED`; BbxBrow leaves their image
+records invisible without queuing a temporary-file import. SvgLib's dispatch
 and unsupported-element behavior are in `Library/SvgLib/Import/svg.goc`.
 `ProcessPendingInlineSVG()` in BbxBrow keeps at most two inline SVG imports
 active per text object and refills the queue after each result. A campaign
@@ -54,13 +54,20 @@ Inline image sizing has two stages. `ParseImage()` in
 `Library/Breadbox/Html4Par/htmlpars/opentags.goc` stores authored pixel
 `WIDTH`/`HEIGHT` in `HTMLimageData.size` and creates the initial
 `VisTextGraphic.VTG_size`/`HID_size` placeholder, using 20-pixel defaults for
-unspecified dimensions. After import, `URLTextInitializeImageGeometry()` in
+unspecified dimensions on ordinary images. Inline SVG instead starts with
+zero graphic and image size, while keeping an insertion position. After
+import, `URLTextInitializeImageGeometry()` in
 `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` combines those authored dimensions
 with intrinsic dimensions into drawing scales and `HID_size`; resolution then
 updates the variable graphic and layout through `MSG_HTML_TEXT_RESOLVE_IMAGE`
 and `HTMLTextUpdateImageGeometry()` in `htmlclas/htmlclas.goc`. BbxBrow parses
 the page before `MSG_URL_FRAME_FLIP_PAGE` attaches it and calls
 `MSG_URL_TEXT_PROCESS_GRAPHICS` (`urlframe/URLFRAME.goc`).
+`DrawVarGraphic()` in `htmlclas/htmlfdrw.goc` draws nothing when either
+`HID_size` dimension is below 1, while layout uses the separate
+`VisTextGraphic.VTG_size` created by `ParseImage()`. In
+`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`, unresolved and broken inline SVGs stay
+zero-sized across mode changes; resolved SVGs use their imported geometry.
 
 `ICalculateViewSize()` in `htmlclas/htmltcel.goc` derives layout width from
 `MSG_GEN_VIEW_GET_VISIBLE_RECT` but adds back a vertical scrollbar's width;
@@ -279,3 +286,12 @@ FJPEG uses `LPCT_PRE_READ` while parsing headers so ImpGraph can retry a JPEG
 with IJGJPEG when FJPEG cannot handle it. See `fill_input_buffer_i()` in
 `Library/Breadbox/Fjpeg/code/init.c` and the fallback in
 `Library/Breadbox/ImpGraph/MAIN/impgraph.goc`.
+
+The BbxBrow progress bar deliberately alternates its displayed value after
+five seconds without a progress change (`htmlview/UIOften.goc`,
+`MSG_HMLVA_UPDATE_PROGRESS_INDICATOR`, `PI_TIMER`/`progressDelay`). Both
+`options.goh` and `prodbbx.goh` enable `UPDATE_ON_UI_THREAD`, so bar animation
+does not establish that the browser process thread is advancing. The
+`Loading Image.` status is posted by `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`
+before import and cleared by a separate queued `MsgBlank` status update after
+it (`htmlview/ImportG.goc`, `htmlview.goh`, `navigate/NAVIGATE.goc`).

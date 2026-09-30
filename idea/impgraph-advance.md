@@ -152,17 +152,3 @@ the wrapper, with no browser source changes.
 - [ ] Update this checkpoint with exact build results and any remaining risk.
 
 Done when all listed checks pass or a specific limitation is documented.
-
-## Later projects, not part of this implementation
-
-- Convert JPEG, then GIF, to genuinely resumable decoders in separate work.
-- Decide whether WebP or SVG benefits from the same lifecycle.
-- Export a proven session API only when BBXBrow needs to call it directly;
-  append exports after the existing GP entries and add the appropriate minor
-  protocol tranche. Define public ownership and error semantics then.
-- Change BBXBrow's importer to use the exported API, then retire its legacy
-  callback ownership path when no caller needs it.
-- Consider a streaming ImageSource only after the decoder lifecycle works.
-
-The separate idea/streaming.md proposal is independent. Do not silently fold
-its HTTP admission or cache changes into this plan.

@@ -269,3 +269,13 @@ because an already-cached bitmap can add VM blocks throughout progressive
 decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
 first created; its implementation in `navigate/NAVCACHE.goc` updates and
 trims the cache VM files when global free handles drop below 500.
+
+With `USE_MEM_STREAM` in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`, the two
+fetch threads reuse memory streams backed by 8 KB blocks. `MemStreamDelete()`
+frees consumed blocks from the front, leaving empty slots before blocks that
+still contain input. `MemStreamInit()` must inspect all block slots when
+reusing a stream; stopping at the first empty slot leaks the later blocks.
+FJPEG uses `LPCT_PRE_READ` while parsing headers so ImpGraph can retry a JPEG
+with IJGJPEG when FJPEG cannot handle it. See `fill_input_buffer_i()` in
+`Library/Breadbox/Fjpeg/code/init.c` and the fallback in
+`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`.

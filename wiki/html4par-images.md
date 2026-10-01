@@ -44,7 +44,7 @@ holds one pending page reference through each eight-result batch and its
 30-tick timer pause; individual imports hold their own references. Outstanding
 import name tokens are tracked on the text object so cancellation can balance
 the count after navigation replaces the image array. Ordinary URL images
-already pass through the two URL fetch children.
+already pass through the configured URL fetch children.
 `IMarkAllImagesUnresolved()` in `htmlclas/htmlclas.goc` clears every
 transferred image's resolved flag, cache token, VM file, and VM block when
 loading a page. SVG source offsets and lengths are parser fields above this
@@ -164,16 +164,22 @@ and keeps `LPD_callback` installed so Wmg3Http completes the source file and
 returns its normal progress acknowledgement. The HTTP transfer is never
 cancelled and Wmg3Http knows nothing about image dimensions.
 
-`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` must call
-`MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE(FALSE)` after installing every progress
-bitmap, including streamed ones. Restricting that layout step to completed-file
-imports leaves streamed images as placeholders until final page layout.
-For streamed progress it also calls `MSG_HTML_TEXT_CALCULATE_LAYOUT()`; while
-layout is active, that method can set `HTS_LAYOUT_RESTART_REQUESTED`.
-`HTMLTextUpdateImageGeometry()` separately marks the cell and ancestor tables
-dirty and sets `LS_currentMasterCellGotImage` or `LS_oneMorePass` when needed.
-Evidence: `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` and
-`Library/Breadbox/Html4Par/htmlclas/htmltpos.goc` / `htmlclas.goc`.
+`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` installs progress bitmaps through
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`; it does not request layout.
+`HTMLTextUpdateImageGeometry()` records changed dimensions immediately and
+starts one 60-tick timer for the first pending change. Later changes share that
+deadline; the 128-entry waiting-image list is bookkeeping only and filling it
+does not force a layout. One-shot timer messages carry their timer ID in bp
+(`Library/Kernel/Timer/timerInt.asm`, `SendTimerEvent`); matching this against
+the stored ID rejects stale events after a batch is cleared or replaced.
+At expiry, dirty idle pages start one layout; an
+active layout relies on `LS_currentMasterCellGotImage` for its current range and
+`LS_oneMorePass` for already-passed cells. Those stack flags are updated even
+when the changed cell was already dirty. Unchanged progress only redraws the
+image. `MSG_URL_TEXT_DEC_PENDING` clears the timer, clamps images, and calculates
+layout at completion; when layout is already active, its image retry / extra-pass
+path consumes the final changes. Evidence: `URLTEXT.goc`, `htmlclas.goc`,
+`htmltcel.goc`, and `CInclude/html4par.goh`.
 
 `MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE` changes unresolved inline images to
 compact label dimensions in Intelligent mode, writing both `HID_size` and
@@ -202,11 +208,11 @@ size; compact placeholders require a pass when they grow. Evidence:
 
 In Intelligent mode, unresolved supported images with authored `WIDTH` and
 `HEIGHT` can keep the parser's target geometry while loading. Actual geometry
-changes from dimensionless images mark cells dirty; their layout requests can
-be batched, while unchanged progressive bitmap updates need no layout. The
-initial text-show layout remains immediate. Evidence: `HTMLimageData.size` in
+changes from dimensionless images mark cells dirty and share one 60-tick layout
+batch; unchanged progressive bitmap updates need no layout. The initial
+text-show layout remains immediate. Evidence: `HTMLimageData.size` in
 `CInclude/html4par.goh` and `MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`,
-`HTMLTextUpdateImageGeometry`, and `MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE` in
+`HTMLTextUpdateImageGeometry`, and `MSG_HTML_TEXT_WAITING_IMAGES_IDLE` in
 `Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`.
 
 When the separate Wmg3Http transfer-size cap is active, a known final
@@ -270,22 +276,29 @@ BbxBrow, `ImportGraphicProgressCallback()` in `htmlview/ImportG.goc` coalesces
 pending updates for the same bitmap; each delivered
 `MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTEXT.goc` calls
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which scans `HTI_imageArray`
-for matching URLs, then calls `MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE(FALSE)`.
+for matching URLs. Changed geometry is scheduled by the shared image timer.
 The callback also invokes `EnforceObjCacheHandleLimits()` before coalescing,
 because an already-cached bitmap can add VM blocks throughout progressive
 decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
 first created; its implementation in `navigate/NAVCACHE.goc` updates and
 trims the cache VM files when global free handles drop below 500.
 
-With `USE_MEM_STREAM` in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`, the two
-fetch threads reuse memory streams backed by 8 KB blocks. `MemStreamDelete()`
-frees consumed blocks from the front, leaving empty slots before blocks that
-still contain input. `MemStreamInit()` must inspect all block slots when
-reusing a stream; stopping at the first empty slot leaks the later blocks.
+BbxBrow's default loading-progress stream uses the existing VM-backed
+HugeArray path in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`.
+`LoadGraphicProgressCallback(LPCT_WRITE)` trims resident VM handles to
+20 once they exceed 30; `urlfetch/URLFETCH.goc:URLFetchEngineStart` creates
+these files without `VMA_SYNC_UPDATE`, allowing dirty input to be paged out.
 FJPEG uses `LPCT_PRE_READ` while parsing headers so ImpGraph can retry a JPEG
-with IJGJPEG when FJPEG cannot handle it. See `fill_input_buffer_i()` in
-`Library/Breadbox/Fjpeg/code/init.c` and the fallback in
+with IJGJPEG when FJPEG cannot handle it. The read callback advances peeks
+across HugeArray blocks without deletion and removes the retained first packet
+using its actual size on the next consuming read. See `fill_input_buffer_i()`
+in `Library/Breadbox/Fjpeg/code/init.c` and the fallback in
 `Library/Breadbox/ImpGraph/MAIN/impgraph.goc`.
+`LPCT_RESET_STREAM_STATE` must restore `LPD_bytesAvail` from the retained
+HugeArray count after a consuming first-packet probe, under `LPD_sem`;
+otherwise a GIF-to-JPEG fallback replays the bytes with a reduced count and
+skips input at the next refill. `LPCT_FLUSH_FIRST` instead deletes that packet
+before reconciling the count for the next GIF frame.
 
 The BbxBrow progress bar deliberately alternates its displayed value after
 five seconds without a progress change (`htmlview/UIOften.goc`,
@@ -295,3 +308,65 @@ does not establish that the browser process thread is advancing. The
 `Loading Image.` status is posted by `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`
 before import and cleared by a separate queued `MsgBlank` status update after
 it (`htmlview/ImportG.goc`, `htmlview.goh`, `navigate/NAVIGATE.goc`).
+
+With `PROGRESS_DISPLAY`, BbxBrow defaults to `G_numFetchChildren + 1` import
+threads (`htmlview/ImportG.goc`, `ImportThreadEngineStart`). Import index 0
+handles requests without a load-progress stream; streamed requests normally use
+`LPD_loadThread + 1` (`ImportThreadRequestImportGraphic`). `MAX_IMPORT_THREADS`
+is 3; `urlfetch/URLFETCH.goc` caps fetch children at 2 and reads their actual
+count from `[HTMLView] numConn`, falling back to `DEFAULT_FETCH_ENGINE_CHILDREN`
+(2). The Ensemble template `Tools/build/product/bbxensem/Template/geos.ini`
+sets `numConn = 1`, yielding one fetch child and two import threads by
+default. With one fetch child, `[HTMLView] numImportThreads = 1` selects one
+shared importer; missing, invalid, or unsupported values retain the computed
+default. Without `PROGRESS_DISPLAY`, there is a single import thread.
+
+Streaming state is indexed by fetch child, independently of importer objects:
+`G_stream[2]` in `urltext/URLTEXT.goc`, and `G_importActive[]` /
+`G_importLoadProgressData[]` in `urlfetch/URLFETCH.goc`. `LPCT_WRITE` buffers
+input without waiting for the importer to consume it; a queued stream can
+therefore retain its downloaded input. `fetchWhileImport = false` holds a
+fetch child at `LPD_importSync` after download until its import finishes.
+
+The read-side wait must atomically recheck `LPD_fileDone` and
+`LPD_bytesAvail - LPD_preReadOffset >= needed` before `ThreadBlockOnQueue`:
+`WAKEUP` drops signals when no thread is already queued, so checking only
+`LPD_fileDone` can sleep after data arrived in the check-to-block gap. The
+HugeArray byte stream also needs chunked deletes because `HugeArrayGetCount()`
+returns a DWORD while `HugeArrayDelete()` accepts a WORD
+(`CInclude/hugearr.h`, `URLTEXT.goc`, `ASMTOOLS/asmtoolsManager.asm`).
+
+In the default layout, importer 0 receives all requests with a null
+load-progress pointer: `ProcessInlineSVG`, `MSG_URL_TEXT_GRAPHIC_FETCHED`,
+and `MSG_URL_TEXT_GRAPHIC_PRELOADED` in `urltext/URLTEXT.goc`. This includes
+inline SVG temporary files and file-based image imports; `ProcessSingleGraphic`
+excludes reserved image positions and small authored heights from streaming,
+and `LoadGraphicProgressCallback` streams only GIF/JPEG. Importer 0 can still
+report progressive decoding through `IPD_callback`; absence of a live fetch
+stream does not mean absence of import progress (`htmlview/ImportG.goc`,
+`ImportThreadRequestImportGraphic`).
+
+The former RAM stream remains behind the undefined local `USE_MEM_STREAM`
+switch. It allocates 8 KB blocks lazily, with 200 slots, has no producer
+backpressure, and stops appending at an absolute tail ceiling while
+`LPCT_WRITE` still increments `LPD_bytesAvail`. Re-enabling that path would
+restore these limitations; reducing its slot count alone is unsafe.
+
+The literal `Formatting Page.` status is posted by
+`MSG_URL_FRAME_URL_FETCHED` in `urlframe/FRFETCH.goc` when the parsed page is
+handed to `MSG_URL_FRAME_GOT_URL`; it is cleared by
+`MSG_HMLVA_END_OPERATION` in `htmlview/UIRare.goc` at overall operation end.
+It is not posted for each `MSG_HTML_TEXT_LAYOUT_START`. ImportG posts and
+clears the higher-priority importing status around each image import, so the
+retained formatting status can reappear without a new layout pass. Evidence:
+`CInclude/htmlstat.goh`, `htmlview/UIOften.goc` (`G_statusIds`), and
+`htmlview/StatText.goc` (`MSG_STATUS_TEXT_CREATE_MESSAGE`,
+`MSG_STATUS_TEXT_UPDATE_TEXT`).
+
+A dirty layout started from idle does page-wide preparatory work:
+`MSG_HTML_TEXT_CALCULATE_LAYOUT` in `htmlclas/htmltpos.goc` calls
+`ISetupRegionLinks`, `CalculateCellArrayLongestLines(..., 0, 0xFFFF)`, and
+`IAdjustRegions(..., 0, 0xFFFF)` before layout starts. The longest-line routine
+in `htmlclas/htmltpre.goc` traverses regions and their lines, without a
+cell-layout-dirty filter. Dirty-cell reflow optimization therefore does not
+make each geometry batch proportional only to that batch's changed cells.

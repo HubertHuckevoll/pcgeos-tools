@@ -54,3 +54,27 @@ are both sufficient for `HCD_longestLine`. Evidence:
 `Library/Breadbox/Html4Par/htmlclas/htmltcel.goc` (`IEdgeCreatePathInRegion`,
 `ILayoutCellRegions`, `IRegionRepositionResizeAndReflow`) and
 `CInclude/html4par.goh` (`HTML_CELL_DIRTY_LAYOUT_MASK`).
+
+Swat already provides `rwatch on|off` for ripple accounting: it traces
+line calculation, old/new heights, inserted/deleted space, and ripple
+height/count (`Tools/swat/lib.new/ptext.tcl`, `rwatch`, `rw-after-calc`,
+`rw-update-region-height`). Break at
+`text::ECWarnCompletedRegionHeightMismatch` to inspect the first detected
+completed-region divergence before the fatal validator. The warning uses
+`bp` for the line-height sum; select its caller frame before reading
+`ss:bp.text::LICL_vars`. `ptext -rE *ds:si` prints region geometry/counts
+without text; `ptreg <region>` prints that region's lines.
+
+Html4Par queues `MSG_HTML_TEXT_INTERNAL_LAYOUT_UPDATE_EVENT` with
+`forceQueue, checkDuplicate` both at layout start and after each incremental
+step (`htmlclas/htmltcel.goc`). GEOS's default duplicate check matches the
+message ID and destination object, ignoring arguments; it scans the whole
+thread queue unless `MF_CHECK_LAST_ONLY` is set. `SendEvent` allocates the
+new event before `CheckDuplicates` and frees it on a match, so this bounds
+retained events rather than avoiding every temporary event allocation.
+Evidence: `Library/Kernel/Geodes/geodesEvent.asm` (`SendEvent`,
+`CheckDuplicates`) and `TechDocs/Markdown/Esp/erout.md`, section 3.3.2.3.
+`MSG_HTML_TEXT_CALCULATE_LAYOUT` requests a restart when layout is active
+and layout is dirty or view width changed; queue deduplication does not
+suppress synchronous calls or requests delivered between incremental steps
+(`htmlclas/htmltpos.goc`).

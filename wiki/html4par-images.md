@@ -206,14 +206,30 @@ size; compact placeholders require a pass when they grow. Evidence:
 (`MSG_HTML_TEXT_CALCULATE_LAYOUT`), and `urltext/URLTEXT.goc`
 (`MSG_URL_TEXT_DEC_PENDING`).
 
-In Intelligent mode, unresolved supported images with authored `WIDTH` and
-`HEIGHT` can keep the parser's target geometry while loading. Actual geometry
-changes from dimensionless images mark cells dirty and share one 60-tick layout
-batch; unchanged progressive bitmap updates need no layout. The initial
-text-show layout remains immediate. Evidence: `HTMLimageData.size` in
-`CInclude/html4par.goh` and `MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`,
-`HTMLTextUpdateImageGeometry`, and `MSG_HTML_TEXT_WAITING_IMAGES_IDLE` in
+On page attachment, `MSG_URL_FRAME_FLIP_PAGE` applies the image load mode
+before `MSG_URL_TEXT_PROCESS_GRAPHICS`. In Intelligent mode,
+`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE` therefore initially compacts unresolved
+ordinary images even when authored `WIDTH` and `HEIGHT` are present. Its
+`preserveGeometry` exception only preserves an already non-compact resolving
+image or a non-compact resolved broken image when the mode was already
+Intelligent; it does not preserve all authored-size loading placeholders.
+Actual geometry changes share one 60-tick layout batch; unchanged progressive
+bitmap updates need no layout. The initial text-show layout remains immediate.
+Evidence: `Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc` and
+`HTMLTextUpdateImageGeometry` / `MSG_HTML_TEXT_WAITING_IMAGES_IDLE` in
 `Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`.
+
+`FindSmallestSrcset()` in `htmlpars/opentags.goc` selects the smallest valid
+width descriptor, or the smallest density descriptor when no width candidate
+exists. `SRC` supplies an implicit 1x choice for a density set whose smallest
+candidate exceeds 1x. Selection does not depend on viewport size or load mode
+and does not establish an intrinsic-pixel bound. WebP admission checks
+`maxPixels` before decoder work-buffer allocation (`Library/WebpLib/webpapi.c`,
+`WebPImportBegin`). External SVG receives the same Intelligent request limit,
+but `ImpSVG()` checks GString bounds area only after `SvgImport()` has built
+the vector graphic (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`). Inline SVG
+imports pass zero for `maxPixels` (`ProcessInlineSVG` in BbxBrow's
+`urltext/URLTEXT.goc`) and start with invisible zero-sized placeholders.
 
 When the separate Wmg3Http transfer-size cap is active, a known final
 Content-Length that passed the pre-body cap may still stream. An unknown or

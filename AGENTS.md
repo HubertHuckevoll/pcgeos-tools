@@ -192,8 +192,8 @@ aihelp.py maps source paths to the matching Installed/ directory, runs pmake as 
 
 For a new geode, or when generated build files are missing, create them manually first in the matching Installed/ directory with mkmf and pmake depend, then use aihelp.py build.
 
-Ignore generated Makefile and dependencies.mk changes.
+Don't edit Makefile and dependencies.mk manually. If they need to be updated, use `mkmf` and `pmake depend`.
 
 ## Testing / Debugging
 
-Do not try to run PC/GEOS to test stuff. Instead, when debugging, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints via Swat and give instructions for Swat commands to enter once the breakpoint fires.
+Do not try to run PC/GEOS to test stuff. Instead, when debugging, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.

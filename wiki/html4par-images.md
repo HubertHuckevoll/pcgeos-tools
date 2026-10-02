@@ -48,7 +48,9 @@ already pass through the configured URL fetch children.
 `IMarkAllImagesUnresolved()` in `htmlclas/htmlclas.goc` clears every
 transferred image's resolved flag, cache token, VM file, and VM block when
 loading a page. SVG source offsets and lengths are parser fields above this
-reset, so the source remains available after transfer-item loading.
+reset, so the source remains available after transfer-item loading. For inline
+SVG it also zeros both HID_size and the matching VisTextGraphic.VTG_size;
+clearing only the drawing size would leave cached layout geometry visible.
 
 Inline image sizing has two stages. `ParseImage()` in
 `Library/Breadbox/Html4Par/htmlpars/opentags.goc` stores authored pixel
@@ -60,14 +62,15 @@ import, `URLTextInitializeImageGeometry()` in
 `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` combines those authored dimensions
 with intrinsic dimensions into drawing scales and `HID_size`; resolution then
 updates the variable graphic and layout through `MSG_HTML_TEXT_RESOLVE_IMAGE`
-and `HTMLTextUpdateImageGeometry()` in `htmlclas/htmlclas.goc`. BbxBrow parses
+and `HTMLTextUpdateImageGeometry()` in `htmlclas/htmlclas.goc`. Inline SVG
+uses `MSG_HTML_TEXT_RESOLVE_INLINE_SVG`, which fits its geometry before
+forwarding to that existing resolver without changing the original ABI. BbxBrow parses
 the page before `MSG_URL_FRAME_FLIP_PAGE` attaches it and calls
 `MSG_URL_TEXT_PROCESS_GRAPHICS` (`urlframe/URLFRAME.goc`).
 `DrawVarGraphic()` in `htmlclas/htmlfdrw.goc` draws nothing when either
 `HID_size` dimension is below 1, while layout uses the separate
-`VisTextGraphic.VTG_size` created by `ParseImage()`. In
-`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`, unresolved and broken inline SVGs stay
-zero-sized across mode changes; resolved SVGs use their imported geometry.
+`VisTextGraphic.VTG_size` created by `ParseImage()`. Cached unresolved SVG
+geometry must therefore be cleared in both records at attachment.
 
 `ICalculateViewSize()` in `htmlclas/htmltcel.goc` derives layout width from
 `MSG_GEN_VIEW_GET_VISIBLE_RECT` but adds back a vertical scrollbar's width;
@@ -75,16 +78,21 @@ it is therefore not the exact currently visible width. GenView's visible-rect
 message returns document coordinates and zero dimensions for an off-screen
 view (`TechDocs/Markdown/Objects/ogenvew.md`, section 9.4.2.4).
 
-BbxBrow updates its stored visible rectangle when the view changes. Inline
-SVGs are fitted in `MSG_HTML_TEXT_RESOLVE_IMAGE` before their size enters
-layout, and `MSG_HTML_TEXT_CLAMP_IMAGES_TO_VIEWPORT` rechecks them when a
-rectangle first appears, on shrink, and at batch completion. At zero pending,
-the existing final path clamps all images before layout. The Html4Par clamp
-method updates image records and graphic runs in a batch, then sets layout
-dirty and complete-redraw flags once; it does not add each image to the
-waiting-image list. See
-`urltext/URLTEXT.goc` and
+BbxBrow updates its stored visible rectangle when the view changes.
+`MSG_HTML_TEXT_CLAMP_INLINE_SVG_TO_VIEWPORT` rechecks resolved inline SVG
+when the rectangle first appears, shrinks, or an import batch completes.
+It changes image records and graphic runs, then marks layout dirty and
+requests a complete redraw once. Ordinary image sizes are unchanged.
+These appended messages use the Html4Par `HTMLTextInlineSVG` protocol minor;
+see `CInclude/html4par.goh`, `html4par.gp`, `urltext/URLTEXT.goc` and
 `htmlclas/htmlclas.goc`.
+
+The transfer header is a VM chain tree. `InitTransferItem()` in
+`htmlpars/parsinit.goc` computes `HTBH_meta.VMCT_count` from the header size,
+excluding the metadata and `HTBH_other`. Appending a VMChain field after
+these therefore includes it in generic chain copying and freeing.
+`FreeHTMLTransferItem()` in `htmlclas/htmlclas.goc` calls `VMFreeVMChain()`
+on the page chain; separate SVG HugeArray destruction is unnecessary.
 
 `HTMLimageData.imageALT` contains the authored `ALT` value, including an empty
 one, or the literal fallback `Image` when the attribute is absent. There is no

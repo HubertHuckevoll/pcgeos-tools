@@ -14,3 +14,12 @@ See `htmlsty.goh`, `htmlpars/parstags.goc`, and `htmlclas/htmlfdrw.goc`.
 form action (`MSG_HTML_TEXT_FORM_ELEMENT_START` in `htmlclas/htmlfedi.goc`).
 In JavaScript builds, `ParseEvents()` collects `ONCLICK`, and the form element
 click path in `htmlclas/htmlclrt.goc` fires that event.
+
+`KeepFormControl()` in `htmlpars/parstags.goc` retains controls when the
+`HTML_JAVASCRIPT` option is set or the tag stack contains `SPEC_FORM`.
+`Open_FORM_INPUT_SELECT()` applies it before creating INPUT/SELECT records;
+`PopStyle()` applies it when closing TEXTAREA/BUTTON. Rejected collected text
+and unconnected OPTION text release their NamePool tokens. Closing SELECT
+clears `currentMenu`, preventing later OPTIONs from joining a closed menu.
+Form membership for TEXTAREA/BUTTON is checked at closing time, so malformed
+markup that closes FORM first can suppress them.

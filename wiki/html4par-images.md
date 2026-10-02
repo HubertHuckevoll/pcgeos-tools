@@ -58,11 +58,11 @@ Inline image sizing has two stages. `ParseImage()` in
 `VisTextGraphic.VTG_size`/`HID_size` placeholder, using 20-pixel defaults for
 unspecified dimensions on ordinary images. Inline SVG instead starts with
 zero graphic and image size, while keeping an insertion position. After
-import, `URLTextInitializeImageGeometry()` in
+import, `URLTextInitializeImage()` in
 `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` combines those authored dimensions
 with intrinsic dimensions into drawing scales and `HID_size`; resolution then
 updates the variable graphic and layout through `MSG_HTML_TEXT_RESOLVE_IMAGE`
-and `HTMLTextUpdateImageGeometry()` in `htmlclas/htmlclas.goc`. Inline SVG
+in `htmlclas/htmlclas.goc`. Inline SVG
 uses `MSG_HTML_TEXT_RESOLVE_INLINE_SVG`, which fits its geometry before
 forwarding to that existing resolver without changing the original ABI. BbxBrow parses
 the page before `MSG_URL_FRAME_FLIP_PAGE` attaches it and calls
@@ -173,59 +173,27 @@ returns its normal progress acknowledgement. The HTTP transfer is never
 cancelled and Wmg3Http knows nothing about image dimensions.
 
 `MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` installs progress bitmaps through
-`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`; it does not request layout.
-`HTMLTextUpdateImageGeometry()` records changed dimensions immediately and
-starts one 60-tick timer for the first pending change. Later changes share that
-deadline; the 128-entry waiting-image list is bookkeeping only and filling it
-does not force a layout. One-shot timer messages carry their timer ID in bp
-(`Library/Kernel/Timer/timerInt.asm`, `SendTimerEvent`); matching this against
-the stored ID rejects stale events after a batch is cleared or replaced.
-At expiry, dirty idle pages start one layout; an
-active layout relies on `LS_currentMasterCellGotImage` for its current range and
-`LS_oneMorePass` for already-passed cells. Those stack flags are updated even
-when the changed cell was already dirty. Unchanged progress only redraws the
-image. `MSG_URL_TEXT_DEC_PENDING` clears the timer, clamps images, and calculates
-layout at completion; when layout is already active, its image retry / extra-pass
-path consumes the final changes. Evidence: `URLTEXT.goc`, `htmlclas.goc`,
-`htmltcel.goc`, and `CInclude/html4par.goh`.
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` and `IReplaceGraphic`, using the
+same image resolver as final replacement. `MSG_HTML_TEXT_RESOLVE_IMAGE` updates
+`HID_size` and the corresponding `VisTextGraphic.VTG_size`; a geometry change
+marks the owning cell and layout dirty and adds the image to the waiting list.
+A shrinking width sets `HTS_LAYOUT_NEED_TO_BLAST_HARD_MIN_WIDTHS`. The resolver
+updates `LS_currentMasterCellGotImage` / `LS_oneMorePass` inside its `!wasDirty`
+branch when layout is active. Unchanged geometry avoids that dirtying path.
 
-`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE` changes unresolved inline images to
-compact label dimensions in Intelligent mode, writing both `HID_size` and
-the embedded `VisTextGraphic.VTG_size`; if any size changes, it sets
-`HTS_LAYOUT_DIRTY` and `HTS_LAYOUT_NEED_TO_BLAST_HARD_MIN_WIDTHS`.
-At `MSG_HTML_TEXT_LAYOUT_START`, the blast flag runs
-`IBlastTableAndCellMinWidths()`, which resets and marks every cell and table
-dirty, not only the image's owning cell.
-The normal `MSG_HTML_TEXT_CALCULATE_LAYOUT` path calls
-`CalculateCellArrayLongestLines()` before `MSG_HTML_TEXT_LAYOUT_START`, so
-the blast can discard the widths just measured; `ICalculateCellMinMax()`
-then runs on the reset values. `MINIMUM_COLUMN_WIDTH` is 1 and
-`REGION_MINIMUM_WIDTH` is 3 (`Library/Breadbox/Html4Par/internal.h`).
-`MSG_HTML_TEXT_RESOLVE_IMAGE` later restores the imported dimensions via
-`HTMLTextUpdateImageGeometry()`, which dirties layout only if the graphic's
-size differs from its current size. `MSG_URL_TEXT_DEC_PENDING` invokes
-`MSG_HTML_TEXT_CALCULATE_LAYOUT` when the pending count reaches zero, but
-that method begins a new pass only for a changed view width or dirty layout.
-Consequently, an authored-size image that resolves at exactly its authored
-size avoids a geometry-driven layout pass when its placeholder stayed at that
-size; compact placeholders require a pass when they grow. Evidence:
-`htmlclas/htmlclas.goc` (`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE`,
-`HTMLTextUpdateImageGeometry`), `htmlclas/htmltpos.goc`
-(`MSG_HTML_TEXT_CALCULATE_LAYOUT`), and `urltext/URLTEXT.goc`
-(`MSG_URL_TEXT_DEC_PENDING`).
-
-On page attachment, `MSG_URL_FRAME_FLIP_PAGE` applies the image load mode
-before `MSG_URL_TEXT_PROCESS_GRAPHICS`. In Intelligent mode,
-`MSG_HTML_TEXT_SET_IMAGE_LOAD_MODE` therefore initially compacts unresolved
-ordinary images even when authored `WIDTH` and `HEIGHT` are present. Its
-`preserveGeometry` exception only preserves an already non-compact resolving
-image or a non-compact resolved broken image when the mode was already
-Intelligent; it does not preserve all authored-size loading placeholders.
-Actual geometry changes share one 60-tick layout batch; unchanged progressive
-bitmap updates need no layout. The initial text-show layout remains immediate.
-Evidence: `Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc` and
-`HTMLTextUpdateImageGeometry` / `MSG_HTML_TEXT_WAITING_IMAGES_IDLE` in
-`Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`.
+The waiting-image list has 200 entries (`MAX_WAITING_IMAGES` in
+`htmlclas/htmlclas.goc`). When full, `MSG_HTML_TEXT_WAITING_IMAGE_ADD` calls
+`MSG_HTML_TEXT_WAITING_IMAGES_RESOLVE`; that method queues
+`MSG_HTML_TEXT_CALCULATE_LAYOUT` if dirty entries remain. The stored creation
+and update times do not drive an image-layout timer. BbxBrow's
+`MSG_URL_TEXT_DEC_PENDING` clamps inline SVG and calls calculate-layout when
+its pending count reaches zero. At layout start,
+`IBlastTableAndCellMinWidths` clears measured cell/table widths and dirties
+them, while retaining authored pixel widths. This follows the preparatory
+`CalculateCellArrayLongestLines` call in calculate-layout, so those freshly
+measured widths can be discarded by the blast. Evidence:
+`Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`, `htmltcel.goc`,
+`htmltpos.goc`, and `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`.
 
 `FindSmallestSrcset()` in `htmlpars/opentags.goc` selects the smallest valid
 width descriptor, or the smallest density descriptor when no width candidate
@@ -300,7 +268,8 @@ BbxBrow, `ImportGraphicProgressCallback()` in `htmlview/ImportG.goc` coalesces
 pending updates for the same bitmap; each delivered
 `MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTEXT.goc` calls
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which scans `HTI_imageArray`
-for matching URLs. Changed geometry is scheduled by the shared image timer.
+for matching URLs. Changed geometry uses the resolver and waiting-image list
+described above.
 The callback also invokes `EnforceObjCacheHandleLimits()` before coalescing,
 because an already-cached bitmap can add VM blocks throughout progressive
 decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
@@ -394,3 +363,21 @@ A dirty layout started from idle does page-wide preparatory work:
 in `htmlclas/htmltpre.goc` traverses regions and their lines, without a
 cell-layout-dirty filter. Dirty-cell reflow optimization therefore does not
 make each geometry batch proportional only to that batch's changed cells.
+
+The inline-SVG viewport clamp is shrink-only: `HTMLTextFitImageToViewport`
+multiplies the existing `HID_size`, transform diagonal and draw offsets, and
+can also reduce `hspace`/`vspace`. `MSG_URL_TEXT_CAPTURE_IMAGE_VIEWPORT` calls
+it on first visibility or a smaller width/height, not on enlargement.
+`HTMLimageData.size` retains authored dimensions, but that record has no
+separate intrinsic size/origin. BbxBrow retains those in cached
+`ImageAdditionalData` (`IAD_size`, `IAD_origin`); `IReplaceGraphic` obtains them
+through `ObjCacheLockItem` and reconstructs geometry with
+`URLTextInitializeImage`. See `CInclude/html4par.goh`, `CInclude/htmldrv.h`,
+`htmlclas/htmlclas.goc`, and BbxBrow `urltext/URLTEXT.goc`.
+
+VisText normally measures a graphic from its stored `VTG_size`.
+`Library/Text/TextGraphic/tgGraphic.asm:TG_GraphicRunSize` invokes
+`MSG_VIS_TEXT_GRAPHIC_VARIABLE_SIZE` only when both stored dimensions are
+zero. Html4Par's handler in `htmlclas/htmlfsiz.goc` has special sizing for forms;
+images use its default stored-size path. Resizing only during variable-graphic
+drawing therefore cannot change prior text/table measurement.

@@ -78,3 +78,35 @@ Evidence: `Library/Kernel/Geodes/geodesEvent.asm` (`SendEvent`,
 and layout is dirty or view width changed; queue deduplication does not
 suppress synchronous calls or requests delivered between incremental steps
 (`htmlclas/htmltpos.goc`).
+
+Html4Par's synthetic table 0 is initialized as 1x1 by
+`htmlpars/parstags.goc:InitTagStacks`; layout starts directly with cell 0,
+not by distributing columns for table 0. In `htmlclas/htmltpos.goc`,
+`MSG_HTML_TEXT_CALCULATE_LAYOUT` records the normalized view-width input in
+`HTI_formattedWidth`; it is a width-change/cache key, not the resulting
+page width. `htmlclas/htmltcel.goc:ICalculateViewSize` adds back a detected
+vertical scrollbar and subtracts one scaled pixel. `MSG_HTML_TEXT_LAYOUT_START`
+subtracts scrollbar space when required, sets `HTI_viewWidth`, removes the
+left margin plus one pixel, then promotes the master allocation to `topMin`.
+`MSG_HTML_TEXT_INTERNAL_LAYOUT_UPDATE_EVENT` can promote that allocation again
+after measured overflow or image changes.
+
+Nested tables independently expand: `ILayoutTableStart` raises available
+width to `HTD_minWidth`. `htmlclas/htmltpre.goc:ICalculateTableMinMax` includes
+an authored pixel TABLE width in that hard minimum. Percentage tables instead
+return content hard minima, and variable table targets are capped to available
+width by `ITableLayoutDetermineWantedWidth`. `htmlclas/htmlcol.goc:SpreadAdd`
+uses cell `HCD_hardMinWidth` as the column floor; `SpreadCalculateLayout`
+shrinks preferences but never goes below it. That routine overwrites its
+`totalWidth` argument with `wantedWidth`, so passing a smaller available width
+alone cannot bound its allocation.
+
+Cell allocation becomes `HCD_calcWidth` in `ILayoutCellStandardAction`.
+`ILayoutCellRegions` passes allocation minus padding plus one pixel to
+`IRegionRepositionResizeAndReflow`. `ICalculateRegionBoundries` in
+`htmlclas/htmltpos.goc` takes the furthest formatted region right edge,
+subtracting the extra pixel; `MSG_HTML_TEXT_CALCULATE_BOUNDARIES` publishes
+that edge as `VLTI_displayModeWidth` and content document bounds. BbxBrow's
+`urldoc/URLDOC.goc:ViewTemplate` enables horizontal scrolling; large-content
+`MSG_VIS_CONTENT_SET_DOC_BOUNDS` forwards the extent to the view
+(`Library/User/Vis/visContentClass.asm:VisContentSetDocBounds`).

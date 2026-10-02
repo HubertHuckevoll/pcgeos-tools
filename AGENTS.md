@@ -29,8 +29,6 @@ Mark intentional shortcuts with an ATTENTION: comment. Name the known ceiling an
 
 Do not be lazy about trust-boundary input validation, data-loss prevention, security, accessibility, or explicit user requirements.
 
-Non-trivial logic leaves one small runnable check behind. Use an assert demo, self-check, or tiny test file. No frameworks. Trivial one-liners need no test.
-
 ## Scope
 
 ~/pcgeos/ contains the source, tools, and docs for the 16-bit PC/GEOS operating environment for DOS, also known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office.
@@ -190,10 +188,16 @@ Always try to compile the geodes you changed through aihelp.py:
 
 aihelp.py maps source paths to the matching Installed/ directory, runs pmake as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log.
 
-For a new geode, or when generated build files are missing, create them manually first in the matching Installed/ directory with mkmf and pmake depend, then use aihelp.py build.
+Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created or updated, use `mkmf` and `pmake depend`.
 
-Don't edit Makefile and dependencies.mk manually. If they need to be updated, use `mkmf` and `pmake depend`.
+For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use aihelp.py build.
 
-## Testing / Debugging
+## Testing
 
-Do not try to run PC/GEOS to test stuff. Instead, when debugging, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.
+Do not try to run PC/GEOS to test stuff.
+
+Non-trivial logic leaves one small runnable check behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
+
+## Debugging
+
+When asked to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.

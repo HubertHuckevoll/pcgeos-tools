@@ -195,11 +195,23 @@ measured widths can be discarded by the blast. Evidence:
 `Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`, `htmltcel.goc`,
 `htmltpos.goc`, and `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`.
 
-`FindSmallestSrcset()` in `htmlpars/opentags.goc` selects the smallest valid
-width descriptor, or the smallest density descriptor when no width candidate
-exists. `SRC` supplies an implicit 1x choice for a density set whose smallest
-candidate exceeds 1x. Selection does not depend on viewport size or load mode
-and does not establish an intrinsic-pixel bound. WebP admission checks
+`SelectSrcsetCandidate()` in `htmlpars/opentags.goc` selects the smallest
+width at least as large as the parse-time viewport, or the largest when all
+candidates are smaller. Unknown width retains the smallest choice. A single
+bare URL is accepted; density sets retain the smallest density and implicit
+`SRC` at 1x when all densities exceed 1x. Widths take priority over densities.
+The opt-in `ParseAnyFileWithImageSources()` entry accepts an
+`HTMLImageSourceContext` (view optr and MIME callback) without extending
+`HTMLextra`. Its HTML core snapshots `MSG_GEN_VIEW_GET_VISIBLE_RECT` width;
+legacy entries supply no context. BbxBrow's `ParseFrameHTML()` in
+`urlframe/FRFETCH.goc` obtains the text object's `MSG_HTML_TEXT_GET_VIEW_OBJ`
+and supplies `FrameImageMimeSupported()`, which checks `assocTypeDriver`.
+`Open_SOURCE()` selects the first usable, media-matching, supported source
+inside `PICTURE` and retains its URL in a name-pool token. `ParseImage()`
+transfers that reference to the following ordinary IMG. Unconsumed tokens
+must be released before `FinishTransferItem()` saves and disposes of the
+name pool (`htmlpars/parsinit.goc`). Source selection does not establish an
+intrinsic-pixel bound. WebP admission checks
 `maxPixels` before decoder work-buffer allocation (`Library/WebpLib/webpapi.c`,
 `WebPImportBegin`). External SVG receives the same Intelligent request limit,
 but `ImpSVG()` checks GString bounds area only after `SvgImport()` has built
@@ -381,3 +393,21 @@ VisText normally measures a graphic from its stored `VTG_size`.
 zero. Html4Par's handler in `htmlclas/htmlfsiz.goc` has special sizing for forms;
 images use its default stored-size path. Resizing only during variable-graphic
 drawing therefore cannot change prior text/table measurement.
+
+BbxBrow's local-file loader does not strip URL queries: `ToolsParseURL()` in
+`Library/Breadbox/Html4Par/wwwtools/wwwtools.goc` retains the query in its path,
+and `LoadFILEURL()` in `Appl/Breadbox/BbxBrow/navigate/NAVIGATE.goc` decodes
+and normalizes that path before filesystem access and MIME identification.
+Use plain filenames in locally opened HTML image fixtures; HTTP image queries
+still belong to the request URL.
+
+Picture IMG records, including the fallback IMG, carry `HTML_IDF_PICTURE`.
+`IReplaceGraphic()` routes them through the existing
+`MSG_HTML_TEXT_RESOLVE_INLINE_SVG` fitting message, and
+`MSG_HTML_TEXT_CLAMP_INLINE_SVG_TO_VIEWPORT` also processes resolved pictures
+on first visibility or shrink. `HTMLTextFitImageToViewport()` fits pictures
+by width only, subtracting `HTI_pageLeftMargin + 1` and horizontal image
+spacing; inline SVG still fits both dimensions. Natural source width can
+exceed the viewport even when a picture's MEDIA source is selected correctly.
+Source: `CInclude/html4par.goh`, `htmlpars/opentags.goc`,
+`htmlclas/htmlclas.goc`, and BbxBrow `urltext/URLTEXT.goc`.

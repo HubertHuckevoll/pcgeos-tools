@@ -178,28 +178,9 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 ## Implementation
 
-(The following applies only to a Codex parent coding agent.)
-
-Minimize total token consumption, including review and rework. Avoid duplicating investigation between parent and worker.
-
-- **Implement directly in Sol** for trivial changes, interactive debugging, or tasks that cannot be delegated safely.
-- **Delegate to Luna High** whenever implementation can be separated from architectural decisions, including larger refactorings.
-
-Before delegating, investigate enough to establish the critical architectural decisions, relevant interfaces, constraints, and acceptance criteria. Keep the implementation brief concise. Leave detailed planning, source investigation, and implementation to Luna.
-
-Instruct the worker to implement, build, test, and self-review its changes without committing or pushing. It must respect the parent's architectural decisions and report any necessary deviations rather than improvising a different design.
-
-When finished, the worker must create `~/pcgeos/done.txt` with a concise summary, test results, deviations, and outstanding issues.
-
-**End your turn immediately after launching the worker.** Never wait, poll, or inspect its progress.
-
-I will send another message when the worker has finished. Then read `done.txt`, review the working-tree diff, fix issues as necessary, run final builds/tests, and delete `done.txt`.
-
-(From here on, applies to every agent.)
-
 For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
 
-End each implementation round with a concise, commit-message-style summary.
+End each implementation round with a concise, commit-message-style summary that can be copy/pasted.
 
 ## Building geodes
 

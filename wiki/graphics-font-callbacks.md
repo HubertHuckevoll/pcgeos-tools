@@ -9,3 +9,13 @@ The next `CallStyleCallBack` unlocks `TMS_fontHandle`. Evidence:
 `Library/Kernel/Graphics/graphicsTextObject.asm` (`DoCallback`,
 `CallStyleCallBack`) and `Library/Kernel/Graphics/graphicsChars.asm`
 (`NearLockFont`, `DoFontLock`).
+
+`TrueTypeStrategy` reporting `RECURSIVE_CALL_TO_FONT_DRIVER` from
+`RemoveGeodes` / `EndGeos` is a shutdown-time failure: `RemoveGeodes`
+calls initialized drivers with `DR_EXIT`. An earlier fatal allocation or
+handle error inside the driver can leave its EC `inDriverFlag` set. Catch
+`FatalError` at entry to retain the original stack; `HANDLE_TABLE_FULL`
+skips its normal debugger trap and enters `EndGeos` directly. Evidence:
+`Driver/Font/TrueType/Main/mainManager.asm` (`TrueTypeStrategy`),
+`Library/Kernel/Geodes/geodesUtils.asm` (`RemoveGeodes`), and
+`Library/Kernel/Boot/bootBoot.asm` (`FatalError`, `EndGeos`).

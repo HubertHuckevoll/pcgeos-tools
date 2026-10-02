@@ -36,9 +36,9 @@ on 16-bit systems; a stack sample inside the filter alone does not establish a
 loop.
 
 `WebPParseContainer()` in `Library/WebpLib/webpriff.c` rejects zero dimensions
-and dimensions above 2048 before decoding. `WebPImportBegin()` in
-`Library/WebpLib/webpapi.c` enforces a supplied `maxPixels` limit after parsing
-the dimensions and before allocating the work buffers.
+and dimensions above 2048 before decoding. The five-argument
+`WebPImportBegin()` in `Library/WebpLib/webpapi.c` has no pixel-count admission
+limit.
 
 `WebPDecodeInit()` in `Library/WebpLib/webpvp8.c` allocates rolling caches as
 `mbWidth * 16 * (16 + delay)` luma bytes and
@@ -51,8 +51,11 @@ below-32-KB allocation goal but explicitly calculates this 49152-byte luma
 cache later in its memory-layout section.
 
 `ImpWebP()` reserves width * height * 3 units in BbxBrow's `AllocWatcher`
-before decoding. When a decode error follows a published progress bitmap,
-the progress cache owns that partial VM bitmap, but the importer returns no
-bitmap to `ImportG`; therefore the importer itself must release the watcher
-reservation. See `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` and
+before decoding. It publishes no partial bitmap and frees both the bitmap
+and reservation on error or cancellation. On success it clears
+`ImportProgressData.IPD_callback`: the final update in BbxBrow's
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` chooses firstLine zero when that
+callback is null, so a decoder that publishes only a complete image can use
+the existing full-image replacement path. See
+`Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` and
 `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`.

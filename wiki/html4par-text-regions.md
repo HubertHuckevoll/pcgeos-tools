@@ -79,6 +79,14 @@ and layout is dirty or view width changed; queue deduplication does not
 suppress synchronous calls or requests delivered between incremental steps
 (`htmlclas/htmltpos.goc`).
 
+Formatting completion is reentrant: BbxBrow's
+`urltext/URLTEXT.goc:MSG_HTML_TEXT_FORMATTING_ENDED` calls
+`MSG_URL_TEXT_DEC_PENDING`, whose zero-pending path can synchronously call
+`MSG_HTML_TEXT_CALCULATE_LAYOUT`. Html4Par must finish releasing the old
+layout stack and clearing its state before notifying the subclass, or that
+cleanup can discard a newly requested layout. Evidence:
+`htmlclas/htmltcel.goc:MSG_HTML_TEXT_LAYOUT_STOP` and the BbxBrow handlers.
+
 Html4Par's synthetic table 0 is initialized as 1x1 by
 `htmlpars/parstags.goc:InitTagStacks`; layout starts directly with cell 0,
 not by distributing columns for table 0. In `htmlclas/htmltpos.goc`,

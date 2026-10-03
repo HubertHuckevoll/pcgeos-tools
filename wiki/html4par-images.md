@@ -466,6 +466,14 @@ lower that outer threshold. Stop/cancellation instead uses
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, retaining complete cached
 images and resetting incomplete resolving images to UNRESOLVED.
 
+`MSG_HTML_TEXT_RESOLVE_IMAGE` sets RESOLVED and clears BROKEN/RESOLVING,
+even for zero-sized images. Its text-graphic size includes twice hspace and
+vspace, so collapse requires zero spacing as well as zero HID_size.
+`MSG_URL_FRAME_LOAD_GRAPHICS` in BbxBrow's `urlframe/URLFRAME.goc` resets
+only broken/resolving images before retrying; resolved zero-sized records
+are skipped. Attachment resets all image loading flags through
+`IMarkAllImagesUnresolved` in `htmlclas/htmlclas.goc`, allowing reload retries.
+
 `ParseImage()` counts inline SVGs against the same `G_imageCount` /
 `G_imageLimit` as ordinary images before their source has been scanned for
 support. The default limit is 200 (`internal.h:DEFAULT_IMAGE_LIMIT`),

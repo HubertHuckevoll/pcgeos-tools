@@ -1,11 +1,10 @@
 # Html4Par images
 
-Inline `<svg>` is captured as raw bytes by the `SVG` path in
-`Library/Breadbox/Html4Par/htmlpars/htmlpars.goc` and stored in the
-page-owned `HTBH_svgSourceData` HugeArray. Image records carry a source
-offset and dword length, so reloading a cached page can import it again.
-The parser appends source in 1024-byte chunks while it scans through the
-closing tag; the source size is bounded only by the VM HugeArray capacity.
+Inline `<svg>` is captured as raw bytes by `HandleInlineSVG()` in
+`Library/Breadbox/Html4Par/htmlpars/htmlpars.goc`, using a 1024-byte buffer
+and one temporary file per admitted SVG. `HTMLimageData.svgFile` owns a
+local name token for that file. Cache restoration can import the file again;
+`FreeHTMLTransferItem()` deletes it when the parsed page is freed.
 `OBJ_CACHE_MINOR_VERSION` in `Appl/Breadbox/BbxBrow/htmlview.goh` is bumped
 when the persistent image-record layout changes; `AttachToObjCache()` in
 `navigate/NAVCACHE.goc` recreates cache files on a protocol mismatch.
@@ -474,26 +473,13 @@ only broken/resolving images before retrying; resolved zero-sized records
 are skipped. Attachment resets all image loading flags through
 `IMarkAllImagesUnresolved` in `htmlclas/htmlclas.goc`, allowing reload retries.
 
-`ParseImage()` counts inline SVGs against the same `G_imageCount` /
-`G_imageLimit` as ordinary images before their source has been scanned for
-support. The default limit is 200 (`internal.h:DEFAULT_IMAGE_LIMIT`),
-overridable by `[HTMLView] imagelimit`. Unsupported SVGs can therefore consume
-image slots even though they remain invisible. Evidence:
-`htmlpars/opentags.goc:ParseImage` and `htmlpars/htmlpars.goc:StoreSVGSource`.
-
-SVG source capture starts in `HandleTag()` / `SVGStartSource()` before
-`OpenTag()` calls `ParseImage()`. `ScanSVGContent()` continues appending even
-when `ParseImage()` rejected the image and `svgImageIndex` remains
-`HTML_IMAGE_INDEX_NONE`; `StoreSVGSource()` then returns without referencing
-those bytes. Unsupported sources also retain their bytes. Each usual small
-SVG causes a separate opening-tag append and final-tail append, not one
-page-wide buffered write. Separate DOS temporary files are created later by
-BbxBrow's `ProcessInlineSVG()`, which rejects unsupported records first.
-`Library/Kernel/VMem/vmemHugeArray.asm:HugeArrayAppend` calls
-`ECCheckHugeArray` in EC builds; when `ECF_VMEM` is enabled this validates all
-current data blocks. Many small appends therefore repeatedly traverse the
-growing array. This is VM work, not proof of an immediate physical disk write
-per append.
+Inline SVGs share `G_imageCount` / `G_imageLimit` with ordinary images.
+The default is 200 (`internal.h:DEFAULT_IMAGE_LIMIT`), overridden by
+`[HTMLView] imagelimit`. `CanParseImage()` in `htmlpars/opentags.goc`
+checks that limit and `TAG_FLUSH_TEXT`. Both `ParseImage()` and
+`HandleInlineSVG()` use it; rejected SVGs are still scanned to their end
+but do not create or write backing files. `htmtest/check_inline_svg.pl`
+checks admission, a zero configured limit, and following-HTML preservation.
 
 `MSG_HTML_TEXT_SHOW_ITEM` unsuspends VisText before calling
 `MSG_HTML_TEXT_CALCULATE_LAYOUT`. Unsuspension can synchronously recalculate

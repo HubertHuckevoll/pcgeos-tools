@@ -56,3 +56,20 @@ LPD_sem for READ/WRITE/CLOSE. A captured callback may finish after cancellation;
 the fetch child remains busy until LoadURLToFile returns, keeping its stream
 state alive. See WMG3HTTP.goc LoadProgressCallbackSnapshot/HTTPGet and
 BbxBrow/urlfetch/URLFETCH.goc URLFetchEngineChild.
+
+`MSG_HMLVA_ABORT_OPERATION` calls `UserAbortStart` and then `ParseAbort`
+before aborting the fetch/import engines. `WARNING_PARSE_ABORT_TIMED_OUT`
+therefore captures the UI caller waiting for parser completion, not the
+parser's own stack. Use Swat `btall` at that warning or at the abort request
+in `htmlpars/parsinit.goc` to inspect the other threads. Normal fetched-page
+parsing calls `ParseAnyFile` from `MSG_URL_FRAME_URL_FETCHED` in
+`urlframe/FRFETCH.goc`; it is not part of the graphic import engine.
+
+Inline SVG capture uses `FileCreateTempFile`. Its collision retry must keep
+the basename offset independently of BX: `TimerGetCount` returns its high
+word in BX, and `FileCreateCommon` may destroy BX. A retry that restores DI
+from BX can write the next name outside the path buffer and repeatedly retry
+the unchanged occupied name. Evidence: `Library/Kernel/File/fileOpenClose.asm`
+(`FileCreateTempFile`, `FileCreateCommon`) and `Timer/timerMisc.asm`
+(`TimerGetCount`). `File/check_temp_file.pl` checks the seed/retry instructions
+with BX clobbered and forced collisions, including 32-bit counter wrap.

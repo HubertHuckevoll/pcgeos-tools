@@ -51,6 +51,38 @@ loading a page. SVG source offsets and lengths are parser fields above this
 reset, so the source remains available after transfer-item loading. For inline
 SVG it also zeros both HID_size and the matching VisTextGraphic.VTG_size;
 clearing only the drawing size would leave cached layout geometry visible.
+The attach-time graphic reset uses one `ChunkArrayEnum()` over the graphic
+array (`IResetSVGGraphic`), matching each live HTML image graphic through
+`HIGV_imageIndex`. Image records are fixed-size (`ModifyHypertextArray`,
+`HTA_IMAGE_ARRAY` in `htmlpars/htmlpars.goc`), so their indexed lookup does
+not walk a variable-element offset table. Searching the graphic array once
+per SVG instead costs O(S*G) in NC and O(S*G*G) in EC, where S is the SVG
+count and G is the graphic-element count.
+`MSG_URL_TEXT_PROCESS_GRAPHICS` does not create a resolved cache-name token
+for unsupported or source-less inline SVGs. `MSG_URL_FRAME_FLIP_PAGE` calls
+attach and process-graphics synchronously before `MSG_HTML_TEXT_SHOW_ITEM`,
+so work in those paths delays the start of initial layout and drawing.
+
+Graphic runs point to one chainified LMem element block through
+`TextLargeRunArrayHeader.TLRAH_elementVMBlock`; its chunk array is at
+`LMemBlockHeader.LMBH_offset`. Graphic element order is not the image index:
+HTML variable graphics carry `HTMLimageGraphicVariable.HIGV_imageIndex` in
+`VTGV_privateData`. `IFindGraphicForImage()` locks both VM blocks per lookup and uses
+`ChunkArrayEnum()` / `IFindImageGraphic` to find a live HTML image graphic.
+It leaves the element block locked on success and unlocks it on a miss.
+Use one graphic enumeration for batch changes rather than one search per image.
+Indexed `ChunkArrayElementToPtr()` is constant-time in NC, including variable
+arrays (their header has an offset table), but EC validates the entire variable
+array on every call. An indexed scan is therefore quadratic in EC, and repeated
+searches can become cubic. `ChunkArrayEnum()` validates once at entry and walks
+the offset table without revalidating it per element. Evidence:
+`Library/Kernel/LMem/lmemChunkArray.asm:ChunkArrayElementToPtr`,
+`ECCheckChunkArray`, and `ChunkArrayEnumCommon`. Free elements have
+`VTG_meta.REH_refCount.WAAH_high == EA_FREE_ELEMENT` (0xff), and the existing
+image lookup rejects every nonzero high byte before reading private data.
+Evidence: `htmlclas/htmlclas.goc:IFindGraphicForImage`,
+`htmlpars/opentags.goc:ParseImage`, `CInclude/Objects/vTextC.goh`, and
+`Include/chunkarr.def:RefElementHeader`.
 
 Inline image sizing has two stages. `ParseImage()` in
 `Library/Breadbox/Html4Par/htmlpars/opentags.goc` stores authored pixel
@@ -393,6 +425,11 @@ VisText normally measures a graphic from its stored `VTG_size`.
 zero. Html4Par's handler in `htmlclas/htmlfsiz.goc` has special sizing for forms;
 images use its default stored-size path. Resizing only during variable-graphic
 drawing therefore cannot change prior text/table measurement.
+For an image with both stored dimensions zero, the default size callback
+still returns height `IMAGE_HEIGHT_FUDGE_FACTOR` (1); the embedded character
+and its font can therefore retain a minimum text-line height. Zeroing image
+geometry alone does not remove that character. See `htmlclas/htmlfsiz.goc`,
+`MSG_VIS_TEXT_GRAPHIC_VARIABLE_SIZE`, and `ParseImage()` in `htmlpars/opentags.goc`.
 
 BbxBrow's local-file loader does not strip URL queries: `ToolsParseURL()` in
 `Library/Breadbox/Html4Par/wwwtools/wwwtools.goc` retains the query in its path,
@@ -411,3 +448,52 @@ spacing; inline SVG still fits both dimensions. Natural source width can
 exceed the viewport even when a picture's MEDIA source is selected correctly.
 Source: `CInclude/html4par.goh`, `htmlpars/opentags.goc`,
 `htmlclas/htmlclas.goc`, and BbxBrow `urltext/URLTEXT.goc`.
+
+Broken-image drawing is separate from failure classification. BbxBrow's
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`
+marks every matching `HID_resolvedURL` broken when passed `OCT_NULL`.
+Fetch failures (`MSG_URL_TEXT_GRAPHIC_FETCHED`) and import failures
+(`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `htmlview/ImportG.goc`)
+use this path. Html4Par's `MSG_HTML_TEXT_MARK_IMAGE_BROKEN` in
+`htmlclas/htmlclas.goc` sets BROKEN and RESOLVED, clears RESOLVING and
+SIZE_DIRTY, clears the graphic handles, and calls
+`MSG_HTML_TEXT_INVALIDATE_IMAGE`. That handler can draw immediately through
+`DrawVarGraphic`; normal `MSG_VIS_TEXT_GRAPHIC_VARIABLE_DRAW` uses the same
+routine. `DrawVarGraphic` in `htmlclas/htmlfdrw.goc` draws the grey placeholder
+and two red diagonal lines for BROKEN images only when both HID_size
+dimensions are at least 20 pixels. The nested 4-pixel X check does not
+lower that outer threshold. Stop/cancellation instead uses
+`MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, retaining complete cached
+images and resetting incomplete resolving images to UNRESOLVED.
+
+`ParseImage()` counts inline SVGs against the same `G_imageCount` /
+`G_imageLimit` as ordinary images before their source has been scanned for
+support. The default limit is 200 (`internal.h:DEFAULT_IMAGE_LIMIT`),
+overridable by `[HTMLView] imagelimit`. Unsupported SVGs can therefore consume
+image slots even though they remain invisible. Evidence:
+`htmlpars/opentags.goc:ParseImage` and `htmlpars/htmlpars.goc:StoreSVGSource`.
+
+SVG source capture starts in `HandleTag()` / `SVGStartSource()` before
+`OpenTag()` calls `ParseImage()`. `ScanSVGContent()` continues appending even
+when `ParseImage()` rejected the image and `svgImageIndex` remains
+`HTML_IMAGE_INDEX_NONE`; `StoreSVGSource()` then returns without referencing
+those bytes. Unsupported sources also retain their bytes. Each usual small
+SVG causes a separate opening-tag append and final-tail append, not one
+page-wide buffered write. Separate DOS temporary files are created later by
+BbxBrow's `ProcessInlineSVG()`, which rejects unsupported records first.
+`Library/Kernel/VMem/vmemHugeArray.asm:HugeArrayAppend` calls
+`ECCheckHugeArray` in EC builds; when `ECF_VMEM` is enabled this validates all
+current data blocks. Many small appends therefore repeatedly traverse the
+growing array. This is VM work, not proof of an immediate physical disk write
+per append.
+
+`MSG_HTML_TEXT_SHOW_ITEM` unsuspends VisText before calling
+`MSG_HTML_TEXT_CALCULATE_LAYOUT`. Unsuspension can synchronously recalculate
+text when `VisTextSuspendData.VTSD_needsRecalc` is set:
+`Library/Text/Text/textSuspend.asm:VisTextUnsuspend` calls
+`ReflectChangeWithFlags`. A blank page at the formatting status can therefore
+be stalled before Html4Par's layout preparation or incremental cell events.
+The EC `WARNING_FIRST_LAYOUT_*` markers in `htmlclas/htmlclas.goc`,
+`htmltpos.goc`, and `htmltcel.goc` distinguish unsuspension, region-link setup,
+longest-line measurement, region adjustment, min/max preparation, and the first
+cell step. They run before the named work and disappear from NC builds.

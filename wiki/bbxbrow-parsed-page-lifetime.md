@@ -21,3 +21,28 @@ a committed map or with a different cache protocol. A persistent object
 cache is therefore not evidence that parsed text pages persist across normal
 application restart. MSG_HTML_TEXT_STORE_CONTENTS is currently disabled;
 its native-page serialization path returns zero.
+
+## Per-view width lifetime
+
+HTI_viewWidth in CInclude/html4par.goh belongs to each HTMLText instance.
+MSG_HTML_TEXT_ATTACH_TO_ITEM retains it across navigation;
+MSG_HTML_TEXT_INITIALIZE_LAYOUT in htmlclas/htmltpre.goc resets
+HTI_formattedWidth, not HTI_viewWidth. MSG_URL_FRAME_CREATE_CHILD in
+BbxBrow/urlframe/URLFRAME.goc duplicates URLText and ViewTemplate and connects
+them through MSG_HTML_TEXT_SET_VIEW_OBJ, so each frame has its own width.
+
+GenView's SendPaneSizeMethod in
+Library/SpecUI/CommonUI/CView/cviewPaneWindow.asm supplies OLPI_pageWidth,
+already in document coordinates (OLPaneSetNewPageSize in
+cviewPaneGeometry.asm). VisContentViewWinOpened in
+Library/User/Vis/visContentClass.asm forwards opening to
+MSG_META_CONTENT_VIEW_SIZE_CHANGED and VisContentSubviewSizeChanged sends it
+to the children. HTMLText's handler in htmlclas/htmltdrw.goc records a
+positive supplied width before unsuspending/layout and clears
+HTS_VIEW_NOT_OPENED; the initial class width of 400 is not a real viewport.
+MSG_HTML_TEXT_LAYOUT_START in htmlclas/htmltcel.goc subsequently derives
+HTI_viewWidth from HTI_formattedWidth and its scrollbar policy, then subtracts
+HTI_pageLeftMargin and one right-edge pixel for the top-level cell.
+ICalculateViewSize adds back an existing vertical scrollbar and subtracts
+its zoom-adjusted pixel allowance before returning the width used for
+HTI_formattedWidth.

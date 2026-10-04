@@ -24,13 +24,13 @@ outline, after defaulting and clamping `rx`/`ry`; every point goes through
 the world matrix before `SvgRendererPolygon()`. Evidence:
 `Library/SvgLib/Import/svgShape.goc` (`SvgShapeHandleRect`).
 
-BbxBrow calls `SvgImport()` through ImpGraph's `ImpSVG()`. The SVG
-`IBP_maxPixels` check occurs after import and GString bounds calculation;
-`TE_OUT_OF_MEMORY` from `SvgImport()` sets `MIME_STATUS_MEMORY_LIMIT` and
-returns `IBS_NO_MEMORY` from `ImpSVG()`. Evidence:
-`Library/Breadbox/ImpGraph/MAIN/impgraph.goc` (`ImpSVG`) and
-`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`
-(`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`).
+BbxBrow calls `SvgImport()` through ImpGraph's `ImpSVG()`. `ImpSVG()`
+ignores the allocation watcher and import progress data, leaves `usedMem`
+zero, and supplies a null SVG progress callback. It does not check
+`IBP_maxPixels`; its post-import bounds validation checks coordinate range
+and positive dimensions. `TE_OUT_OF_MEMORY` returns `IBS_NO_MEMORY` without
+setting `MIME_STATUS_MEMORY_LIMIT`. Evidence:
+`Library/Breadbox/ImpGraph/MAIN/impgraph.goc` (`ImpSVG`).
 
 BbxBrow passes source filenames, not open handles, through
 `ToolsImportGraphicByDriver()` and `ImportGraphicByNative()` in
@@ -65,3 +65,38 @@ JPEG and inline SVG requests both use importer zero in single-thread mode.
 Requests use `forceQueue`; changing the INI while the engine is running
 does not resize it. The existing `htmlview/check_import_threads.pl` checks
 selection, routing, abort and cleanup with host shims, not GEOS scheduling.
+
+`SvgImportParse()` unlocks tag, path-data and point scratch buffers between
+tags, and unlocks the 1024-byte input buffer before dispatching a tag. A
+path can still hold tag text, a copied `d` attribute, WWFixed points and
+GEOS points simultaneously through `SvgPathEmitSubpath()`'s graphics calls.
+`SvgImportContext` remains locked throughout import; scratch allocations
+are freed before `SvgImport()` calculates GString bounds. Evidence:
+`Import/svg.goc`, `svgPath.goc`, `svgApi.goc`.
+
+Output is not allocation-free because it is VM-backed: kernel
+`WriteVMemGString` buffers each element in an LMem chunk and inserts it into
+a HugeArray (`Library/Kernel/Graphics/graphicsStringStore.asm`). GString
+creation uses `INIT_GSTRING_FLAGS` with `HAF_NO_ERR`
+(`graphicsStringUtils.asm`, `graphicsConstant.def`), and native VM memory
+allocation also adds `HAF_NO_ERR` (`Library/Kernel/VMem/vmemLow.asm`,
+`VMGetMemSpace`). These paths can enter the kernel allocation-retry warning
+while SVG's own checked scratch allocation would return an error.
+
+The tag-size ceiling is enforced by `SvgParserScanNextTag()` while collecting
+quoted attributes, before shape dispatch (`Import/svgParse.goc`). An oversized
+`d` therefore returns `SVG_SCAN_LIMIT_EXCEEDED`, becomes `TE_FILE_TOO_LARGE`
+in `SvgImportParse()`, and follows cleanup; `ImpSVG()` maps it to
+`IBS_UNKNOWN_FORMAT`. `HandleInlineSVG()` in
+`Library/Breadbox/Html4Par/htmlpars/htmlpars.goc` first spools the whole inline
+SVG to a temporary file using a 1024-byte buffer, independently of SvgLib's
+tag limit. Large source size does not imply it is all held in the heap or
+that its geometry reaches the renderer.
+
+On an import error, `GrDestroyGString(..., GSKT_LEAVE_DATA)` and
+`VMFreeVMChain()` release the partial output (`Import/svgApi.goc`). The SVG
+branch of `MimeDrvGraphicEx()` has no raster-format fallback; failure
+leaves `bmVMBlock` zero. BbxBrow's import method then sends
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` with `OCT_NULL`, marks the image
+broken and decrements the pending count (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`,
+`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`, `urltext/URLTEXT.goc`).

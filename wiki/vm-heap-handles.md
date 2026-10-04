@@ -23,3 +23,20 @@ requires tracing the earlier free or overwrite; the failing VMLock alone
 does not identify it. Evidence: `Library/Kernel/VMem/vmemLow.asm`
 (`VMDiscardMemBlk`) and `Library/Kernel/VMem/vmemKernelHigh.asm`
 (`VMUpdateAndRidBlk`).
+
+A bitmap redraw can allocate VM metadata even after import has finished.
+The nonresident-block path in `VMLock` enforces the resident-handle limit,
+temporarily adds two to `VMH_numExtraUnassigned`, then calls
+`VMMaintainExtraBlkHans` before `VMReadBlk`
+(`Library/Kernel/VMem/vmemHigh.asm`). The latter reserves
+`2 * VMH_numResident + VMH_numExtraUnassigned + 1` unassigned VM block-table
+entries; any shortfall goes to `VMExtendBlkTable`, which grows the VM
+header with `MemReAlloc(HAF_NO_ERR | HAF_ZERO_INIT)`
+(`vmemBlkManip.asm`). An allocation-retry stack at that call identifies
+header growth, not allocation of new image content. Unassigned VM entries
+are metadata within the header, distinct from global heap handles.
+
+`VMBlockHandle` values are offsets into a VM file's header block table
+(`Library/Kernel/VMem/vmemConstant.def`: `VMHeader`, `VMBlockHandle`). A Swat
+argument rendered as `vmBlk = ^h.... (invalid)` by treating it as a global
+heap handle is not by itself evidence of an invalid VM block.

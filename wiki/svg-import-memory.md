@@ -100,3 +100,14 @@ leaves `bmVMBlock` zero. BbxBrow's import method then sends
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` with `OCT_NULL`, marks the image
 broken and decrements the pending count (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`,
 `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`, `urltext/URLTEXT.goc`).
+
+Within a path, scratch locks span distinct phases. `SvgPathEmitSubpath()`
+converts `ptsWWFP` to `ptsP`; its subsequent renderer calls consume only
+the GEOS points, while style adjustment still reads the tag. The caller
+retains `sP` and `iterationP` into `dbP` across subpath emission. After the
+final emission, `SvgPathHandle()` unlocks all active scratch pointers and
+clears them before `SvgRendererEndPath()`. That renderer takes only the
+context and fill/stroke flags. It calls `GrEndPath`, `GrFillPath`, and
+`GrDrawPath`, without reading scratch data. Evidence:
+`Import/svgPath.goc` (`SvgPathEmitSubpath`, `SvgPathHandle`) and
+`Import/svgRenderer.goc` (`SvgRendererEndPath`).

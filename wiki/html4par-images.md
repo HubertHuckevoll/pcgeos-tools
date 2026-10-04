@@ -345,17 +345,22 @@ does not establish that the browser process thread is advancing. The
 before import and cleared by a separate queued `MsgBlank` status update after
 it (`htmlview/ImportG.goc`, `htmlview.goh`, `navigate/NAVIGATE.goc`).
 
-With `PROGRESS_DISPLAY`, BbxBrow defaults to `G_numFetchChildren + 1` import
+With `PROGRESS_DISPLAY`, BbxBrow creates `G_numFetchChildren + 1` import
 threads (`htmlview/ImportG.goc`, `ImportThreadEngineStart`). Import index 0
-handles requests without a load-progress stream; streamed requests normally use
+handles requests without a load-progress stream; streamed requests use
 `LPD_loadThread + 1` (`ImportThreadRequestImportGraphic`). `MAX_IMPORT_THREADS`
-is 3; `urlfetch/URLFETCH.goc` caps fetch children at 2 and reads their actual
-count from `[HTMLView] numConn`, falling back to `DEFAULT_FETCH_ENGINE_CHILDREN`
-(2). The Ensemble template `Tools/build/product/bbxensem/Template/geos.ini`
-sets `numConn = 1`, yielding one fetch child and two import threads by
-default. With one fetch child, `[HTMLView] numImportThreads = 1` selects one
-shared importer; missing, invalid, or unsupported values retain the computed
-default. Without `PROGRESS_DISPLAY`, there is a single import thread.
+is 3; `urlfetch/URLFETCH.goc` caps the configured fetch-child count at 2 and
+reads it from `[HTMLView] numConn`, falling back to
+`DEFAULT_FETCH_ENGINE_CHILDREN` (2). The Ensemble template
+`Tools/build/product/bbxensem/Template/geos.ini` sets `numConn = 1`, yielding
+one fetch child and two import threads. There is no `numImportThreads`
+setting in the current startup or request-routing code. Without
+`PROGRESS_DISPLAY`, there is a single import thread.
+
+`fetchWhileImport` does not control thread creation. In
+`urlfetch/URLFETCH.goc`, `URLFetchEngineChild` waits on `LPD_importSync`
+after `LoadURLToFile` when that option is false, preventing the child from
+handling further fetch requests until the associated import finishes.
 
 Streaming state is indexed by fetch child, independently of importer objects:
 `G_stream[2]` in `urltext/URLTEXT.goc`, and `G_importActive[]` /

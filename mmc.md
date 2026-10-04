@@ -247,3 +247,7 @@ For unfamiliar code:
 The user controls the pace.
 
 Understanding first. Patch second.
+
+## AI Hints
+
+Do not recap previously established facts unless they are needed for the current inference. Treat the existing conversation as the shared state and communicate only the new delta.

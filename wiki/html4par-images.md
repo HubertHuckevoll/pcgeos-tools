@@ -331,6 +331,13 @@ across HugeArray blocks without deletion and removes the retained first packet
 using its actual size on the next consuming read. See `fill_input_buffer_i()`
 in `Library/Breadbox/Fjpeg/code/init.c` and the fallback in
 `Library/Breadbox/ImpGraph/MAIN/impgraph.goc`.
+The stream wait must atomically recheck both completion and byte availability
+before joining the wait queue: `WakeUp()` drops a signal if no reader is
+queued yet. Checking only `LPD_fileDone` misses data arriving between
+`ThreadVSem(LPD_sem)` and `Block()`. See `LoadGraphicProgressCallback()`
+in `urltext/URLTEXT.goc` and `BLOCK`/`WAKEUP` in
+`Appl/Breadbox/BbxBrow/ASMTOOLS/asmtoolsManager.asm`; commit `fee41a888`
+adds the atomic `LPD_bytesAvail - LPD_preReadOffset >= needed` check.
 `LPCT_RESET_STREAM_STATE` must restore `LPD_bytesAvail` from the retained
 HugeArray count after a consuming first-packet probe, under `LPD_sem`;
 otherwise a GIF-to-JPEG fallback replays the bytes with a reduced count and
@@ -346,11 +353,12 @@ does not establish that the browser process thread is advancing. The
 before import and cleared by a separate queued `MsgBlank` status update after
 it (`htmlview/ImportG.goc`, `htmlview.goh`, `navigate/NAVIGATE.goc`).
 
-With `PROGRESS_DISPLAY`, BbxBrow creates `G_numFetchChildren + 1` import
-threads (`htmlview/ImportG.goc`, `ImportThreadEngineStart`). Import index 0
-handles requests without a load-progress stream; streamed requests use
-`LPD_loadThread + 1` (`ImportThreadRequestImportGraphic`). `MAX_IMPORT_THREADS`
-is 3; `urlfetch/URLFETCH.goc` caps the configured fetch-child count at 2 and
+With `PROGRESS_DISPLAY`, BbxBrow normally creates `G_numFetchChildren + 1`
+import threads (`htmlview/ImportG.goc`, `ImportThreadEngineStart`), while
+`[HTMLView] forceSingleImportThread = true` creates one shared importer.
+The setting is read only at engine startup. Import index 0 handles all
+requests in shared mode; otherwise streamed requests use `LPD_loadThread + 1`
+(`ImportThreadRequestImportGraphic`). `MAX_IMPORT_THREADS` is 3; `urlfetch/URLFETCH.goc` caps the configured fetch-child count at 2 and
 reads it from `[HTMLView] numConn`, falling back to
 `DEFAULT_FETCH_ENGINE_CHILDREN` (2). The Ensemble template
 `Tools/build/product/bbxensem/Template/geos.ini` sets `numConn = 1`, yielding

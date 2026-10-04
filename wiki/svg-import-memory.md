@@ -55,3 +55,13 @@ buffers and handles, but `SvgLogInit()` targets the same private-data
 therefore not independent per import. Logging failures do not determine
 `SvgImportParse()`'s import status. NC logging macros are no-ops in
 `dbglog.h`.
+
+BbxBrow reads `[HTMLView] forceSingleImportThread` once in
+`ImportThreadEngineStart()` (`htmlview/ImportG.goc`). With progress support
+compiled in, true sets `G_numImportThreads` to one; otherwise the count is
+`G_numFetchChildren + 1`. `ImportThreadRequestImportGraphic()` selects
+`LPD_loadThread + 1` only when more than one importer exists, so streamed
+JPEG and inline SVG requests both use importer zero in single-thread mode.
+Requests use `forceQueue`; changing the INI while the engine is running
+does not resize it. The existing `htmlview/check_import_threads.pl` checks
+selection, routing, abort and cleanup with host shims, not GEOS scheduling.

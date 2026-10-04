@@ -73,3 +73,16 @@ the unchanged occupied name. Evidence: `Library/Kernel/File/fileOpenClose.asm`
 (`FileCreateTempFile`, `FileCreateCommon`) and `Timer/timerMisc.asm`
 (`TimerGetCount`). `File/check_temp_file.pl` checks the seed/retry instructions
 with BX clobbered and forced collisions, including 32-bit counter wrap.
+
+Queued graphic imports are drained through their normal handler during abort,
+not simply removed from the event queue. `ImportThreadAbortAll` in
+`htmlview/ImportG.goc` inserts START_ABORT at the front and END_ABORT at the
+back. While `numAborts` is nonzero,
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` skips decoding but still sends
+image cancellation and runs its common cleanup: clear
+`G_importActive[LPD_loadThread]` when `fetchWhileImport` is true, otherwise
+release `LPD_importSync`, then release temporary-file/page-owner resources
+and decrement the pending request count. The cancellation receiver in
+`urltext/URLTEXT.goc`, `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, releases
+the request's name token even after its image array has been detached.
+These queued abort events run after any currently executing import returns.

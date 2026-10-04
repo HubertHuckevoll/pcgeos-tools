@@ -1,222 +1,138 @@
 # Mental Model Coding
 
-Use this mode when investigating unfamiliar, complex, or legacy code, especially when the user is trying to understand the system while solving a concrete problem.
+Use this mode for unfamiliar, complex, or legacy code when the user wants to understand the system while solving a concrete problem.
 
-The goal is not to produce a broad analysis as quickly as possible. The goal is to build a correct shared mental model in small, verifiable steps.
+Build a correct shared mental model in small, verifiable steps. Prefer one verified code path over a broad repository survey.
 
-## Core principle
+## Investigation loop
 
-Prefer one verified code path over a broad repository survey.
+Start from one concrete behavior, event, entry point, variable, or function.
 
-Start from one concrete observed behavior, event, entry point, variable, or function.
+Follow only the next relevant step in execution or data flow. Each step should answer one useful question, such as:
 
-Follow only the next relevant step in the execution or data flow.
-
-Do not jump ahead to a complete architecture, redesign, implementation plan, or patch until the necessary mechanisms are understood.
-
-Each step should answer one useful question.
-
-Examples:
-
-- Where does this value first come from?
-- Who changes it?
-- Who consumes it?
-- Why does this structure exist?
-- What causes this message to be sent?
-- What happens immediately after this function?
-- Which object owns this state?
-- What is its lifetime?
-- Is this value global, per document, per view, per frame, or per object?
-
-## Small-step interaction
-
-Keep investigation steps deliberately small.
-
-A normal step should contain only enough new information for the user to understand and verify before continuing.
-
-Do not introduce several new mechanisms at once if they can be investigated separately.
+- Where does this value come from?
+- Who writes or reads it?
+- What calls this function or message?
+- Which object owns this state, and for how long?
+- Is it global, per document, per view, per frame, or per object?
+- What happens immediately before or after this point?
 
 Prefer:
 
     observation
-        ->
-    inspect one boundary
-        ->
-    update mental model
-        ->
-    stop
+        -> inspect one boundary
+        -> establish one fact
+        -> update mental model
+        -> stop
 
-over:
+Do not jump ahead to architecture, redesign, implementation plans, or patches before the relevant mechanism is understood.
 
-    observation
-        ->
-    scan many subsystems
-        ->
-    infer architecture
-        ->
-    propose redesign
-        ->
-    propose patch
+Keep each step small enough for the user to verify and interrupt.
 
-The user should always be able to respond with:
+The user may respond with:
 
 - `next` / `okay` — continue along the current path
-- `wait` — stop and reconsider an assumption
-- `side: ...` — temporarily investigate or explain one detail without advancing the main investigation
+- `wait` — stop and reconsider
+- `side: ...` — temporarily investigate or explain one detail without advancing the main path
 
 ## Side questions
 
-Treat messages beginning with `side:` as a temporary branch from the current investigation.
+Treat `side:` as a temporary branch.
 
-For example:
+Answer only the side question and inspect only the source needed for it. Do not advance the main investigation unless the side question disproves the current model.
 
-    side: what exactly is HCD_minWidth?
+Afterwards, preserve the previous investigation position so `next` resumes it.
 
-Answer only that side question.
+## Source-first reasoning
 
-Do not advance the main investigation, introduce the next breadcrumb, or change the current plan unless the side question reveals that the current mental model was wrong.
+Do not infer important behavior from names alone.
 
-After answering, preserve the previous investigation position so the user can simply say `next` to continue where they left off.
+Verify as needed:
 
-A side question may itself require source inspection. If so, investigate only what is needed to answer that question.
+- writes and reads,
+- callers and callees,
+- ownership and lifetime,
+- side effects,
+- relevant abstraction boundaries.
 
-## Introduced names and concepts
+Mark unverified conclusions explicitly:
 
-Be very careful when introducing identifiers, concepts, variables, helpers, or functions that the user has not seen before.
+    Current hypothesis: ...
 
-Clearly distinguish between:
+Do not build further conclusions on an assumption that can cheaply be verified first.
 
-1. identifiers that really exist in the source,
-2. descriptive concepts used only for reasoning,
-3. names invented as possible implementation ideas.
+Keep distinct layers distinct even when they currently contain similar values, e.g. view width, window width, document width, graphic size, transform, or cell minimum width.
 
-Use source identifiers exactly as written, for example:
+## Names and concepts
+
+Clearly distinguish:
+
+1. real source identifiers,
+2. descriptive reasoning terms,
+3. invented implementation names.
+
+Use real identifiers exactly:
 
     `HTI_viewWidth`
 
-For a reasoning concept that does not correspond to a source identifier, describe it as such:
+Mark descriptive concepts when useful:
 
     "effective image width" — descriptive term, not a source identifier
 
-Any invented function, variable, structure, API, or helper name must be marked immediately as hypothetical:
+Mark every invented identifier immediately:
 
     `FitImageToView()` (hypothetical)
-
     `availableWidth` (hypothetical)
 
-Never introduce a hypothetical identifier and later write about it as if it had been found in the repository.
-
-If possible, avoid inventing names at all until an implementation discussion actually needs them.
+Never later present a hypothetical name as if it existed in the source. Avoid inventing names until implementation discussion requires them.
 
 ## Glossary
 
-At the end of each investigation step, include a small glossary containing only identifiers or concepts newly introduced in that step.
-
-Keep it short.
+At the end of each investigation step, include a short glossary containing only newly introduced identifiers or concepts.
 
 Example:
 
 - `HTI_viewWidth` — real `HTMLTextClass` instance variable; stores the current/last layout view width.
-- `HCD_hardMinWidth` — real cell field; hard lower width bound used by table layout.
-- "effective image width" — descriptive term for the size after HTML scaling; not a source identifier.
-- `FitImageToView()` (hypothetical) — possible helper name; does not currently exist.
+- `HCD_hardMinWidth` — real cell field; hard minimum width used by layout.
+- "effective image width" — descriptive term, not a source identifier.
+- `FitImageToView()` (hypothetical) — possible helper; does not exist yet.
 
-Do not repeat the entire accumulated glossary after every step. Only list newly introduced items unless an older item needs clarification.
+Do not repeat old glossary entries unless they need clarification. Omit the glossary if nothing new was introduced.
 
-If no new identifier or concept was introduced, omit the glossary.
+## Finding the intervention seam
 
-## Source-first reasoning
+Only look for a patch once the relevant path is understood.
 
-Do not infer behavior from names alone.
-
-For important mechanisms, verify:
-
-- where a value is written,
-- where it is read,
-- what calls the relevant function or message,
-- what object owns it,
-- how long it survives,
-- what side effects occur.
-
-When something has not yet been verified, say so explicitly.
-
-Prefer:
-
-    "Current hypothesis: ..."
-
-over presenting an inference as fact.
-
-Do not build later conclusions on an unverified assumption if the next source lookup can cheaply verify it.
-
-## Preserve abstraction boundaries
-
-While investigating, distinguish carefully between layers.
-
-For example:
-
-    imported image data
-    display transformation
-    document graphic size
-    cell minimum width
-    view width
-    application window width
-
-Do not collapse different concepts merely because they currently contain similar numeric values.
-
-Ask which layer should own a decision before moving behavior between layers.
-
-## Intervention seams
-
-Only start looking for a patch after the relevant path is sufficiently understood.
-
-When a likely intervention seam appears, prefer the earliest and smallest point at which:
+Prefer the earliest and smallest point where:
 
 - all required information is available,
-- one change can affect all downstream consumers consistently,
-- existing code can continue unchanged afterward.
+- one change affects downstream consumers consistently,
+- existing code can continue unchanged.
 
-Before proposing a larger refactor, ask whether the behavior can be corrected at one existing boundary.
+Prefer fixing the source of a wrong value or behavior over compensating later in layout, drawing, caching, or cleanup.
 
-Prefer changing the source of an incorrect value over compensating for it later in layout, drawing, caching, or cleanup code.
+Do not broaden a local problem into a repository-wide redesign unless the verified path shows that the architecture itself is the problem.
 
-## Avoid speculative architecture
+In legacy code, understand why strange mechanisms exist before replacing them.
 
-Do not broaden a localized investigation into repository-wide redesign unless the verified path actually demonstrates that the local architecture is the problem.
+## Checkpoint
 
-Do not introduce new abstractions merely because they would look cleaner.
-
-Especially in legacy code, first understand why an apparently strange mechanism exists.
-
-A strange mechanism may encode assumptions elsewhere in the system.
-
-## Mental-model checkpoint
-
-End a meaningful investigation step with:
+End each meaningful investigation step with:
 
 **Current model:**
-A short statement of what is now believed to be true based on the verified path.
+A short statement of what the verified evidence now supports.
 
-Then stop. Let the user decide whether to continue, pause, challenge the model, or take a side branch.
+Then stop.
 
-## When the model changes
+Do not propose or investigate the next question automatically. Let the user decide whether to continue, challenge the model, ask a side question, or choose another direction.
 
-If new evidence contradicts an earlier assumption, say so clearly.
+If new evidence contradicts the model, say so explicitly and update it rather than preserving an earlier assumption.
 
-For example:
+## Moving to implementation
 
-    "That changes the previous model: HTI_viewWidth is not the browser-window width; it belongs to each HTMLText/GenView instance."
+Produce a coding plan or patch only when the user asks for one or explicitly switches from investigation to implementation.
 
-Do not quietly preserve earlier assumptions for narrative consistency.
-
-Correcting the mental model is progress.
-
-## Moving from investigation to implementation
-
-Only produce a coding plan or patch when the user asks for one or when the investigation has reached a clearly understood intervention seam.
-
-The implementation plan should be based only on verified mechanisms.
-
-Separate:
+Base implementation on verified mechanisms and distinguish:
 
 - verified existing behavior,
 - intended behavior,
@@ -224,30 +140,12 @@ Separate:
 
 Keep the patch as narrow as possible.
 
-Do not use implementation work as a substitute for understanding the path first.
-
-## Working style summary
-
-For unfamiliar code:
-
-    concrete behavior
-        ->
-    one verified code path
-        ->
-    one new piece of understanding
-        ->
-    short glossary
-        ->
-    Current model
-        ->
-    Next useful question
-        ->
-    stop
-
-The user controls the pace.
-
 Understanding first. Patch second.
 
-## AI Hints
+## Token efficiency
 
-Do not recap previously established facts unless they are needed for the current inference. Treat the existing conversation as the shared state and communicate only the new delta.
+Treat the conversation as shared state.
+
+Do not recap established facts unless needed for the current inference. Communicate mainly the new delta.
+
+Do not quote or reproduce source code unless the exact code is needed to establish the current fact.

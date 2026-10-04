@@ -462,16 +462,24 @@ and normalizes that path before filesystem access and MIME identification.
 Use plain filenames in locally opened HTML image fixtures; HTTP image queries
 still belong to the request URL.
 
-Picture IMG records, including the fallback IMG, carry `HTML_IDF_PICTURE`.
-`IReplaceGraphic()` routes them through the existing
-`MSG_HTML_TEXT_RESOLVE_INLINE_SVG` fitting message, and
-`MSG_HTML_TEXT_CLAMP_INLINE_SVG_TO_VIEWPORT` also processes resolved pictures
-on first visibility or shrink. `HTMLTextFitImageToViewport()` fits pictures
-by width only, subtracting `HTI_pageLeftMargin + 1` and horizontal image
-spacing; inline SVG still fits both dimensions. Natural source width can
-exceed the viewport even when a picture's MEDIA source is selected correctly.
-Source: `CInclude/html4par.goh`, `htmlpars/opentags.goc`,
-`htmlclas/htmlclas.goc`, and BbxBrow `urltext/URLTEXT.goc`.
+Picture source selection is parse-time state, not image geometry.
+`ParseFrameHTML()` in BbxBrow `urlframe/FRFETCH.goc` passes a
+`HTMLImageSourceContext` to `ParseAnyFileWithImageSources()`. Its width comes
+from `MSG_URL_TEXT_GET_IMAGE_SOURCE_WIDTH` in `urltext/URLTEXT.goc`, which
+returns `HTI_viewWidth` only when `HTS_VIEW_NOT_OPENED` is clear. Html4Par
+snapshots that word and the MIME callback in `ParseHTMLFileWithImageSources()`;
+no GenView query is needed. `Open_SOURCE()` in `htmlpars/opentags.goc` keeps
+the first supported, media-matching source. `SelectSrcsetCandidate()` uses
+`HTML_IMAGE_SELECT_SMALLEST` in `internal.h` to choose the smallest declared
+candidate (default 1) or a viewport-covering width (0). MEDIA always uses the
+snapshot width. `TakePictureSource()` transfers one local name-pool reference
+to `ParseImage()`, which consumes it even when image admission fails.
+`PictureBeforeTag()` belongs in `HandleNamedTag()` so it also sees SVG recovery
+tags; it must compare raw HTML tag names without case sensitivity. It does
+not run for `Open_IMG()`'s synthetic alignment tables. Existing Fit to Window
+controls drawing/layout geometry after import. Source selection is not rerun
+on resize or cached-page attachment. See also
+`TechDocs/Markdown/Concepts/html-image-sources.md` and `htmtest/check_image_sources.pl`.
 
 Broken-image drawing is separate from failure classification. BbxBrow's
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`

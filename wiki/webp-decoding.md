@@ -59,3 +59,27 @@ callback is null, so a decoder that publishes only a complete image can use
 the existing full-image replacement path. See
 `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` and
 `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`.
+
+All six decoder-owned blocks (decoder state, input, context, luma, chroma,
+and RGB/PackBits output) use `HF_SWAPABLE`, without `HF_FIXED`
+(`webpapi.c:WebPImportBegin`, `webpvp8.c:WebPDecodeInit`). The decoder state
+is unlocked between public calls, but `WebPImportNext()` holds it locked
+through `WebPDecodeRow()` and each output `HugeArrayAppend()`. Its embedded
+`core` occupies 2728 bytes (`webpint.h:WEBP_CORE_WORDS`); the complete state
+is slightly larger. During append, context and both pixel caches are
+unlocked, while the RGB block remains locked as the append source
+(`webpcore.inc:swebp__vp8_output_rows`). Moving decoder state inside an
+active call also invalidates `coreP`/`vp8P`, Boolean-reader `decoderP`
+pointers, probability-table pointers, and `mb_data`;
+`webpvp8.c:WebPRebindCore` rebuilds these after the public entry-point lock.
+
+Decoder completion is bounded by macroblock height, not compressed-file EOF.
+`WebPDecodeRow()` returns DONE when `mbY >= mbHeight` and increments `mbY`
+on every successful row; admitted height is at most 2048, giving at most
+128 successful row calls. `WebPImportNext()` marks decode errors terminal,
+and `ImpWebP()` breaks on any result other than OK (including DONE).
+Unsupported container/frame features return from `WebPParseContainer()`
+before `WebPDecodeInit()` allocates working buffers; `WebPImportBegin()`
+frees the zero-initialized decoder on parser failure. `WebPMapResult()`
+maps unsupported data to `IBS_WRONG_FILE`, so it does not trigger the
+`IBS_UNKNOWN_FORMAT` raster fallback chain in `MAIN/impgraph.goc`.

@@ -31,3 +31,27 @@ returns `IBS_NO_MEMORY` from `ImpSVG()`. Evidence:
 `Library/Breadbox/ImpGraph/MAIN/impgraph.goc` (`ImpSVG`) and
 `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`
 (`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`).
+
+BbxBrow passes source filenames, not open handles, through
+`ToolsImportGraphicByDriver()` and `ImportGraphicByNative()` in
+`Appl/Breadbox/BbxBrow/htmlview/LoadURL.goc`. `ImpSVG()` opens its own local
+`srcFile` with `FILE_ACCESS_R | FILE_DENY_W`, passes it to `SvgImport()`,
+and closes it before returning. Separate SVG imports therefore do not share
+one source handle's seek position, even when their filenames match.
+Evidence: `Library/Breadbox/ImpGraph/MAIN/impgraph.goc` (`ImpSVG`) and
+`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`
+(`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`). The MIME-driver semaphore in
+`ImportGraphicByNative()` is released before calling the driver; it does not
+serialize the import itself.
+
+SvgLib import helpers keep writable working state in `SvgImportContext`,
+`SVGScratch`, invocation-local variables, or their per-import heap blocks.
+The static `nonRendering` and `unsupported` tag-name arrays in `svg.goc`
+are only read by `SvgTagIsOneOf()`. `SvgStyleFindNamedColor()` in
+`svgStyle.goc` only reads `SvgNamedColors`; `svglib.gp` marks its resource
+`lmem read-only shared`. The EC-only logger in `dbglog.goc` has per-context
+buffers and handles, but `SvgLogInit()` targets the same private-data
+`dbglog.txt` with `FILE_CREATE_TRUNCATE | FILE_DENY_W`. Debug output is
+therefore not independent per import. Logging failures do not determine
+`SvgImportParse()`'s import status. NC logging macros are no-ops in
+`dbglog.h`.

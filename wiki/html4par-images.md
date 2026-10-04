@@ -26,11 +26,12 @@ associates SVG with `image/svg+xml`, `ImpSVG()` in
 result as a GString. `FileCreateTempFile()` can supply the importer with a
 file handle, but its caller owns explicit close and deletion; see
 `TechDocs/Markdown/Concepts/cfile.md`.
-`ProcessInlineSVG()` in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` passes an
-absolute temporary-file path to the import thread. A relative path would
-depend on that thread's current directory. Queued imports set
-`temporary=TRUE`; `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` deletes the file
-after success, failure, or cancellation.
+`HandleInlineSVG()` closes its backing file before publishing its name token.
+`ProcessSingleGraphic()` in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` queues
+that absolute path with `temporary=FALSE` and a page cache owner.
+`ImportThreadRequestImportGraphic()` retains that owner until
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` completes, so page detachment cannot
+free the source while it is queued or importing. The page owns file deletion.
 The Html4Par scanner records whether inline SVG contains a shape SvgLib can
 draw and whether it contains `<use>`, `<text>`, `<image>`, `<script>`, or
 `<foreignObject>`. Such unsupported or shape-less sources remain in the VM
@@ -361,6 +362,17 @@ setting in the current startup or request-routing code. Without
 `urlfetch/URLFETCH.goc`, `URLFetchEngineChild` waits on `LPD_importSync`
 after `LoadURLToFile` when that option is false, preventing the child from
 handling further fetch requests until the associated import finishes.
+
+Image import runs synchronously inside
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` (`htmlview/ImportG.goc`), through
+`ToolsImportGraphicByDriver` / `ImportGraphicByNative` (`htmlview/LoadURL.goc`).
+Streamed GIF reads in `ImpGraph/IMPBMP/impgifc.goc` and JPEG refills in
+`Ijgjpeg/DECOMP/JDATASRC.c` invoke `LPCT_READ` on
+`LoadGraphicProgressCallback` (`urltext/URLTEXT.goc`). It waits for the requested
+byte count or `LPD_fileDone` through `Block` / `ThreadBlockOnQueue`
+(`ASMTOOLS/asmtoolsManager.asm`). HTTP writes and stream closure wake the
+reader. A queued image request on that importer cannot start until the
+current import returns; the separate file importer avoids that queue delay.
 
 Streaming state is indexed by fetch child, independently of importer objects:
 `G_stream[2]` in `urltext/URLTEXT.goc`, and `G_importActive[]` /

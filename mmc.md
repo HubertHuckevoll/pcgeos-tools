@@ -196,14 +196,7 @@ End a meaningful investigation step with:
 **Current model:**
 A short statement of what is now believed to be true based on the verified path.
 
-**Next useful question:**
-Exactly one concrete question that would most efficiently improve the model or locate the intervention seam.
-
-Then stop.
-
-Do not automatically answer the next useful question in the same step.
-
-Let the user decide whether to continue, pause, challenge the model, or take a side branch.
+Then stop. Let the user decide whether to continue, pause, challenge the model, or take a side branch.
 
 ## When the model changes
 

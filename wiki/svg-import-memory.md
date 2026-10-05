@@ -68,8 +68,8 @@ selection, routing, abort and cleanup with host shims, not GEOS scheduling.
 
 `SvgImportParse()` unlocks tag, path-data and point scratch buffers between
 tags, and unlocks the 1024-byte input buffer before dispatching a tag. A
-path can still hold tag text, a copied `d` attribute, WWFixed points and
-GEOS points simultaneously through `SvgPathEmitSubpath()`'s graphics calls.
+path holds tag text, copied `d` text and both point arrays during conversion,
+but releases the WWFixed array before subpath graphics calls.
 `SvgImportContext` remains locked throughout import; scratch allocations
 are freed before `SvgImport()` calculates GString bounds. Evidence:
 `Import/svg.goc`, `svgPath.goc`, `svgApi.goc`.
@@ -101,9 +101,18 @@ leaves `bmVMBlock` zero. BbxBrow's import method then sends
 broken and decrements the pending count (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`,
 `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`, `urltext/URLTEXT.goc`).
 
+Each non-null scratch pointer records one active lock.
+`SvgScratchEnsureCapacityCommon()` reuses an existing pointer without
+locking again. Early releases clear the pointer; `SvgPathHandle()`, the
+next `SvgImportParse()` iteration and `SvgScratchFree()` check it before
+unlocking, so they skip buffers already released.
+
 Within a path, scratch locks span distinct phases. `SvgPathEmitSubpath()`
-converts `ptsWWFP` to `ptsP`; its subsequent renderer calls consume only
-the GEOS points, while style adjustment still reads the tag. The caller
+converts `ptsWWFP` to `ptsP`, then unlocks `ptsWWFH` and clears `ptsWWFP`
+before style adjustment and rendering. `SvgPathAddPt()` reacquires the
+current pointer through `SvgScratchEnsureWWPointCapacity()` when a later
+subpath adds points. Renderer calls consume only the GEOS points, while
+style adjustment still reads the tag. The caller
 retains `sP` and `iterationP` into `dbP` across subpath emission. After the
 final emission, `SvgPathHandle()` unlocks all active scratch pointers and
 clears them before `SvgRendererEndPath()`. That renderer takes only the
@@ -111,3 +120,24 @@ context and fill/stroke flags. It calls `GrEndPath`, `GrFillPath`, and
 `GrDrawPath`, without reading scratch data. Evidence:
 `Import/svgPath.goc` (`SvgPathEmitSubpath`, `SvgPathHandle`) and
 `Import/svgRenderer.goc` (`SvgRendererEndPath`).
+
+Successful SVG output ownership crosses the SvgLib/ImpGraph boundary: `SvgImport()`
+keeps the VM GString data after destroying its GState and returns its chain;
+`ImpSVG()` frees that chain if bounds validation rejects it, otherwise returns
+its head through `bmVMBlock` and `IBP_bitmap` as `IAD_TYPE_GSTRING`.
+The successful output therefore intentionally survives both functions.
+Evidence: `Library/SvgLib/Import/svgApi.goc:SvgImport` and
+`Library/Breadbox/ImpGraph/MAIN/impgraph.goc:ImpSVG`.
+
+`SvgShapeHandlePolyline()` and `SvgShapeHandlePolygon()` unlock copied
+coordinate text after parsing and unlock the WWFixed array after conversion.
+During renderer calls, only tag text and GEOS points remain locked in their
+scratch storage. Their combined capacity ceiling is 24 KiB, compared with
+32 KiB for path subpath emission, which retains copied `d` text for parsing.
+Both figures exclude context and kernel/output storage, and describe the
+rendering phase rather than the conversion peak. The VM GString writer
+copies geometry into an LMem chunk and inserts it into a HugeArray.
+Evidence: `Import/svgShape.goc:SvgShapeHandlePolyline/SvgShapeHandlePolygon`,
+`Import/svgRenderer.goc:SvgRendererPolygon/SvgRendererPolyline`,
+`Library/Kernel/Graphics/graphicsPolyline.asm:polylineGSCommon`, and
+`graphicsStringStore.asm:WriteVMemGString`.

@@ -86,3 +86,22 @@ and decrement the pending request count. The cancellation receiver in
 `urltext/URLTEXT.goc`, `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, releases
 the request's name token even after its image array has been detached.
 These queued abort events run after any currently executing import returns.
+
+## Fetch/import thread configuration
+
+With PROGRESS_DISPLAY, numConn controls fetch children (range 1..2, default
+1); numImportThreads independently controls import workers (range 1..3,
+default 1). Invalid counts fall back to 1. MAX_FETCH_ENGINE_CHILDREN lives
+in urlfetch.goh and MAX_IMPORT_THREADS in htmlview/ImportG.goc, under
+Appl/Breadbox/BbxBrow/. ImportThreadRequestImportGraphic rotates all requests
+through the configured import queues, selecting the work file and MIME
+status with the same index. G_importActive remains indexed by fetch child,
+not importer; its size follows MAX_FETCH_ENGINE_CHILDREN.
+
+Fetch/import completion is associated with the request, not the import slot:
+ImportG.goc releases IPD_loadProgressDataP->LPD_importSync, or clears
+G_importActive[LPD_loadThread] when fetchWhileImport is enabled. In
+urlfetch/URLFETCH.goc, URLFetchChildThread waits on LPD_importSync after
+LoadURLToFile when fetchWhileImport is false. With fetchWhileImport true,
+the fetch engine suppresses loading-progress callbacks for the
+next request while that fetch child's prior import remains active.

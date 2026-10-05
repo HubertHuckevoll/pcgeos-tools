@@ -51,7 +51,19 @@ below-32-KB allocation goal but explicitly calculates this 49152-byte luma
 cache later in its memory-layout section.
 
 `ImpWebP()` reserves width * height * 3 units in BbxBrow's `AllocWatcher`
-before decoding. It publishes no partial bitmap and frees both the bitmap
+before row decoding, but after `WebPImportBegin()` initializes working buffers
+and creates the output bitmap. The watcher is accounting, not a pixel-memory
+allocation: `AllocWatcherAllocate()` compares/subtracts `dword AW_amount`
+(`Library/Breadbox/ImpGraph/MAIN/awatcher.goc`). Refusal returns
+`IBS_NO_MEMORY` through cleanup without entering the decode loop. BbxBrow's
+`InitNavigation()` initializes the shared watcher to `0x400000` units by
+default; the `HTMLVIEW_CATEGORY`/`memlimit` INI setting overrides this as
+`Kavail * 1000` (`Appl/Breadbox/BbxBrow/init/INIT.goc`).
+INI category/key comparison is case-insensitive
+(`Library/Kernel/Initfile/initfileLow.asm:CmpString`), so `memLimit` matches
+`memlimit`. `InitFileReadInteger()` returns false on success
+(`Library/Kernel/Initfile/initfileC.asm:INITFILEREADINTEGER`).
+`ImpWebP()` publishes no partial bitmap and frees both the bitmap
 and reservation on error or cancellation. On success it clears
 `ImportProgressData.IPD_callback`: the final update in BbxBrow's
 `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` chooses firstLine zero when that
@@ -83,3 +95,67 @@ before `WebPDecodeInit()` allocates working buffers; `WebPImportBegin()`
 frees the zero-initialized decoder on parser failure. `WebPMapResult()`
 maps unsupported data to `IBS_WRONG_FILE`, so it does not trigger the
 `IBS_UNKNOWN_FORMAT` raster fallback chain in `MAIN/impgraph.goc`.
+
+BbxBrow's page progress indicator is not decoder-row telemetry. In
+`Appl/Breadbox/BbxBrow/htmlview/UIOften.goc`,
+`MSG_HMLVA_UPDATE_PROGRESS_INDICATOR` (or the process variant) deliberately
+alternates the displayed value between `progressValue` and
+`progressValue - PROGRESS_BLINK_WIDTH` after unchanged weighted page/formatting
+progress for about five seconds. `PI_TIMER` ticks every half second; the
+blink threshold is `progressDelay > 10`, and `PROGRESS_BLINK_WIDTH` is 4.
+This animation does not establish whether `WebPDecoder.mbY` advances.
+
+The actual MIME import destination is the object-cache VM file from
+`ObjCacheGetVMFile(request.name)` (`htmlview/ImportG.goc`), not the
+`G_importWorkFile` used for progressive staging. Appending a new HugeArray
+data block calls `VMAllocLMem` -> `VMAttachNoEC` -> `VMEnforceHandleLimit`.
+The latter triggers above 250 resident handles per file and attempts to
+reduce the count to 150 (`Library/Kernel/VMem/vmemLow.asm`). Its
+`WriteOutSwappedBlocks` pass writes dirty swapped blocks through `RidBlk`
+and `VMUpdateAndRidBlk`. This limit is independent of the allocation watcher.
+`HA_UPPER_LIMIT` is 6000 bytes (`vmemConstant.def`); `AllocHABlock` in
+`vmemHugeArray.asm` combines an appended element with the preceding block
+only when the combined used size stays within that limit.
+
+EC VM writes can incur repeated full-header checks:
+`VMFindFollowingUsedBlk` searches from the start of the block table via
+`VMGetNextInUseBlk`; every call to the latter invokes `VMCheckDSHeader`
+in EC builds (`vmemBlkManip.asm`). That check walks the entire block table
+to recount resident handles (`vmemEC.asm`). Thus a search through N entries
+can perform O(N squared) header-check work before accounting for repeated
+writes or other validation. A sample in this path identifies VM output
+work, but does not establish its fraction of total import time.
+
+`VMCheckDSHeader` currently has no `ECF_VMEM` gate, including around its
+full-table resident-handle recount. Swat `ec -vm` disables other costly
+checks such as `VMCheckStrucs`, `VMVerifyWrite`, and `ECCheckHugeArray`, but
+does not bypass the direct call from `VMGetNextInUseBlk`. See
+`vmemEC.asm`, `vmemHugeArray.asm:ECCheckHugeArray`, and
+`Tools/swat/lib.new/ec.tcl`. The 250/150 handle thresholds and the HugeArray
+4000/6000-byte sizing thresholds are kernel constants, not per-file API
+settings. For variable-sized HugeArrays, `HugeArrayAppend` appends exactly
+one element of the supplied byte size (`vmemHugeArray.asm:HugeArrayAppend`);
+combining multiple compressed bitmap scanlines into that one element would
+change the one-element-per-scanline representation.
+
+ImpGraph provides a C/ESP decoder integration reference:
+`IMPBMP/impgif.h` declares `_pascal ImpGIFProcess`;
+`IMPBMP/impgifc.goc:IGIFAnimGrabFrame` calls it. In
+`ASMIMP/impgif.asm`, `IMPGIFPROCESS` is the far stack-argument C stub,
+which loads registers and calls `ImpGIFProcess`. The core locks decoder
+state into DS and uses near routines for state dispatch, dictionary/LZW
+decoding, and pixel output. `ASMIMP/asmimpManager.asm` sets the GEOS
+convention and includes that implementation. `IMPPACKBITS` in the same
+file is a C-callable assembly scanline compressor declared as
+`ImpPackBits` in `IMPBMP/ibcommon.h`. These routines belong to ImpGraph;
+its GP file depends on WebpLib, and does not export `IMPPACKBITS`.
+
+For ESP DSP code, `Include/product.def` defaults
+`SUPPORT_32BIT_DATA_REGS` to TRUE; legacy product branches override it to
+FALSE. `Library/AnsiC/memory_asm.asm` conditionally enables `.386` and
+uses `rep movsd`. Kernel thread save/restore preserves register high words
+and FS/GS under that same switch
+(`Include/Internal/heapInt.def:ThreadBlockState`,
+`Library/Kernel/Thread/threadSem.asm:WakeUpSI`,
+`threadThread.asm:RecoverFromPartialBlock`). This is existing support for
+32-bit data registers within the 16-bit GEOS environment.

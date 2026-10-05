@@ -524,3 +524,14 @@ The EC `WARNING_FIRST_LAYOUT_*` markers in `htmlclas/htmlclas.goc`,
 `htmltpos.goc`, and `htmltcel.goc` distinguish unsuspension, region-link setup,
 longest-line measurement, region adjustment, min/max preparation, and the first
 cell step. They run before the named work and disappear from NC builds.
+
+HTMLText attachment copies each hypertext chunk array into its own LMem block
+(`htmlclas/htmlclas.goc:MSG_HTML_TEXT_ATTACH_TO_ITEM`, `GetArray`,
+`LMemCopyToBlock`); the live `HTI_imageArray` is therefore separate from the
+transfer item's combined array block. `MSG_HTML_TEXT_GET_IMAGE` copies one
+`HTMLimageData` to caller storage under a short lock.
+`MSG_HTML_TEXT_RESOLVE_IMAGE` synchronously copies caller data back under its
+own lock, then uses that caller data for graphic/layout updates. The caller
+buffer must remain valid through the entire call; it need not point into the
+image array. Evidence: `Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`,
+those message handlers, and `CInclude/html4par.goh` message declarations.

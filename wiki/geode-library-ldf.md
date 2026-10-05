@@ -5,3 +5,11 @@ A new library geode's normal build creates its `.ldf` in its own `Installed/` bu
 The top-level `Installed/Makefile` is a hand-maintained product build graph, unlike the mkmf-generated Makefiles in `Installed/` module subdirectories. Its `MAKELIB` rule runs `pmake full lib` for dependencies, so a new library must have a named target and must be included in the dependency list of each consumer. The product file tree only selects geodes to copy into the assembled runtime; it does not build missing dependencies. See `Installed/Makefile` (`MAKELIB`, `impgraph`, `graphvwr`) and `Tools/build/product/bbxensem/bbxensem.filetree` (ImpGraph and SvgLib entries).
 
 Overriding `PRODUCTS` on the pmake command line does not add the product's dependency-file include to an existing generated Makefile. If that include is missing, assembler targets can invoke ESP without a manager source in `.ALLSRC`. Regenerate the Makefile with `mkmf` so it includes the discovered products' dependency files; regenerate dependencies with `pmake depend` when absent or stale. Evidence: `Tools/nmkmf/mkmf.c:MkmfPrintPRODUCTS` and product dependency includes around lines 2587-2597; `Include/sun.geos.mk:ASSEMBLE` selects `$(.ALLSRC:M*Manager.asm)`.
+
+When mixing ESP and Watcom C objects, putting the ESP object first can
+make Glue report C static functions as `undefined2`; the same objects link
+when C precedes ESP. Order the normal, EC, and GCM object lists consistently
+(`OBJS`, `EOBJS`, `GOBJS`) in source `local.mk`; changing `OBJS` alone can
+leave the already-expanded EC list in its original order. See
+`Library/WebpLib/local.mk` and `Tools/glue/msobj.c:MSObjMapExternal` for
+the unresolved-external diagnostic.

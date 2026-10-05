@@ -31,9 +31,10 @@ It unlocks and rebinds the luma and chroma cache around each append. After
 `WebPDecodeRow()` unlocks its input, context, luma, and chroma blocks, it updates
 the bitmap directory height once by the number of lines appended. This also
 accounts for scanlines appended before a later row-processing error.
-The filter's many `swebp__abs()` calls are another potential performance cost
-on 16-bit systems; a stack sample inside the filter alone does not establish a
-loop.
+Host tests retain the C filter reference under `WEBP_HOST_TEST`; target
+filter loops use ESP (`webpcore.inc`, `webpfilter.asm`). Passing the host
+corpus therefore does not execute the target filters. A stack sample inside
+a filter alone does not establish a loop.
 
 `WebPParseContainer()` in `Library/WebpLib/webpriff.c` rejects zero dimensions
 and dimensions above 2048 before decoding. The five-argument
@@ -159,3 +160,11 @@ and FS/GS under that same switch
 `Library/Kernel/Thread/threadSem.asm:WakeUpSI`,
 `threadThread.asm:RecoverFromPartialBlock`). This is existing support for
 32-bit data registers within the 16-bit GEOS environment.
+
+ESP accepts `.386` but its mnemonic table omits `MOVZX` and `MOVSX`
+(`Tools/esp/opcodes.h`, `parse.y`). These instructions require explicit
+encoding when needed; `webpfilter.asm:WebPLoadPixel` documents
+`0f b6 05` as `movzx ax, byte ptr ds:[di]` in a 16-bit code segment.
+Use `.inst byte` for such opcode bytes inside a procedure; plain `byte`
+produces the `Data declared in-line without .inst directive` warning.
+See `Library/Kernel/FSD/fsdInit.asm` for another explicit opcode example.

@@ -141,3 +141,12 @@ Evidence: `Import/svgShape.goc:SvgShapeHandlePolyline/SvgShapeHandlePolygon`,
 `Import/svgRenderer.goc:SvgRendererPolygon/SvgRendererPolyline`,
 `Library/Kernel/Graphics/graphicsPolyline.asm:polylineGSCommon`, and
 `graphicsStringStore.asm:WriteVMemGString`.
+
+SvgLib fixed-point geometry already uses native assembly multiplication:
+C `GrMulWWFixed` maps to `GRMULWWFIXED`, whose stack-argument wrapper loads
+DX:CX and BX:AX and calls register-based `GrMulWWFixed`
+(`Library/Kernel/Graphics/graphicsC.asm`). The latter calls
+`GrRegMul32ToDDF` (`graphicsMath.asm`). SvgLib's `GrAddWWFixed` and
+`GrSubWWFixed` are local C macros, not kernel calls (`Import/svg.h`).
+Thus geometry-call overhead and the surrounding loops must be distinguished
+from the implementation of the arithmetic primitive itself.

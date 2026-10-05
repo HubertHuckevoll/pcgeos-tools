@@ -535,3 +535,13 @@ own lock, then uses that caller data for graphic/layout updates. The caller
 buffer must remain valid through the entire call; it need not point into the
 image array. Evidence: `Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`,
 those message handlers, and `CInclude/html4par.goh` message declarations.
+
+PNG scanline processing and final compaction are separate phases.
+ImpGraph's `IMPBMP/imppng.goc:PngImport` calls
+`pngImportGetNextIDATScanline`; PngLib calls `unfilterRow` after accumulating
+a complete inflated scanline (`Library/PngLib/pngimp.c`). Its Paeth path
+calls C `paethPredictor` once per byte (`common.c`). ImpGraph's `ImpPNG`
+returns `isCompacted = FALSE`, so `MimeDrvGraphicEx` subsequently calls
+`GrCompactBitmap` for bitmap output when `locCompress` is true
+(`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`). Decoder timings must therefore
+be distinguished from this later VM-backed bitmap compaction.

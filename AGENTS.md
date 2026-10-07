@@ -196,7 +196,7 @@ For a new geode, or when build files are missing, create the geode folder manual
 
 Do not try to run PC/GEOS to test stuff.
 
-Non-trivial logic leaves one small runnable check behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
+Non-trivial logic leaves one small runnable check in a project local "tests" folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
 
 ## Debugging
 

@@ -41,8 +41,11 @@ Evidence:
   `MSG_URL_FRAME_URL_FETCHED`, `HandleHTMLError`, and `DialogError`
 - `Appl/Breadbox/BbxBrow/navigate/NAVIGATE.goc`, `MsgAborted`
 - `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`,
-  `MSG_HTML_TEXT_FORMATTING_ENDED`, `MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS`,
-  `MSG_URL_TEXT_GRAPHIC_FETCHED`, and `MSG_URL_TEXT_DEC_PENDING`
+  `MSG_HTML_TEXT_FORMATTING_ENDED` and `MSG_URL_TEXT_DEC_PENDING`
+- `Appl/Breadbox/BbxBrow/urltext/URLTextImageProgress.goc`,
+  `MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS` and `LoadGraphicProgressCallback`
+- `Appl/Breadbox/BbxBrow/urltext/URLTextImages.goc`,
+  `MSG_URL_TEXT_GRAPHIC_FETCHED` and `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`
 - `Appl/Breadbox/BbxBrow/urlfetch/URLFETCH.goc`, `URLFetchEngineStop`,
   `URLFetchExtraMemoryAlloc`, and `URLFetchExtraMemoryFree`
 - `CInclude/htmlprog.h`, `LoadProgressData.LPD_request`
@@ -83,7 +86,7 @@ image cancellation and runs its common cleanup: clear
 `G_importActive[LPD_loadThread]` when `fetchWhileImport` is true, otherwise
 release `LPD_importSync`, then release temporary-file/page-owner resources
 and decrement the pending request count. The cancellation receiver in
-`urltext/URLTEXT.goc`, `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, releases
+`urltext/URLTextImages.goc`, `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, releases
 the request's name token even after its image array has been detached.
 These queued abort events run after any currently executing import returns.
 

@@ -27,7 +27,7 @@ result as a GString. `FileCreateTempFile()` can supply the importer with a
 file handle, but its caller owns explicit close and deletion; see
 `TechDocs/Markdown/Concepts/cfile.md`.
 `HandleInlineSVG()` closes its backing file before publishing its name token.
-`ProcessSingleGraphic()` in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` queues
+`ProcessSingleGraphic()` in `Appl/Breadbox/BbxBrow/urltext/URLTextImages.goc` queues
 that absolute path with `temporary=FALSE` and a page cache owner.
 `ImportThreadRequestImportGraphic()` retains that owner until
 `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` completes, so page detachment cannot
@@ -91,7 +91,7 @@ Inline image sizing has two stages. `ParseImage()` in
 unspecified dimensions on ordinary images. Inline SVG instead starts with
 zero graphic and image size, while keeping an insertion position. After
 import, `URLTextInitializeImage()` in
-`Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` combines those authored dimensions
+`Appl/Breadbox/BbxBrow/urltext/URLTextImages.goc` combines those authored dimensions
 with intrinsic dimensions into drawing scales and `HID_size`; resolution then
 updates the variable graphic and layout through `MSG_HTML_TEXT_RESOLVE_IMAGE`
 in `htmlclas/htmlclas.goc`. Inline SVG
@@ -116,7 +116,7 @@ when the rectangle first appears, shrinks, or an import batch completes.
 It changes image records and graphic runs, then marks layout dirty and
 requests a complete redraw once. Ordinary image sizes are unchanged.
 These appended messages use the Html4Par `HTMLTextInlineSVG` protocol minor;
-see `CInclude/html4par.goh`, `html4par.gp`, `urltext/URLTEXT.goc` and
+see `CInclude/html4par.goh`, `html4par.gp`, `urltext/URLTextImages.goc` and
 `htmlclas/htmlclas.goc`.
 
 The transfer header is a VM chain tree. `InitTransferItem()` in
@@ -134,7 +134,7 @@ See `ParseImage()` in
 `CInclude/html4par.goh`.
 
 `ImageURLGetUnsupportedFormat()` in
-`Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc` returns true only when the final
+`Appl/Breadbox/BbxBrow/urltext/URLTextImages.goc` returns true only when the final
 URL path extension maps to an image MIME type and no installed MIME driver
 handles that type. Query strings and fragments are ignored; unknown and
 extensionless URLs still reach the URL driver. `InitNavigation()` seeds known
@@ -162,7 +162,7 @@ request's cache reference before reporting failure or cancellation. A queued
 must release it even after `HTI_imageArray` is cleared; the message's data
 block must be unlocked before it is freed.
 Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
-`MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`, and
+`MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTextImages.goc`, and
 `ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/NAVCACHE.goc`.
 
 Intelligent image admission happens at import time. BbxBrow passes
@@ -249,7 +249,7 @@ intrinsic-pixel bound. WebP admission checks
 but `ImpSVG()` checks GString bounds area only after `SvgImport()` has built
 the vector graphic (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`). Inline SVG
 imports pass zero for `maxPixels` (`ProcessInlineSVG` in BbxBrow's
-`urltext/URLTEXT.goc`) and start with invisible zero-sized placeholders.
+`urltext/URLTextImages.goc`) and start with invisible zero-sized placeholders.
 
 When the separate Wmg3Http transfer-size cap is active, a known final
 Content-Length that passed the pre-body cap may still stream. An unknown or
@@ -275,7 +275,7 @@ type lives in `Appl/Breadbox/BbxBrow/htmlview.goh`; the default is set in
 out-of-range values. If integer parsing fails but `InitFileReadBoolean()`
 recognizes a legacy Boolean value, initialization replaces it with integer
 mode 2 before continuing. `ProcessSingleGraphic()`
-in `urltext/URLTEXT.goc` passes `LoadProgressData` to the fetch only in
+in `urltext/URLTextImages.goc` passes `LoadProgressData` to the fetch only in
 streaming mode (plus the existing reserved-position and minimum-height
 restrictions). `ImportThreadRequestImportGraphic()` in `htmlview/ImportG.goc`
 installs `IPD_callback` for any mode above final, so completed-file import
@@ -292,7 +292,7 @@ that object after decoding, while each progress notification owns a cache refere
 until the receiver transfers it to `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`.
 
 Evidence: `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`,
-`htmlview/LoadURL.goc`, and `urltext/URLTEXT.goc`; `CInclude/htmldrv.h`; and
+`htmlview/LoadURL.goc`, and `urltext/URLTextImages.goc` and `urltext/URLTextImageProgress.goc`; `CInclude/htmldrv.h`; and
 `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`.
 
 Without `PROGRESS_DISPLAY`, MIME discovery in `LoadMimeTypes()` and
@@ -310,7 +310,7 @@ dispatch are in `init/INIT.goc`, `navigate/NAVIGATE.goc`, and
 progress callback after each decoded macroblock row with output lines. In
 BbxBrow, `ImportGraphicProgressCallback()` in `htmlview/ImportG.goc` coalesces
 pending updates for the same bitmap; each delivered
-`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTEXT.goc` calls
+`MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTextImageProgress.goc` calls
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which scans `HTI_imageArray`
 for matching URLs. Changed geometry uses the resolver and waiting-image list
 described above.
@@ -320,29 +320,23 @@ decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
 first created; its implementation in `navigate/NAVCACHE.goc` updates and
 trims the cache VM files when global free handles drop below 500.
 
-BbxBrow's default loading-progress stream uses the existing VM-backed
-HugeArray path in `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`.
-`LoadGraphicProgressCallback(LPCT_WRITE)` trims resident VM handles to
-20 once they exceed 30; `urlfetch/URLFETCH.goc:URLFetchEngineStart` creates
-these files without `VMA_SYNC_UPDATE`, allowing dirty input to be paged out.
-FJPEG uses `LPCT_PRE_READ` while parsing headers so ImpGraph can retry a JPEG
-with IJGJPEG when FJPEG cannot handle it. The read callback advances peeks
-across HugeArray blocks without deletion and removes the retained first packet
-using its actual size on the next consuming read. See `fill_input_buffer_i()`
-in `Library/Breadbox/Fjpeg/code/init.c` and the fallback in
-`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`.
+BbxBrow's active loading-progress stream uses `MemStream` because
+`USE_MEM_STREAM` is defined in the private `urltext/MemStream.h`. Its buffer
+implementation and limits are in `urltext/MemStream.c`; `G_stream` and callback
+synchronization stay in `urltext/URLTextImageProgress.goc`. It allocates 8 KB blocks lazily in 200 slots for each fetch child. Its
+absolute tail limit is `MEM_STREAM_BLOCK_SIZE * MEM_STREAM_INIT_BLKS`;
+`MemStreamWrite` appends only while `tail + bufSize` is strictly below that
+limit. Consuming reads free blocks but do not reset the absolute tail, and
+there is no producer backpressure. The VM-backed HugeArray alternative
+remains behind `#ifndef USE_MEM_STREAM`; it is not the active stream path.
+
 The stream wait must atomically recheck both completion and byte availability
 before joining the wait queue: `WakeUp()` drops a signal if no reader is
 queued yet. Checking only `LPD_fileDone` misses data arriving between
 `ThreadVSem(LPD_sem)` and `Block()`. See `LoadGraphicProgressCallback()`
-in `urltext/URLTEXT.goc` and `BLOCK`/`WAKEUP` in
-`Appl/Breadbox/BbxBrow/ASMTOOLS/asmtoolsManager.asm`; commit `fee41a888`
-adds the atomic `LPD_bytesAvail - LPD_preReadOffset >= needed` check.
-`LPCT_RESET_STREAM_STATE` must restore `LPD_bytesAvail` from the retained
-HugeArray count after a consuming first-packet probe, under `LPD_sem`;
-otherwise a GIF-to-JPEG fallback replays the bytes with a reduced count and
-skips input at the next refill. `LPCT_FLUSH_FIRST` instead deletes that packet
-before reconciling the count for the next GIF frame.
+in `urltext/URLTextImageProgress.goc`, `BLOCK`/`WAKEUP` in
+`ASMTOOLS/asmtoolsManager.asm`, and `urltext/check_stream_wait.pl`.
+
 
 The BbxBrow progress bar deliberately alternates its displayed value after
 five seconds without a progress change (`htmlview/UIOften.goc`,
@@ -376,14 +370,14 @@ Image import runs synchronously inside
 `ToolsImportGraphicByDriver` / `ImportGraphicByNative` (`htmlview/LoadURL.goc`).
 Streamed GIF reads in `ImpGraph/IMPBMP/impgifc.goc` and JPEG refills in
 `Ijgjpeg/DECOMP/JDATASRC.c` invoke `LPCT_READ` on
-`LoadGraphicProgressCallback` (`urltext/URLTEXT.goc`). It waits for the requested
+`LoadGraphicProgressCallback` (`urltext/URLTextImageProgress.goc`). It waits for the requested
 byte count or `LPD_fileDone` through `Block` / `ThreadBlockOnQueue`
 (`ASMTOOLS/asmtoolsManager.asm`). HTTP writes and stream closure wake the
 reader. A queued image request on that importer cannot start until the
 current import returns; the separate file importer avoids that queue delay.
 
 Streaming state is indexed by fetch child, independently of importer objects:
-`G_stream[2]` in `urltext/URLTEXT.goc`, and `G_importActive[]` /
+`G_stream[2]` in `urltext/URLTextImageProgress.goc`, and `G_importActive[]` /
 `G_importLoadProgressData[]` in `urlfetch/URLFETCH.goc`. `LPCT_WRITE` buffers
 input without waiting for the importer to consume it; a queued stream can
 therefore retain its downloaded input. `fetchWhileImport = false` holds a
@@ -395,11 +389,11 @@ The read-side wait must atomically recheck `LPD_fileDone` and
 `LPD_fileDone` can sleep after data arrived in the check-to-block gap. The
 HugeArray byte stream also needs chunked deletes because `HugeArrayGetCount()`
 returns a DWORD while `HugeArrayDelete()` accepts a WORD
-(`CInclude/hugearr.h`, `URLTEXT.goc`, `ASMTOOLS/asmtoolsManager.asm`).
+(`CInclude/hugearr.h`, `URLTextImageProgress.goc`, `ASMTOOLS/asmtoolsManager.asm`).
 
 In the default layout, importer 0 receives all requests with a null
 load-progress pointer: `ProcessInlineSVG`, `MSG_URL_TEXT_GRAPHIC_FETCHED`,
-and `MSG_URL_TEXT_GRAPHIC_PRELOADED` in `urltext/URLTEXT.goc`. This includes
+and `MSG_URL_TEXT_GRAPHIC_PRELOADED` in `urltext/URLTextImages.goc`. This includes
 inline SVG temporary files and file-based image imports; `ProcessSingleGraphic`
 excludes reserved image positions and small authored heights from streaming,
 and `LoadGraphicProgressCallback` streams only GIF/JPEG. Importer 0 can still
@@ -407,11 +401,11 @@ report progressive decoding through `IPD_callback`; absence of a live fetch
 stream does not mean absence of import progress (`htmlview/ImportG.goc`,
 `ImportThreadRequestImportGraphic`).
 
-The former RAM stream remains behind the undefined local `USE_MEM_STREAM`
+The active RAM stream is selected by the defined local `USE_MEM_STREAM`
 switch. It allocates 8 KB blocks lazily, with 200 slots, has no producer
 backpressure, and stops appending at an absolute tail ceiling while
-`LPCT_WRITE` still increments `LPD_bytesAvail`. Re-enabling that path would
-restore these limitations; reducing its slot count alone is unsafe.
+`LPCT_WRITE` still increments `LPD_bytesAvail`. These limits apply to the
+active stream; reducing its slot count also reduces input capacity.
 
 The literal `Formatting Page.` status is posted by
 `MSG_URL_FRAME_URL_FETCHED` in `urlframe/FRFETCH.goc` when the parsed page is
@@ -441,7 +435,7 @@ separate intrinsic size/origin. BbxBrow retains those in cached
 `ImageAdditionalData` (`IAD_size`, `IAD_origin`); `IReplaceGraphic` obtains them
 through `ObjCacheLockItem` and reconstructs geometry with
 `URLTextInitializeImage`. See `CInclude/html4par.goh`, `CInclude/htmldrv.h`,
-`htmlclas/htmlclas.goc`, and BbxBrow `urltext/URLTEXT.goc`.
+`htmlclas/htmlclas.goc`, and BbxBrow `urltext/URLTextImages.goc`.
 
 VisText normally measures a graphic from its stored `VTG_size`.
 `Library/Text/TextGraphic/tgGraphic.asm:TG_GraphicRunSize` invokes
@@ -465,7 +459,7 @@ still belong to the request URL.
 Picture source selection is parse-time state, not image geometry.
 `ParseFrameHTML()` in BbxBrow `urlframe/FRFETCH.goc` passes a
 `HTMLImageSourceContext` to `ParseAnyFileWithImageSources()`. Its width comes
-from `MSG_URL_TEXT_GET_IMAGE_SOURCE_WIDTH` in `urltext/URLTEXT.goc`, which
+from `MSG_URL_TEXT_GET_IMAGE_SOURCE_WIDTH` in `urltext/URLTextImages.goc`, which
 returns `HTI_viewWidth` only when `HTS_VIEW_NOT_OPENED` is clear. Html4Par
 snapshots that word and the MIME callback in `ParseHTMLFileWithImageSources()`;
 no GenView query is needed. `Open_SOURCE()` in `htmlpars/opentags.goc` keeps
@@ -482,7 +476,7 @@ on resize or cached-page attachment. See also
 `TechDocs/Markdown/Concepts/html-image-sources.md` and `htmtest/check_image_sources.pl`.
 
 Broken-image drawing is separate from failure classification. BbxBrow's
-`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` in `urltext/URLTEXT.goc`
+`MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` in `urltext/URLTextImages.goc`
 marks every matching `HID_resolvedURL` broken when passed `OCT_NULL`.
 Fetch failures (`MSG_URL_TEXT_GRAPHIC_FETCHED`) and import failures
 (`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `htmlview/ImportG.goc`)
@@ -497,6 +491,14 @@ dimensions are at least 20 pixels. The nested 4-pixel X check does not
 lower that outer threshold. Stop/cancellation instead uses
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, retaining complete cached
 images and resetting incomplete resolving images to UNRESOLVED.
+
+BbxBrow's `MSG_URL_TEXT_DEC_PENDING` calls
+`MSG_URL_TEXT_HIDE_BROKEN_IMAGES` before `MSG_HTML_TEXT_CALCULATE_LAYOUT`
+when the pending count reaches zero and the text object is not doomed.
+The hide handler in `urltext/URLTextImages.goc` collapses broken inline images;
+it skips background and other reserved image positions at or above
+`HTML_IMAGE_POS_RESERVED`. Evidence: `urltext/URLTEXT.goc`,
+`MSG_URL_TEXT_DEC_PENDING`, and `CInclude/html4par.goh`.
 
 `MSG_HTML_TEXT_RESOLVE_IMAGE` sets RESOLVED and clears BROKEN/RESOLVING,
 even for zero-sized images. Its text-graphic size includes twice hspace and

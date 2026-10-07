@@ -46,3 +46,36 @@ HTI_pageLeftMargin and one right-edge pixel for the top-level cell.
 ICalculateViewSize adds back an existing vertical scrollbar and subtracts
 its zoom-adjusted pixel allowance before returning the width used for
 HTI_formattedWidth.
+
+## Visited links and source-cache recency
+
+`MSG_URL_FRAME_FLIP_PAGE` calls `MSG_URL_TEXT_MARK_VISITED_LINKS` after
+attaching the cached text item and before starting graphics processing or
+showing the item (`Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc`). The scan
+resolves anchor URLs through the frame and removes fragments before looking
+them up in the source cache (`urltext/URLTextLinks.goc`).
+
+This presentation operation also changes cache recency: `SrcCacheFindURL`
+removes each found entry and appends it to the source-cache array under
+`srcCacheSem`, making it most recently used. This occurs before any expiration
+check when `CACHE_VALIDATION` is enabled. Evidence:
+`Appl/Breadbox/BbxBrow/navigate/NAVCACHE.goc`, `SrcCacheFindURL`,
+`SrcCacheIsExpired`; semaphore macros in `htmlview.goh`.
+
+## Print ornament coordinate space and target routing
+
+Html4Par calls `MSG_HTML_TEXT_PRINT_PAGE_ORNAMENTS` for each printed page
+before saving the GState and applying the text body's clipping, translation
+and fit-to-page scaling. Its `page` rectangle is constructed from printer
+margins and printable paper dimensions. Ornaments therefore use paper
+coordinates rather than the scaled document coordinates used by `MSG_VIS_DRAW`.
+Evidence: `Library/Breadbox/Html4Par/htmlclas/htmlclas.goc`,
+`MSG_PRINT_START_PRINTING`; message parameters in `CInclude/html4par.goh`.
+
+BbxBrow's `URLDocumentClass::MSG_PRINT_GET_DOC_NAME` routes the request as a
+classed event to `TO_TARGET` through the document display. If an HTML form's
+in-place text entry holds that target, `InPlaceTextEntryClass` forwards the
+print messages to `IPTEI_urlTextObj`. Evidence:
+`Appl/Breadbox/BbxBrow/urldoc/URLDOC.goc` and
+`Library/Breadbox/Html4Par/htmlclas/htmlfedi.goc`,
+`MSG_PRINT_GET_DOC_NAME` and `MSG_PRINT_START_PRINTING`.

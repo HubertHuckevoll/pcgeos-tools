@@ -115,7 +115,7 @@ branch of `MimeDrvGraphicEx()` has no raster-format fallback; failure
 leaves `bmVMBlock` zero. BbxBrow's import method then sends
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` with `OCT_NULL`, marks the image
 broken and decrements the pending count (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`,
-`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`, `urltext/URLTEXT.goc`).
+`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`, `urltext/URLTextImages.goc`).
 
 Each non-null scratch pointer records one active lock.
 `SvgScratchEnsureCapacityCommon()` reuses an existing pointer without

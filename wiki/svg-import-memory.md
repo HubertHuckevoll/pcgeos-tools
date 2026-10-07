@@ -32,6 +32,22 @@ and positive dimensions. `TE_OUT_OF_MEMORY` returns `IBS_NO_MEMORY` without
 setting `MIME_STATUS_MEMORY_LIMIT`. Evidence:
 `Library/Breadbox/ImpGraph/MAIN/impgraph.goc` (`ImpSVG`).
 
+`SvgImport()` accepts an optional `const volatile Boolean *cancelP` after its
+progress callback. `SvgImportParse()` polls for nonzero between tags
+independently of progress reporting; callback true still cancels. Cancellation
+returns `TE_ERROR`, frees partial output, and leaves the result chain zero.
+`ImpSVG()` casts its `MS_mimeFlags` pointer at the boundary: GEOS `Boolean`
+is `sword` (`CInclude/geos.h`), while `MimeStatusFlags` is `word` with only
+`MIME_STATUS_ABORT` defined (`CInclude/htmldrv.h`). Other status flags would
+require a separate live Boolean in the adapter. ImpGraph maps cancellation to
+`IBS_IMPORT_STOPPED`. Graphvwr and the SVG translator pass a null cancellation
+pointer, retaining callback cancellation. The flag storage must remain valid
+and cancellation set until the call returns.
+Evidence: `CInclude/svgLib.h`, `Import/svg.goc`, `Import/svgApi.goc`,
+`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`,
+`Appl/Breadbox/Graphvwr/MAIN/bmpview.goc:BVImportGraphic`, and
+`Library/Trans/Graphics/Vector/Svg/svgAdapter.goc:SvgAdapterImport`.
+
 BbxBrow passes source filenames, not open handles, through
 `ToolsImportGraphicByDriver()` and `ImportGraphicByNative()` in
 `Appl/Breadbox/BbxBrow/htmlview/LoadURL.goc`. `ImpSVG()` opens its own local

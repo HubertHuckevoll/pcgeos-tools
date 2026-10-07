@@ -105,3 +105,15 @@ urlfetch/URLFETCH.goc, URLFetchChildThread waits on LPD_importSync after
 LoadURLToFile when fetchWhileImport is false. With fetchWhileImport true,
 the fetch engine suppresses loading-progress callbacks for the
 next request while that fetch child's prior import remains active.
+
+Raster import progress and cancellation are separate channels. BbxBrow supplies
+`ImportProgressData.IPD_callback` (`ImportGraphicProgressCallback`, returning
+void) and a separate `MimeStatus *` per importer in `htmlview/ImportG.goc`.
+PNG and both JPEG importers in `Library/Breadbox/ImpGraph/IMPBMP/` publish
+scanline progress by passing the explicit `ImportProgressData *` to that
+callback, but check `MS_mimeFlags & MIME_STATUS_ABORT` directly in their
+scanline loops (`imppng.goc`, `impjpeg.goc`, `impfjpeg.goc`). GIF stores the
+status pointer in `IGS_mimeStatus` and checks it at each `IUpdateGIFState`
+step (`ASMIMP/impgif.asm`); its C wrapper publishes progress separately
+(`IMPBMP/impgifc.goc:IGIFAnimGrabFrame`). These paths do not use thread-private
+storage to bind the progress callback to its import.

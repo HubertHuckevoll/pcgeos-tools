@@ -1,5 +1,16 @@
 # Html4Par images
 
+Parser source tokens and runtime URL tokens have different owners.
+`NamePoolVMLoad()` in `Library/Breadbox/Html4Par/wwwtools/namepool.goc`
+creates an LMem hash index over the existing VM HugeArray; it does not clone
+strings or acquire their token references. `NamePoolVMUnload()` frees only
+that index. The image arrays copied by `MSG_HTML_TEXT_ATTACH_TO_ITEM` and
+`MSG_HTML_TEXT_UPDATE_ITEM` in `htmlclas/htmlclas.goc` therefore borrow the
+transfer item's parser tokens. Do not release those tokens merely because
+an attached image switches runtime sources. BbxBrow's `HID_resolvedURL`
+instead owns a reference in the browser's global NamePool, released by its
+`MSG_HTML_TEXT_ATTACH_TO_ITEM` handler in `urltext/URLTEXT.goc`.
+
 Inline `<svg>` is captured as raw bytes by `HandleInlineSVG()` in
 `Library/Breadbox/Html4Par/htmlpars/htmlpars.goc`, using a 1024-byte buffer
 and one temporary file per admitted SVG. `HTMLimageData.svgFile` owns a

@@ -12,12 +12,25 @@ therefore still sees the closing tag and its enclosing tags. Evidence:
 `Library/Breadbox/Html4Par/htmlpars/parstags.goc` (`PopStyle`,
 `EnclosingCount`).
 
-`SkipRawTextContent()` is shared by every build variant. `HandleTag()` must
-resolve `tagStyle` before filtering attributes, use the raw-text path for
-`STYLE`, and use it for `SCRIPT` whenever `HTML_JAVASCRIPT` is disabled.
-Calling `HandleScript()` on that disabled path incorrectly creates script
-storage. `HandleTag()` also owns and frees the parameter array passed to
-`Open_SCRIPT()`; the callee must not free it a second time.
+`SkipRawTextContent()` is shared by every build variant. `HandleNamedTag()`
+must resolve `tagStyle` before filtering attributes and use the raw-text path
+for `STYLE`. `SCRIPT` uses that path when script processing is disabled or
+`ignoreTags` is nonzero; ignored `TITLE` and `TEXTAREA` bodies also need it so
+apparent tags cannot change nesting. Calling `HandleScript()` on an ignored
+or disabled path incorrectly creates script storage. `HandleNamedTag()` owns
+and frees the parameter array passed to `Open_SCRIPT()`; the callee must not
+free it a second time. Evidence: `htmlpars/htmlpars.goc`.
+
+`HTML_JAVASCRIPT` enables collection in both JS and AutoBrowse builds;
+execution additionally requires `JAVASCRIPT_SUPPORT`. `Open_NOSCRIPT()` in
+`htmlpars/opentags.goc` leaves suppression active when script processing or
+`HTML_IGNORE_NOSCRIPT` is enabled. Suppression uses both `TAG_IGNORE_TAGS`
+and `TAG_FLUSH_TEXT`: the main output loop also checks `ignoreTags`, so
+suppression survives a full `HTML_MAXSTACK` formatting stack.
+`GetCurrentStyles()` in
+`htmlpars/parstags.goc` must preserve `TAG_CUMULATIVE_FLAGS` even when
+`HTML_READ_FAST` skips formatting. Ignored attributes still require the
+quote-aware parameter scanner, with values discarded before allocation.
 
 `JAVASCRIPT_SUPPORT` additionally owns execution and reparsing HTML generated
 by `document.write`. The `HTMLextra.HE_scriptSrc` fields, `ScriptSrcHeader`,

@@ -558,3 +558,16 @@ returns `isCompacted = FALSE`, so `MimeDrvGraphicEx` subsequently calls
 `GrCompactBitmap` for bitmap output when `locCompress` is true
 (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`). Decoder timings must therefore
 be distinguished from this later VM-backed bitmap compaction.
+
+BbxBrow's Fit To Window option is applied during image resolution, before the
+final layout pass. `URLTextInitializeImage` in `urltext/URLTEXT.goc` first
+derives scales from HTML WIDTH/HEIGHT and cached `ImageAdditionalData`. With
+the option enabled it only reduces an inline image whose horizontal scale
+exceeds `(HTI_viewWidth - HTI_pageLeftMargin - 1 - 2*hspace) / IAD_size.width`
+(the available width has a one-pixel floor). It does not enlarge small images.
+An authored large WIDTH or height-derived width can already enlarge an image
+before that clamp. `MSG_HTML_TEXT_RESOLVE_IMAGE` in Html4Par
+`htmlclas/htmlclas.goc` copies HID_size plus spacing into VTG_size and marks
+layout dirty; BbxBrow's `MSG_URL_TEXT_DEC_PENDING` then requests layout when
+loading finishes. `DrawVarGraphic` in `htmlclas/htmlfdrw.goc` uses the stored
+image transform, independent of the allocated table/cell width.

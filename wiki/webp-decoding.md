@@ -36,6 +36,14 @@ filter loops use ESP (`webpcore.inc`, `webpfilter.asm`). Passing the host
 corpus therefore does not execute the target filters. A stack sample inside
 a filter alone does not establish a loop.
 
+WebpLib's `local.mk` puts `webpfilter` objects after the C objects because
+`webpvp8.c` (via `webpcore.inc`) and `webpfilter.asm` share `WebPDspCode`.
+Glue's `Seg_AddSegment()` keeps the first object's filename when merging
+segments (`Tools/glue/segment.c`). `Sym_FindWithSegmentAndFile()` checks that
+filename for local symbols (`Tools/glue/sym.c`), called for `MO_LEXTDEF` by
+`pass2ms.c`. Linking ASM first therefore leaves C static helpers such as
+`_swebp__clip8b` and `_swebp__store` unresolved; linking C first succeeds.
+
 `WebPParseContainer()` in `Library/WebpLib/webpriff.c` rejects zero dimensions
 and dimensions above 2048 before decoding. The five-argument
 `WebPImportBegin()` in `Library/WebpLib/webpapi.c` has no pixel-count admission

@@ -176,3 +176,13 @@ encoding when needed; `webpfilter.asm:WebPLoadPixel` documents
 Use `.inst byte` for such opcode bytes inside a procedure; plain `byte`
 produces the `Data declared in-line without .inst directive` warning.
 See `Library/Kernel/FSD/fsdInit.asm` for another explicit opcode example.
+
+Other ESP instruction gaps relevant to integer DSP: `Tools/esp/opcodes.h`
+omits SETcc, BSF/BSR, and BT/BTS/BTR/BTC. `parse.y` accepts extended IMUL
+syntax, but `code.c:Code_Imul` rejects it as not supported. SHLD/SHRD already
+have encoders (`Code_DPShift`). `Tools/swat/i86Opc.c` has decoding
+entries for MOVZX/MOVSX, SETcc, BSF/BSR, and register-indexed bit tests.
+ESP's operand/address prefix helpers in `code.c` assume 16-bit segments;
+USE32 handling is explicitly a TODO. The opcode header is generated-looking,
+but its gperf input is absent and regeneration rules in `local.mk` are disabled
+with `#if 0`.

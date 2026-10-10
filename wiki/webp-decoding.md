@@ -186,3 +186,18 @@ ESP's operand/address prefix helpers in `code.c` assume 16-bit segments;
 USE32 handling is explicitly a TODO. The opcode header is generated-looking,
 but its gperf input is absent and regeneration rules in `local.mk` are disabled
 with `#if 0`.
+
+Watcom's `-3` permits 386 instructions but does not make all C `sdword`
+operations use 32-bit registers. `simplewebp_i32` is `sdword`
+(`Library/WebpLib/webpvp8.c`); the original VP8 filters therefore use 32-bit
+values even though their arithmetic fits signed words. Recompiling the C
+filters before commit `de862fea5` with the standard `-ml -3` flags and NC
+`-ox` (`Include/Win32/geos.mk`) shows `swebp__do_filter2` calling `__I4M`
+for `3 * (q0 - p0)` and implementing `>> 3` with a repeated SAR/RCR pair.
+`swebp__filterloop26` still calls the predicate, HEV test, and update routines
+per accepted sample, using far-return frames and stack arguments. EC lacks
+NC's `-ox` and additionally retains calls to absolute-value and clipping
+helpers. `webpfilter.asm:WebPFilterEdge` uses word arithmetic, retains the
+buffer segment, and reuses samples across those stages; its speed advantage
+is not simply access to the 386 instruction set. This describes generated
+code, not a measured allocation of decode time.

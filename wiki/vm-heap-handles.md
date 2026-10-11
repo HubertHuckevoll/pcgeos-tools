@@ -36,8 +36,8 @@ header with `MemReAlloc(HAF_NO_ERR | HAF_ZERO_INIT)`
 header growth, not allocation of new image content. Unassigned VM entries
 are metadata within the header, distinct from global heap handles.
 
-VM eviction can free a memory handle after its data has already been
-discarded. `VMUpdateAndRidBlk` calls `DoDiscard`, then (unless
+Protected-mode VM eviction can free a memory handle after its data has
+already been discarded. `VMUpdateAndRidBlk` calls `DoDiscard`, then (unless
 `VMBF_PRESERVE_HANDLE` is set) clears `VMBH_memHandle` and calls `DoFree`.
 `DoFreeNoDeleteSwap` must still call `FreeHandle` for `HF_DISCARDED` or
 `HF_SWAPPED` blocks, while skipping data deallocation and resident heap
@@ -45,6 +45,9 @@ unlinking. Returning directly in that case strands a global handle on each
 such eviction. Evidence: `Library/Kernel/VMem/vmemKernelHigh.asm`
 (`VMUpdateAndRidBlk`), `Library/Kernel/Heap/heapLow.asm` (`DoDiscard`,
 `FreeBlockData`, `DoFreeNoDeleteSwap`), and `heapHandle.asm` (`FreeHandle`).
+The real-mode implementation instead selects `FreeHandle` directly in
+`VMUpdateAndRidBlk` after discarding the block, and its
+`DoFreeNoDeleteSwap` already jumps to `FreeHandle` when `HM_addr` is zero.
 
 Protected-mode VM returns must validate saved caller selectors before
 loading DS or ES. `VMLock`'s slow path can evict unlocked blocks while the

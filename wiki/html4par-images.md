@@ -1,5 +1,23 @@
 # Html4Par images
 
+GIF composition in `Library/Breadbox/ImpGraph/IMPBMP/impgifc.goc`
+(`IDrawBitmapInBitmap`, `ICopyRaster`) locks the starting source and
+destination rows once, then walks both arrays with `HugeArrayNext`.
+Only destination rows are marked dirty, before advancing can unlock a
+block. Cleanup uses the successful initial lock counts and the latest
+pointers: a zero-count `HugeArrayLock` need not return a null pointer,
+whereas `HugeArrayNext` returning zero leaves its last block locked.
+`ICopyRaster` can bulk-copy 8-bit ranges even with bitmap
+metadata flags and masks: it skips each row's mask prefix, checks only
+the copied source mask bits for opacity, and ORs the destination mask bits
+without changing neighboring pixels or padding. Mixed transparent ranges
+and other pixel depths retain the per-pixel get/set path. Working bitmaps
+include `BMT_MASK` via `GIF_ANIMATION_FORMAT` in `IMPBMP/impgif.h`.
+`HugeArrayNext` walks rows within a locked block and transfers the lock
+at block boundaries (`Library/Kernel/VMem/vmemHugeArray.asm`;
+C wrappers in `vmemC.asm`). These are source-level behaviors, not measured
+timing results.
+
 Parser source tokens and runtime URL tokens have different owners.
 `NamePoolVMLoad()` in `Library/Breadbox/Html4Par/wwwtools/namepool.goc`
 creates an LMem hash index over the existing VM HugeArray; it does not clone
@@ -571,3 +589,99 @@ before that clamp. `MSG_HTML_TEXT_RESOLVE_IMAGE` in Html4Par
 layout dirty; BbxBrow's `MSG_URL_TEXT_DEC_PENDING` then requests layout when
 loading finishes. `DrawVarGraphic` in `htmlclas/htmlfdrw.goc` uses the stored
 image transform, independent of the allocated table/cell width.
+
+Animated GIF import and browser playback are separate. ImpGraph's
+`IMPBMP/impgifc.goc:ImpGIFProcessAnimationFile` composites frames into a
+working bitmap and stores compacted copies in an `AnimationHeader` VM tree.
+Its `AF_flags` assignment derives `ANIMATION_FLAG_NOT_TRANSPARENT` from the
+GIF disposal method, not from actual pixel opacity. Working bitmaps carry
+`BMT_MASK` (`IMPBMP/impgif.h:GIF_ANIMATION_FORMAT`). Html4Par's
+`htmlclas/htmlfdrw.goc:MSG_HTML_TEXT_ANIMATIONS_UPDATE` advances `HID_frame`,
+then `MSG_HTML_TEXT_DRAW_ANIMATION_CHANGES` calls
+`MSG_HTML_TEXT_INVALIDATE_IMAGE` with update range 0..0xffff. That handler
+in `htmlclas/htmlclas.goc` calls `DrawVarGraphic` directly. In its animation
+branch, masked frames whose predecessor lacks the flag, and masked
+last-to-first transitions, invalidate the union of old/new change boxes
+instead of drawing. Normal text redraw calls `DrawVarGraphic` with
+0xffff..0xffff and draws the frame. The drawing comment explicitly describes
+this background-restoration/redraw sequence and its potential alternative
+of having the background bitmap available. This establishes a potential
+flicker mechanism, not a measured cause for any particular GIF.
+
+Html4Par background restoration is more than a wash-color fill.
+`htmlclas/htmltdrw.goc:MSG_VIS_DRAW` paints `VTI_washColor` when needed,
+tiles `HTI_backgroundImage` with `ExtGrFillMosaic`, then calls
+`MSG_HTML_TEXT_DRAW_TABLE_FRAME` before superclass text/graphic drawing.
+That table-frame handler and `DrawTablesCells` also render table/cell
+background colors and images. A correct animation background restoration
+must preserve these layers and their document-relative tile origins.
+GEOS already provides VM-backed offscreen drawing through
+`GrCreateBitmap`, which returns a bitmap GState; the completed result can
+be displayed with `GrDrawHugeBitmap`. Evidence: `CInclude/graphics.h`,
+`Library/Kernel/Graphics/graphicsBitmapCreate.asm:GrCreateBitmap`.
+
+`GrGetBitmap` is not an occlusion-safe way to cache an inline image's
+background. Its implementation reads driver pixels (`DR_VID_GETBITS`)
+without checking clipping by other windows, and rejects captures requiring
+more than one 64K memory block. See
+`Library/Kernel/Graphics/graphicsBitmapCreate.asm:GrGetBitmap`, `GetBitmap`,
+and `GetBitSizeBlock`; C declaration in `CInclude/graphics.h`.
+
+`GrTestRectInMask` can establish full coverage of an image rectangle in the
+current drawing mask: it transforms document coordinates and calls
+`GrTestRectInReg` on `W_maskReg`, returning `TRRT_IN`, `TRRT_PARTIAL`, or
+`TRRT_OUT`. Unlike mask bounds, this tests the actual region, including
+holes. `WinValWinStruct` composes visibility, pending invalidations,
+application clip paths, and (for the update GState) the active update
+region. Evidence: `Library/Kernel/Graphics/graphicsWin.asm`,
+`graphicsRegion.asm`, `Library/Kernel/Win/winIndividual.asm`, and
+`CInclude/graphics.h`. This is a coverage test, not proof that a background
+has just been painted; GString recording even returns `TRRT_IN` without a
+window-region test. BbxBrow's `urltext/URLTEXT2.goc:IConvertGraphic` and
+`MSG_URL_TEXT_COPY_IMAGE_TO_CLIPBOARD` call the same
+`MSG_VIS_TEXT_GRAPHIC_VARIABLE_DRAW` handler into GStrings, without the
+Html4Par page-background drawing pass.
+
+A stored full-canvas GIF frame is not an opaque replacement image.
+ImpGraph's `impgifc.goc:IClearRectInBitmap`, used for GIF disposal method 2,
+writes the background palette index but also clears the corresponding mask
+bits. Drawing such a frame over its predecessor therefore cannot erase
+pixels that become transparent. `GrDrawHugeBitmap` passes the bitmap mask
+to the video driver; for example,
+`Driver/Video/Dumb/VidMem/Clr8/clr8Raster.asm:PutColor8ScanMask` skips the
+destination write for every clear mask bit (including the palette path).
+
+ImpGraph already has a mask-stripping compactor:
+`IMPBMP/impgifc.goc:ImpGraphCompactBitmapIgnoringMask` skips the mask prefix
+of each uncompacted 8-bit row, PackBits-compresses its pixel bytes, and
+uses `ImpGraphCreateBitmapWithCopiedHeader` to clear `BMT_MASK` in the
+output header. Clearing only the header flag would leave the wrong raster
+layout. Compacted input must first go through `GrUncompactBitmap`; simply
+passing PackBits rows to this helper is invalid. The normal
+`ImpGraphCompactBitmap` calls it only after checking that all mask bits
+covering real pixels are set.
+
+GIF palette indexes are not stable when system-palette import is enabled.
+`MAIN/impgraph.goc:InitGlobals` defaults `useSysPal` to true on displays of
+256 colors or fewer; `impgraph/useSysPalForGIF` overrides this setting.
+`ASMIMP/impgif.asm:IAttachPalette` builds `IGS_remapColors`, and pixel output
+maps source indexes through it. Such imported frames have no private
+palette (`IMPBMP/impgifc.goc:ImpGIFProcessAnimationFile`, work-bitmap creation).
+A palette-only background replacement therefore requires a private palette
+and an index known not to be used by opaque image pixels; the original GIF
+transparent index alone does not establish this after remapping.
+
+Text rendering can reset a supplied GState's transform while changing
+regions. `Library/Text/TextRegion/trLargeGState.asm:LargeRegionTransformGState`
+calls `GrSetDefaultTransform` before applying the region's document origin.
+A caller needing a custom base transform across such resets can establish
+it with `GrInitDefaultTransform`, which stores the current GState transform
+as its default (`Library/Kernel/Graphics/graphicsTransform.asm`).
+
+`WinGetTransform` returns `W_TMatrix`, excluding the screen origin of the
+window. `GrComposeMatrix` combines it with the GState transform and then
+adds `W_winRect.R_left/R_top`. When reproducing a screen transform on a
+memory-bitmap window, its different window origin must be accounted for.
+Evidence: `Library/Kernel/Graphics/graphicsTransformSimple.asm:WinGetTransform`
+and `graphicsTransform.asm:GrComposeMatrix`; window screen bounds are
+available through `WinGetWinScreenBounds` in `CInclude/win.h`.

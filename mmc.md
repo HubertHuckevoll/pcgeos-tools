@@ -1,3 +1,10 @@
+---
+name: mmc
+description: Use when the user wants to understand a source-code problem, feature, function, or revision difference rather than change it.
+metadata:
+  short-description: Explain code mechanisms and revision deltas
+---
+
 # Mental Model Coding
 
 Use this mode for unfamiliar, complex, or legacy code when the user wants to understand the system while solving a concrete problem.
@@ -127,6 +134,102 @@ Then stop.
 Do not propose or investigate the next question automatically. Let the user decide whether to continue, challenge the model, ask a side question, or choose another direction.
 
 If new evidence contradicts the model, say so explicitly and update it rather than preserving an earlier assumption.
+
+## BLINDSPOTS — Critical Mental Model Review
+
+**Trigger:** The user says `BLINDSPOTS`.
+
+### Purpose
+
+Temporarily suspend the normal iterative investigation and critically examine the completeness and reliability of the mental model developed so far.
+
+The goal is **not to audit the entire codebase**, but to discover what our investigation may have missed, misunderstood, prematurely dismissed, or silently assumed.
+
+Treat the investigation itself as something that needs to be challenged.
+
+### Review procedure
+
+**1. Reconstruct the investigation**
+
+Review the reasoning and findings accumulated during the current investigation.
+
+Identify:
+- Which execution paths and mechanisms were actually verified.
+- Which conclusions depend on assumptions rather than direct evidence.
+- Which questions were raised but never answered.
+- Which concerns were deferred, dismissed, or forgotten.
+- Which earlier conclusions may conflict with later discoveries.
+- Where the investigation followed one plausible path while neglecting alternatives.
+
+Distinguish what we **know**, what we **infer**, and what we merely **assume**.
+
+**2. Challenge the mental model**
+
+Adopt a skeptical perspective toward the model we have constructed.
+
+Ask:
+- What would have to be true for our understanding to be wrong?
+- Are there alternative execution paths, callers, or state transitions?
+- Have we overlooked existing abstractions or mechanisms?
+- Are there hidden dependencies, side effects, or ownership constraints?
+- Have we misunderstood the purpose of seemingly strange existing behavior?
+- Are there lifecycle, error-handling, resource-management, or compatibility implications we have not considered?
+- Did our initial framing cause us to overlook a simpler or fundamentally different explanation?
+
+Pay particular attention to assumptions that have gradually become treated as established facts.
+
+**3. Perform selective verification**
+
+Inspect relevant source code when a suspected blind spot can be tested with a small, targeted investigation.
+
+Do not launch an exhaustive codebase survey.
+
+Prefer evidence that could **falsify an important conclusion** over evidence that merely confirms what we already believe.
+
+Distinguish:
+- **Confirmed gap:** A real omission or contradiction supported by evidence.
+- **Plausible blind spot:** A concrete concern that still requires verification.
+- **Open question:** Something important that the investigation has not established.
+
+Do not manufacture findings to fill categories.
+
+**4. Report the blind spots**
+
+Present a prioritized list of potentially significant findings.
+
+For each finding, provide:
+- **Blind spot:** What might have been overlooked.
+- **Why it matters:** How it could affect our understanding or intended change.
+- **Evidence:** What the code or investigation actually establishes.
+- **Next question:** The smallest useful investigation that could resolve it.
+
+Prioritize findings that could invalidate the current mental model, reveal an overlooked architectural constraint, or significantly change the intended solution.
+
+Avoid speculative edge cases with little practical relevance.
+
+### Constraints
+
+- Do not implement changes.
+- Do not automatically pursue every finding.
+- Do not propose broad refactoring or redesign.
+- Do not repeat already resolved questions unless new evidence challenges them.
+- Do not confuse a lack of investigation with evidence of a defect.
+- Do not assume the current solution is correct merely because the investigation has converged on it.
+- Do not invent problems to appear thorough.
+
+### Completion
+
+Conclude with a brief assessment of how trustworthy and complete the current mental model is.
+
+Identify the **single most consequential unresolved question**, if one exists.
+
+Then return control to the user.
+
+The user decides which blind spot, if any, becomes the next focused iteration.
+
+**Guiding principle:**
+
+*The purpose of BLINDSPOTS is not to find more problems. It is to discover where our own investigation may have prevented us from seeing the right ones.*
 
 ## Moving to implementation
 

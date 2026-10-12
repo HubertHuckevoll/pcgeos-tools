@@ -26,3 +26,12 @@ that directory; `pmake lib` copies it to `Installed/Include`, where dependent
 geodes find it. Evidence: the `LIBOBJ` and `lib` rules in
 `CInclude/geode.mk` around lines 178-221; `aihelp.py`'s `build_once` runs the
 default `pmake` target in `~/pcgeos-tools/aihelp.py`.
+
+A compatible capability added to an existing entry point (such as a new
+accepted argument value) can require a higher base minor protocol in the
+`.rev` file, without moving or adding exports. After rebuilding the library
+and publishing its `.ldf`, newly linked clients inherit that base minimum:
+`Tools/glue/library.c:Library_Link` copies `hdr->proto` into the client's
+library dependency (around line 1694). An `incminor` appended after all
+existing exports would raise the library's advertised protocol but would
+leave calls to those existing exports at the old requirement.

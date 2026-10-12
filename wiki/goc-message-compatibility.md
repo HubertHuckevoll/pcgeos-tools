@@ -92,11 +92,16 @@ missing pragma as an incidental cleanup.
 Watcom can emit an empty filename-derived default code segment alongside a
 source `#pragma code_seg` selection. Glue prints `*** Empty segment:` and
 omits that zero-sized segment from resource output (`Tools/glue/geo.c`).
-For a split file, setting Watcom's `-nt` default to the original resource
-name as well as retaining the source pragma avoids this diagnostic without
-adding a resource. BbxBrow `local.mk` applies `-nt=URLTEXT_TEXT` to its split
-URLText implementations, including plain C `MemStream.c`, and
-`-nt=URLTEXT2_TEXT` to the renamed clipboard file.
+For a split file, setting Watcom's `-nt` default to the exact source pragma
+name, including case, avoids this diagnostic without adding a resource.
+After a case-only rename, update all shared defaults too: BbxBrow
+`urltext/URLTextImages.goc` and `urlframe/URLFrameTree.goc` select
+`URLText_TEXT` and `URLFrame_TEXT`; uppercase `-nt` defaults create separate
+empty segments. BbxBrow `local.mk` matches these names for the split files,
+including plain C `MemStream.c`, and uses `-nt=URLTEXT2_TEXT` for the clipboard
+file. Empty code segments also occur when a whole implementation is disabled,
+as in `navigate/BOOKCLAS.goc`, `navigate/BOOKMARK.goc` and
+`urldoc/URLDocumentLocalPage.goc`; a filename change is not required.
 
 BbxBrow frame source ownership is separate from resource ownership:
 `urlframe/URLFRAME.goc` owns the class, lifecycle/state coordination, page

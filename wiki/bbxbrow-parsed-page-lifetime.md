@@ -1,7 +1,7 @@
 # BbxBrow parsed-page lifetime
 
 The parsed page is an OCT_TEXTOBJ VM chain registered by
-MSG_URL_FRAME_URL_FETCHED in Appl/Breadbox/BbxBrow/urlframe/FRFETCH.goc.
+MSG_URL_FRAME_URL_FETCHED in Appl/Breadbox/BbxBrow/urlframe/URLFrameFetch.goc.
 MSG_URL_FRAME_FLIP_PAGE in urlframe/URLFRAME.goc locks its cache token,
 attaches the transfer item, and releases the previous token after detachment.
 MSG_HTML_TEXT_ATTACH_TO_ITEM and MSG_HTML_TEXT_UPDATE_ITEM in
@@ -28,7 +28,7 @@ HTI_viewWidth in CInclude/html4par.goh belongs to each HTMLText instance.
 MSG_HTML_TEXT_ATTACH_TO_ITEM retains it across navigation;
 MSG_HTML_TEXT_INITIALIZE_LAYOUT in htmlclas/htmltpre.goc resets
 HTI_formattedWidth, not HTI_viewWidth. MSG_URL_FRAME_CREATE_CHILD in
-BbxBrow/urlframe/URLFRAME.goc duplicates URLText and ViewTemplate and connects
+BbxBrow/urlframe/URLFrameTree.goc duplicates URLText and ViewTemplate and connects
 them through MSG_HTML_TEXT_SET_VIEW_OBJ, so each frame has its own width.
 
 GenView's SendPaneSizeMethod in
@@ -79,3 +79,22 @@ print messages to `IPTEI_urlTextObj`. Evidence:
 `Appl/Breadbox/BbxBrow/urldoc/URLDOC.goc` and
 `Library/Breadbox/Html4Par/htmlclas/htmlfedi.goc`,
 `MSG_PRINT_GET_DOC_NAME` and `MSG_PRINT_START_PRINTING`.
+
+## Document history snapshot ownership
+
+BbxBrow keeps two kinds of frame snapshots. Back/forward snapshots live in
+LMem chunks in the document object block; recent-history snapshots live in
+`frameCacheBlock`. `MSG_URL_DOCUMENT_NOTIFY_FRAME_CHANGE_PRE` creates both,
+and `MSG_URL_DOCUMENT_NOTIFY_FRAME_CHANGE_POST` creates the recent-history
+copy after a change. These handlers and stack cleanup are in
+`Appl/Breadbox/BbxBrow/urldoc/URLDocumentHistory.goc`.
+
+Back/forward replay duplicates the saved chunk with `LMemDup` before calling
+`MSG_URL_DOCUMENT_LOAD_FRAME_SET` in `URLDocumentNavigation.goc`; that loader
+locks the supplied block, fetches frames, frees the supplied chunk, then
+unlocks. Stack eviction/drop releases frame-record name tokens before freeing
+the saved chunks. `navigate/NAVIGATE.goc:HistoryUpdateLRU` owns the retained
+recent-history snapshot and title token, releasing the previous entry on
+replacement. `urldoc/URLDOC.goc` allocates the two stack-buffer chunks during
+physical open/create and frees them during physical close, after dropping
+saved snapshots and before frame destruction/cache-reference release.

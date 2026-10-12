@@ -31,11 +31,16 @@ A class's defining file keeps its single `@classdecl` and uses
 `@extern method Class, MSG_NAME;` to register externally implemented handlers.
 The other file defines each handler with `@extern method Class, MSG_NAME`
 followed by its body, without another `@classdecl`. Preserve conditional guards
-on both sides. Existing examples: BbxBrow `urltext/URLTEXT.goc` /
-`urltext/URLTextClipboard.goc` and `urlframe/URLFRAME.goc` / `urlframe/FRFETCH.goc`.
+on both sides. Keep comma-separated message groups together in the external
+registration: GOC derives the handler name from the first message and reuses
+it for subsequent messages (`Tools/goc/parse.y`, `methodMessageList` and
+`methodMessage`). BbxBrow's `MSG_URL_FRAME_RELOAD`, `MSG_URL_FRAME_SOURCE`
+and `MSG_URL_FRAME_SAVE` therefore share one registration and handler.
+Existing examples: BbxBrow `urltext/URLTEXT.goc` /
+`urltext/URLTextClipboard.goc` and `urlframe/URLFRAME.goc` / `urlframe/URLFrameFetch.goc`.
 
 Source-file boundaries do not require separate code resources. BbxBrow
-`urlframe/FRFETCH.goc` selects `FRFETCH2_TEXT` explicitly for
+`urlframe/URLFrameFetch.goc` selects `FRFETCH2_TEXT` explicitly for
 `MSG_URL_FRAME_URL_FETCHED` using Borland `#pragma codeseg` plus
 `#pragma option -dc-`, and Watcom `#pragma code_seg("FRFETCH2_TEXT")`.
 Check the actual original segment before extracting code; `bin/printobj`
@@ -92,3 +97,93 @@ name as well as retaining the source pragma avoids this diagnostic without
 adding a resource. BbxBrow `local.mk` applies `-nt=URLTEXT_TEXT` to its split
 URLText implementations, including plain C `MemStream.c`, and
 `-nt=URLTEXT2_TEXT` to the renamed clipboard file.
+
+BbxBrow frame source ownership is separate from resource ownership:
+`urlframe/URLFRAME.goc` owns the class, lifecycle/state coordination, page
+attachment and document notifications. `URLFrameTree.goc` owns creation,
+frameset restoration/collection and traversal; `URLFrameNavigation.goc`
+owns link targeting, URL completion and refresh requests. Both use
+`URLFRAME_TEXT`. `URLFrameFetch.goc` keeps fetch/cache requests, external-file
+ownership, parser helpers/callbacks in `FRFETCH_TEXT`, and the acknowledgement
+in `FRFETCH2_TEXT`. Its initial Borland/Watcom segment pragmas and scoped
+Watcom `-nt=FRFETCH_TEXT` preserve the old filename-derived default after the
+canonical rename, retaining the acknowledgement's Borland `-dc-` switch. `URLFramePage.goc` keeps embedded-audio request and
+completion together, allowing their `.wav` literals to share one compiler
+string pool without a new shared global. `MSG_URL_FRAME_EMBED_FETCHED`
+retains `FRFETCH_TEXT` and its original string defaults before the file
+switches to `FRFETCH3_TEXT` / Borland `-dc-` for received-page metadata,
+presentation/completion and frame geometry.
+`ReadFileIntoHA`, `DialogError` and their callers remain together in
+`URLFrameFetch.goc`, retaining `LOCAL` (`_near _pascal`). Scoped `-nt` options for
+the new frame sources are in `Appl/Breadbox/BbxBrow/local.mk`.
+
+Frame scripting has another legacy compiler distinction:
+`URLFrameScript.goc` retains the Borland `FRAME_JS_TEXT` / `-dc-` switch
+without adding a Watcom equivalent; Watcom uses `URLFRAME_TEXT`.
+The conditional Borland switch also remains in `URLFRAME.goc`, because it
+continues to affect the later `MSG_URL_FRAME_CLEAR_OBJ_CACHE` implementation
+when JavaScript is enabled. String-placement options must be preserved as
+well as code segment names. Watcom's per-object `CONST` pools may duplicate
+literals after a split even when all code-resource sizes remain unchanged.
+
+For linked dispatch checks, `CInclude/object.h` defines `ClassStruct` and
+`CMethodDef`; the latter is three bytes (word `methodParameterDef`, byte
+`handlerTypeDef`). Compare message numbers, resolved method resource/name
+pairs and all three descriptor bytes. `Tools/glue/geo.c:GeoWrite` describes
+the geode resource table: word sizes, dword positions, word relocation sizes,
+and word allocation flags. `Tools/include/geode.h` and `os90File.h` define
+the headers and flags; GEOS 2 file positions are relative to the end of the
+256-byte `GeosFileHeader2`. Match resources by name from `bin/printobj`
+output, excluding library/absolute segments, rather than by numeric ID.
+
+BbxBrow's document command split shares `URLDOC_TEXT`:
+`urldoc/URLDOC.goc` owns the single class declaration, object/templates and
+document lifecycle; `URLDocumentHistory.goc` and `URLDocumentNavigation.goc`
+define externally registered handlers. `URLDocumentLocalPage.goc` keeps the
+local-page persistence concern in its original `LOCALPAG_TEXT` segment using
+explicit Borland/Watcom pragmas and scoped Watcom `-nt=LOCALPAG_TEXT`.
+The segment is empty when `COMPILE_OPTION_LOCAL_PAGES` is disabled. URLDOC's
+Watcom string pool contains the backslash and `.URL` strings from physical
+open; retaining that handler intact avoids splitting its literal pool.
+`local.mk` sets scoped Watcom `-nt=URLDOC_TEXT` for both new command sources;
+their source pragmas preserve Borland and Watcom code placement without
+changing string options.
+
+BbxBrow `navigate/NAVCACHE.goc` shares two `LOCAL` (`_near _pascal`)
+utilities between its source- and object-cache code: `CacheGetLocalToken`
+is called by `SrcCacheFindEntry`, `ObjCacheFindEntry` and
+`ObjCacheForceNocache`; `UseAltCache` (under `ALT_SRC_CACHE`) is called by
+`SrcCacheGenerateID` and `ObjCacheGetVMFile`. Both cache implementations also
+use the private `CacheFileMapBlock` persistence structure. A source split
+must account for these shared declarations and preserve `NAVCACHE_TEXT`
+placement and near calling conventions.
+
+BbxBrow's MIME-driver cache is shared by text and graphic imports:
+`navigate/NavigationMime.goc:ImportTextByNative` and
+`htmlview/LoadURL.goc:ImportGraphicByNative` use `MimeDriverSemaphore`,
+`lastMimeDriver`, `lastMimeName` and `LoadNewMimeDriver`. Each adds a geode
+reference before releasing the semaphore, invokes the driver, then removes
+the reference. `init/INIT.goc:InitNavigation` loads the association arrays
+before creating the semaphore. `DeInitNavigation` deliberately leaves that
+semaphore for automatic exit cleanup because
+`htmlview/ImportG.goc:MSG_IMPORT_THREAD_ENGINE_KILL` still acquires it to free
+and clear the cached driver. Keep this initialization/cleanup ordering intact.
+The seven MIME/import/unknown-content functions and cache definitions share
+`NAVIGATE_TEXT`; `NAVIGATE.goc` retains the HTMLResource chunks in declaration
+order, and `NavigationMime.goc` declares the referenced chunks/objects,
+including `HTMLVApp` for expanded progress macros. The existing interfaces
+use plain C calling conventions.
+
+A Watcom source split can grow code even without duplicate literals or a new
+resource: a same-file call to a far C function can use four bytes (`push cs`
+plus near call), while an external call uses five. Glue converts a far call
+within the same linked resource to `push cs`, near call and a trailing NOP,
+removing its runtime relocation without shrinking the call site. Evidence:
+`Tools/glue/msobj.c`, same-segment call handling in `MSObj_PerformRelocations`,
+and BbxBrow `navigate/NAVIGATE.goc:LoadFILEURL` calling
+`NavigationMime.goc:IdentifyMimeType`. `Tools/glue/geo.c:GeoPrepare` reserves
+file space for relocation records before that conversion; `GeoWrite` emits
+the reduced relocation count. Compare linked resource-table relocation sizes
+as well as Glue's initial counts and total geode file sizes. Watcom switch
+tables may also require an unreachable padding byte after a split; inspect
+object disassembly to distinguish alignment from changed logic.

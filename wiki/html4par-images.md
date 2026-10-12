@@ -265,7 +265,7 @@ The opt-in `ParseAnyFileWithImageSources()` entry accepts an
 `HTMLImageSourceContext` (view optr and MIME callback) without extending
 `HTMLextra`. Its HTML core snapshots `MSG_GEN_VIEW_GET_VISIBLE_RECT` width;
 legacy entries supply no context. BbxBrow's `ParseFrameHTML()` in
-`urlframe/FRFETCH.goc` obtains the text object's `MSG_HTML_TEXT_GET_VIEW_OBJ`
+`urlframe/URLFrameFetch.goc` obtains the text object's `MSG_HTML_TEXT_GET_VIEW_OBJ`
 and supplies `FrameImageMimeSupported()`, which checks `assocTypeDriver`.
 `Open_SOURCE()` selects the first usable, media-matching, supported source
 inside `PICTURE` and retains its URL in a name-pool token. `ParseImage()`
@@ -437,7 +437,7 @@ backpressure, and stops appending at an absolute tail ceiling while
 active stream; reducing its slot count also reduces input capacity.
 
 The literal `Formatting Page.` status is posted by
-`MSG_URL_FRAME_URL_FETCHED` in `urlframe/FRFETCH.goc` when the parsed page is
+`MSG_URL_FRAME_URL_FETCHED` in `urlframe/URLFrameFetch.goc` when the parsed page is
 handed to `MSG_URL_FRAME_GOT_URL`; it is cleared by
 `MSG_HMLVA_END_OPERATION` in `htmlview/UIRare.goc` at overall operation end.
 It is not posted for each `MSG_HTML_TEXT_LAYOUT_START`. ImportG posts and
@@ -486,7 +486,7 @@ Use plain filenames in locally opened HTML image fixtures; HTTP image queries
 still belong to the request URL.
 
 Picture source selection is parse-time state, not image geometry.
-`ParseFrameHTML()` in BbxBrow `urlframe/FRFETCH.goc` passes a
+`ParseFrameHTML()` in BbxBrow `urlframe/URLFrameFetch.goc` passes a
 `HTMLImageSourceContext` to `ParseAnyFileWithImageSources()`. Its width comes
 from `MSG_URL_TEXT_GET_IMAGE_SOURCE_WIDTH` in `urltext/URLTextImages.goc`, which
 returns `HTI_viewWidth` only when `HTS_VIEW_NOT_OPENED` is clear. Html4Par

@@ -37,7 +37,7 @@ Evidence:
 
 - `Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc`,
   `MSG_URL_FRAME_NOTIFY_FRAME_COMPLETE`
-- `Appl/Breadbox/BbxBrow/urlframe/FRFETCH.goc`,
+- `Appl/Breadbox/BbxBrow/urlframe/URLFrameFetch.goc`,
   `MSG_URL_FRAME_URL_FETCHED`, `HandleHTMLError`, and `DialogError`
 - `Appl/Breadbox/BbxBrow/navigate/NAVIGATE.goc`, `MsgAborted`
 - `Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc`,
@@ -66,7 +66,7 @@ therefore captures the UI caller waiting for parser completion, not the
 parser's own stack. Use Swat `btall` at that warning or at the abort request
 in `htmlpars/parsinit.goc` to inspect the other threads. Normal fetched-page
 parsing calls `ParseAnyFile` from `MSG_URL_FRAME_URL_FETCHED` in
-`urlframe/FRFETCH.goc`; it is not part of the graphic import engine.
+`urlframe/URLFrameFetch.goc`; it is not part of the graphic import engine.
 
 Inline SVG capture uses `FileCreateTempFile`. Its collision retry must keep
 the basename offset independently of BX: `TimerGetCount` returns its high
@@ -89,6 +89,14 @@ and decrement the pending request count. The cancellation receiver in
 `urltext/URLTextImages.goc`, `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`, releases
 the request's name token even after its image array has been detached.
 These queued abort events run after any currently executing import returns.
+
+The fetch engine's event thread can block in
+`MSG_URL_FETCH_ENGINE_GET_URL` on `ThreadPSem(G_fetchSemaphore)` while all
+children are busy. `URLFetchEngineAbortAll` therefore marks/aborts active
+children directly before queuing START_ABORT at the front and END_ABORT at
+the back. `G_abortPending` prevents GET_URL from clearing child abort flags
+before START_ABORT is handled. These paths share `G_fetchChildren` and belong
+to the same scheduling/abort protocol in BbxBrow `urlfetch/URLFETCH.goc`.
 
 ## Fetch/import thread configuration
 

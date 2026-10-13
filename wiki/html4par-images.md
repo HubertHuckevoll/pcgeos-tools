@@ -36,11 +36,11 @@ local name token for that file. Cache restoration can import the file again;
 `FreeHTMLTransferItem()` deletes it when the parsed page is freed.
 `OBJ_CACHE_MINOR_VERSION` in `Appl/Breadbox/BbxBrow/htmlview.goh` is bumped
 when the persistent image-record layout changes; `AttachToObjCache()` in
-`navigate/NAVCACHE.goc` recreates cache files on a protocol mismatch.
+`navigate/ObjectCache.goc` recreates cache files on a protocol mismatch.
 Imported graphics are stored as `OCT_GSTRING` VM chains by
 `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `htmlview/ImportG.goc`.
 `ObjCacheForceCachable()` retains completed graphics when object caching is
-enabled. `ObjCacheCheckPersist()` in `navigate/NAVCACHE.goc` drops text items
+enabled. `ObjCacheCheckPersist()` in `navigate/ObjectCache.goc` drops text items
 at detach and may also drop small graphics; an image-cache entry is not a
 guaranteed permanent copy of a page's image source.
 `HandleTag()` in `htmlpars/htmlpars.goc` resolves HTML tag names through
@@ -192,7 +192,7 @@ must release it even after `HTI_imageArray` is cleared; the message's data
 block must be unlocked before it is freed.
 Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTextImages.goc`, and
-`ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/NAVCACHE.goc`.
+`ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/ObjectCache.goc`.
 
 Intelligent image admission happens at import time. BbxBrow passes
 `T_importGraphicRequest.imageMaxPixels` (800L*600L for Intelligent-mode
@@ -346,7 +346,7 @@ described above.
 The callback also invokes `EnforceObjCacheHandleLimits()` before coalescing,
 because an already-cached bitmap can add VM blocks throughout progressive
 decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
-first created; its implementation in `navigate/NAVCACHE.goc` updates and
+first created; its implementation in `navigate/ObjectCache.goc` updates and
 trims the cache VM files when global free handles drop below 500.
 
 BbxBrow's active loading-progress stream uses `MemStream` because

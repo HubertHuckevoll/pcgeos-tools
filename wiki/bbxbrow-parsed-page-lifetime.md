@@ -9,7 +9,7 @@ Library/Breadbox/Html4Par/htmlclas/htmlclas.goc copy the hypertext arrays into
 and back out of the text object. Attachment resets image resolution/cache
 handles, retaining parser source references.
 
-ObjCacheRemoveEntry in BbxBrow/navigate/NAVCACHE.goc frees text pages through
+ObjCacheRemoveEntry in BbxBrow/navigate/ObjectCache.goc frees text pages through
 FreeHTMLTransferItem; locked entries cannot be evicted. ObjCacheUnlockItem
 removes an unlocked OCDF_NOCACHE entry immediately, while ordinary cacheable
 entries remain available for restoration.
@@ -59,7 +59,7 @@ This presentation operation also changes cache recency: `SrcCacheFindURL`
 removes each found entry and appends it to the source-cache array under
 `srcCacheSem`, making it most recently used. This occurs before any expiration
 check when `CACHE_VALIDATION` is enabled. Evidence:
-`Appl/Breadbox/BbxBrow/navigate/NAVCACHE.goc`, `SrcCacheFindURL`,
+`Appl/Breadbox/BbxBrow/navigate/SourceCache.goc`, `SrcCacheFindURL`,
 `SrcCacheIsExpired`; semaphore macros in `htmlview.goh`.
 
 ## Print ornament coordinate space and target routing

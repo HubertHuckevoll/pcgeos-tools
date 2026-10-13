@@ -100,7 +100,7 @@ After a case-only rename, update all shared defaults too: BbxBrow
 empty segments. BbxBrow `local.mk` matches these names for the split files,
 including plain C `MemStream.c`, and uses `-nt=URLTEXT2_TEXT` for the clipboard
 file. Empty code segments also occur when a whole implementation is disabled,
-as in `navigate/BOOKCLAS.goc`, `navigate/BOOKMARK.goc` and
+as in `navigate/BookmarksDialog.goc`, `navigate/BookmarksStore.goc` and
 `urldoc/URLDocumentLocalPage.goc`; a filename change is not required.
 
 BbxBrow frame source ownership is separate from resource ownership:
@@ -154,14 +154,31 @@ open; retaining that handler intact avoids splitting its literal pool.
 their source pragmas preserve Borland and Watcom code placement without
 changing string options.
 
-BbxBrow `navigate/NAVCACHE.goc` shares two `LOCAL` (`_near _pascal`)
-utilities between its source- and object-cache code: `CacheGetLocalToken`
-is called by `SrcCacheFindEntry`, `ObjCacheFindEntry` and
-`ObjCacheForceNocache`; `UseAltCache` (under `ALT_SRC_CACHE`) is called by
-`SrcCacheGenerateID` and `ObjCacheGetVMFile`. Both cache implementations also
-use the private `CacheFileMapBlock` persistence structure. A source split
-must account for these shared declarations and preserve `NAVCACHE_TEXT`
-placement and near calling conventions.
+BbxBrow `navigate/SourceCache.goc` owns source-cache state, persistence,
+recency and URL/expiration policy; `ObjectCache.goc` owns object-cache state,
+VM chains, item reference counts and eviction. Both retain `NAVCACHE_TEXT`.
+`CacheInternal.h` shares the original `CacheFileMapBlock` persistence structure
+and three existing `LOCAL` (`_near _pascal`) declarations: `CacheGetLocalToken`
+serves `SrcCacheFindEntry`, `ObjCacheFindEntry` and `ObjCacheForceNocache`;
+`UseAltCache` (under `ALT_SRC_CACHE`) serves `SrcCacheGenerateID` and
+`ObjCacheGetVMFile`; `SrcCacheIsExpired` (under `CACHE_VALIDATION`) also serves
+`ObjCacheFindURL`. Near calls across these translation units require both
+implementations to remain in that same resource. `SrcCacheFindEntry` keeps its
+original far C convention. The two compiler string pools can duplicate
+`HTML_CACHE_NAME`, used in each cache's open/create paths.
+
+BbxBrow `navigate/BookmarksDialog.goc` and `BookmarksStore.goc` retain
+`BOOKCLAS_TEXT` and `BOOKMARK_TEXT`, including their empty segments when
+`COMPILE_OPTION_BOOKMARKS` is disabled. `FavoritesDialog.goc` owns the four
+favorite class declarations, list organization and UI helpers;
+`FavoritesCreate.goc` implements the four externally registered favorite/group
+creation and dialog-initialization handlers in `FAVORCLS_TEXT`.
+`FavoritesStore.goc` retains `FAVORITE_TEXT` and private VM/IBMS tree/index
+state. Its `FavoritesBuildUIList` directly traverses `G_favoritesIBMS` and
+`G_favoritesTopTen` and calls `ILocateEntryByPos`, so it belongs with that
+private state rather than being moved merely because it draws menu monikers.
+Class/message interfaces remain in `bookclas.goh`, `bookmark.goh`,
+`favorcls.goh` and `favorite.goh`.
 
 BbxBrow's MIME-driver cache is shared by text and graphic imports:
 `navigate/NavigationMime.goc:ImportTextByNative` and

@@ -2,7 +2,7 @@
 
 The parsed page is an OCT_TEXTOBJ VM chain registered by
 MSG_URL_FRAME_URL_FETCHED in Appl/Breadbox/BbxBrow/urlframe/URLFrameFetch.goc.
-MSG_URL_FRAME_FLIP_PAGE in urlframe/URLFRAME.goc locks its cache token,
+MSG_URL_FRAME_FLIP_PAGE in urlframe/URLFrame.goc locks its cache token,
 attaches the transfer item, and releases the previous token after detachment.
 MSG_HTML_TEXT_ATTACH_TO_ITEM and MSG_HTML_TEXT_UPDATE_ITEM in
 Library/Breadbox/Html4Par/htmlclas/htmlclas.goc copy the hypertext arrays into
@@ -51,7 +51,7 @@ HTI_formattedWidth.
 
 `MSG_URL_FRAME_FLIP_PAGE` calls `MSG_URL_TEXT_MARK_VISITED_LINKS` after
 attaching the cached text item and before starting graphics processing or
-showing the item (`Appl/Breadbox/BbxBrow/urlframe/URLFRAME.goc`). The scan
+showing the item (`Appl/Breadbox/BbxBrow/urlframe/URLFrame.goc`). The scan
 resolves anchor URLs through the frame and removes fragments before looking
 them up in the source cache (`urltext/URLTextLinks.goc`).
 
@@ -93,7 +93,7 @@ Back/forward replay duplicates the saved chunk with `LMemDup` before calling
 `MSG_URL_DOCUMENT_LOAD_FRAME_SET` in `URLDocumentNavigation.goc`; that loader
 locks the supplied block, fetches frames, frees the supplied chunk, then
 unlocks. Stack eviction/drop releases frame-record name tokens before freeing
-the saved chunks. `navigate/NAVIGATE.goc:HistoryUpdateLRU` owns the retained
+the saved chunks. `navigate/Navigation.goc:HistoryUpdateLRU` owns the retained
 recent-history snapshot and title token, releasing the previous entry on
 replacement. `urldoc/URLDOC.goc` allocates the two stack-buffer chunks during
 physical open/create and frees them during physical close, after dropping

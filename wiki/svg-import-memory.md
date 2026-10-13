@@ -55,7 +55,7 @@ BbxBrow passes source filenames, not open handles, through
 and closes it before returning. Separate SVG imports therefore do not share
 one source handle's seek position, even when their filenames match.
 Evidence: `Library/Breadbox/ImpGraph/MAIN/impgraph.goc` (`ImpSVG`) and
-`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`
+`Appl/Breadbox/BbxBrow/mime/GraphicImport.goc`
 (`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`). The MIME-driver semaphore in
 `ImportGraphicByNative()` is released before calling the driver; it does not
 serialize the import itself.
@@ -73,7 +73,7 @@ therefore not independent per import. Logging failures do not determine
 `dbglog.h`.
 
 BbxBrow reads `[HTMLView] forceSingleImportThread` once in
-`ImportThreadEngineStart()` (`htmlview/ImportG.goc`). With progress support
+`ImportThreadEngineStart()` (`mime/GraphicImport.goc`). With progress support
 compiled in, true sets `G_numImportThreads` to one; otherwise the count is
 `G_numFetchChildren + 1`. `ImportThreadRequestImportGraphic()` selects
 `LPD_loadThread + 1` only when more than one importer exists, so streamed
@@ -115,7 +115,7 @@ branch of `MimeDrvGraphicEx()` has no raster-format fallback; failure
 leaves `bmVMBlock` zero. BbxBrow's import method then sends
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` with `OCT_NULL`, marks the image
 broken and decrements the pending count (`Library/Breadbox/ImpGraph/MAIN/impgraph.goc`,
-`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`, `urltext/URLTextImages.goc`).
+`Appl/Breadbox/BbxBrow/mime/GraphicImport.goc`, `urltext/URLTextImages.goc`).
 
 Each non-null scratch pointer records one active lock.
 `SvgScratchEnsureCapacityCommon()` reuses an existing pointer without

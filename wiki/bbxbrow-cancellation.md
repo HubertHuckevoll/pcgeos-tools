@@ -39,7 +39,7 @@ Evidence:
   `MSG_URL_FRAME_NOTIFY_FRAME_COMPLETE`
 - `Appl/Breadbox/BbxBrow/urlframe/URLFrameFetch.goc`,
   `MSG_URL_FRAME_URL_FETCHED`, `HandleHTMLError`, and `DialogError`
-- `Appl/Breadbox/BbxBrow/navigate/Navigation.goc`, `MsgAborted`
+- `Appl/Breadbox/BbxBrow/htmlview/HTMLView.goc`, `MsgAborted`
 - `Appl/Breadbox/BbxBrow/urltext/URLText.goc`,
   `MSG_HTML_TEXT_FORMATTING_ENDED` and `MSG_URL_TEXT_DEC_PENDING`
 - `Appl/Breadbox/BbxBrow/urltext/URLTextImageProgress.goc`,
@@ -79,7 +79,7 @@ with BX clobbered and forced collisions, including 32-bit counter wrap.
 
 Queued graphic imports are drained through their normal handler during abort,
 not simply removed from the event queue. `ImportThreadAbortAll` in
-`htmlview/GraphicImport.goc` inserts START_ABORT at the front and END_ABORT at the
+`mime/GraphicImport.goc` inserts START_ABORT at the front and END_ABORT at the
 back. While `numAborts` is nonzero,
 `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` skips decoding but still sends
 image cancellation and runs its common cleanup: clear
@@ -103,7 +103,7 @@ to the same scheduling/abort protocol in BbxBrow `urlfetch/URLFETCH.goc`.
 With PROGRESS_DISPLAY, numConn controls fetch children (range 1..2, default
 1); numImportThreads independently controls import workers (range 1..3,
 default 1). Invalid counts fall back to 1. MAX_FETCH_ENGINE_CHILDREN lives
-in urlfetch.goh and MAX_IMPORT_THREADS in htmlview/GraphicImport.goc, under
+in urlfetch.goh and MAX_IMPORT_THREADS in mime/GraphicImport.goc, under
 Appl/Breadbox/BbxBrow/. ImportThreadRequestImportGraphic rotates all requests
 through the configured import queues, selecting the work file and MIME
 status with the same index. G_importActive remains indexed by fetch child,
@@ -119,7 +119,7 @@ next request while that fetch child's prior import remains active.
 
 Raster import progress and cancellation are separate channels. BbxBrow supplies
 `ImportProgressData.IPD_callback` (`ImportGraphicProgressCallback`, returning
-void) and a separate `MimeStatus *` per importer in `htmlview/GraphicImport.goc`.
+void) and a separate `MimeStatus *` per importer in `mime/GraphicImport.goc`.
 PNG and both JPEG importers in `Library/Breadbox/ImpGraph/IMPBMP/` publish
 scanline progress by passing the explicit `ImportProgressData *` to that
 callback, but check `MS_mimeFlags & MIME_STATUS_ABORT` directly in their

@@ -79,7 +79,7 @@ and reservation on error or cancellation. On success it clears
 callback is null, so a decoder that publishes only a complete image can use
 the existing full-image replacement path. See
 `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` and
-`Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`.
+`Appl/Breadbox/BbxBrow/mime/GraphicImport.goc`.
 
 All six decoder-owned blocks (decoder state, input, context, luma, chroma,
 and RGB/PackBits output) use `HF_SWAPABLE`, without `HF_FIXED`
@@ -115,7 +115,7 @@ blink threshold is `progressDelay > 10`, and `PROGRESS_BLINK_WIDTH` is 4.
 This animation does not establish whether `WebPDecoder.mbY` advances.
 
 The actual MIME import destination is the object-cache VM file from
-`ObjCacheGetVMFile(request.name)` (`htmlview/ImportG.goc`), not the
+`ObjCacheGetVMFile(request.name)` (`mime/GraphicImport.goc`), not the
 `G_importWorkFile` used for progressive staging. Appending a new HugeArray
 data block calls `VMAllocLMem` -> `VMAttachNoEC` -> `VMEnforceHandleLimit`.
 The latter triggers above 250 resident handles per file and attempts to

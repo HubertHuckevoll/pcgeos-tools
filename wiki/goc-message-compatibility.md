@@ -68,6 +68,34 @@ source/object lists; a compile-option macro alone cannot restore an excluded
 module without regenerating the build configuration.
 Evidence: `Tools/nmkmf/mkmf.c`, these four functions.
 
+## Protocol-reference stubs and process startup data
+
+GOC emits a compiler-only ProtoMinorRoutine in _BOGUS_PROTOMINORRELOCS
+(Tools/goc/symbol.c). Glue's Seg_AddSegment marks _BOGUS segments SEG_LIBRARY,
+and GeoPrepare omits them from the file/resource layout (Tools/glue/segment.c,
+geo.c). The OMF path in Pass2MS_ProcessObject nevertheless writes their LEDATA
+and LIDATA bytes using nextOff (pass2ms.c). Pass1Load leaves nextOff at
+the accumulated pass-1 size (main.c); GeoPrepare does not reset it for library
+segments, and Pass2MS_Finish advances it through their data again. Their output
+can reach twice the combined stub size. GeoWrite overwrites the file header,
+which hides these bytes only while that range ends before the dgroup resource.
+
+A source split or library-import change can expose this overlap without
+changing application logic. In a process geode, the first 64 dgroup bytes
+reserve ThreadPrivateData; only TPD_stackBot at offset 18 is initialized by
+GeoWrite. Nonzero file bytes elsewhere in that reserved area can corrupt
+FSIR lock counters and cause FSIR_MAY_NOT_BE_LOCKED at FileGetDestinationDisk.
+Evidence: Include/Internal/heapInt.def:ThreadPrivateData and
+Library/Kernel/File/fileUtils.asm:FileGetDestinationDisk.
+
+BbxBrow local.mk excludes disabled PortalEmail and bookmark object modules
+before geode.mk declares link dependencies. With the current linker, keep
+2 * stub size below the dgroup file position. Its
+Appl/Breadbox/BbxBrow/tests/check_startup_tpd.pl checks the actual reserved
+thread data in linked EC/NC geodes without running GEOS. A linker that
+processes protocol fixups but discards the stubs' output data removes this
+build-size ceiling.
+
 Runtime handle cost follows linked resources, not object-file count.
 `Library/Kernel/Geodes/geodesLoad.asm:InitResources` iterates the resource table
 and calls `AllocateResource` (or reuses another instance's read-only resource).
@@ -197,7 +225,7 @@ open; retaining that handler intact avoids splitting its literal pool.
 their source pragmas preserve Borland and Watcom code placement without
 changing string options.
 
-BbxBrow `navigate/SourceCache.goc` owns source-cache state, persistence,
+BbxBrow `cache/SourceCache.goc` owns source-cache state, persistence,
 recency and URL/expiration policy; `ObjectCache.goc` owns object-cache state,
 VM chains, item reference counts and eviction. Both retain `NAVCACHE_TEXT`.
 `CacheInternal.h` shares the original `CacheFileMapBlock` persistence structure
@@ -225,20 +253,25 @@ Class/message interfaces remain in `bookclas.goh`, `bookmark.goh`,
 `favorcls.goh` and `favorite.goh`.
 
 BbxBrow's MIME-driver cache is shared by text and graphic imports:
-`navigate/NavigationMime.goc:ImportTextByNative` and
-`htmlview/GraphicImport.goc:ImportGraphicByNative` use `MimeDriverSemaphore`,
+`mime/ContentHandling.goc:ImportTextByNative` and
+`mime/GraphicImport.goc:ImportGraphicByNative` use `MimeDriverSemaphore`,
 `lastMimeDriver`, `lastMimeName` and `LoadNewMimeDriver`. Each adds a geode
 reference before releasing the semaphore, invokes the driver, then removes
 the reference. `init/INIT.goc:InitNavigation` loads the association arrays
 before creating the semaphore. `DeInitNavigation` deliberately leaves that
 semaphore for automatic exit cleanup because
-`htmlview/GraphicImport.goc:MSG_IMPORT_THREAD_ENGINE_KILL` still acquires it to free
+`mime/GraphicImport.goc:MSG_IMPORT_THREAD_ENGINE_KILL` still acquires it to free
 and clear the cached driver. Keep this initialization/cleanup ordering intact.
-The seven MIME/import/unknown-content functions and cache definitions share
-`Navigation_TEXT`; `Navigation.goc` retains the HTMLResource chunks in declaration
-order, and `NavigationMime.goc` declares the referenced chunks/objects,
-including `HTMLVApp` for expanded progress macros. The existing interfaces
-use plain C calling conventions.
+The MIME/import/unknown-content functions and cache definitions share
+`Navigation_TEXT`; `htmlview/HTMLView.goc` retains the HTMLResource chunks in
+original declaration order, including the guarded portal error chunk.
+`mime/ContentHandling.goc` declares the referenced chunks/objects, including
+`HTMLVApp` for expanded progress macros. URL helpers in `urlfetch/URLSupport.goc`,
+recent-history storage in `htmlview/HTMLViewNavigation.goc` and home-page access
+in `htmlview/HTMLViewOptions.goc` also retain `Navigation_TEXT`. PortalEmail.goc
+uses that resource for helpers and `OpenClos_TEXT` for MSG_NOTIFY_APP_EXITED.
+The existing interfaces use plain C calling conventions. No linked resource
+is added by this organization; resource IDs can change with object order.
 
 A Watcom source split can grow code even without duplicate literals or a new
 resource: a same-file call to a far C function can use four bytes (`push cs`
@@ -246,8 +279,8 @@ plus near call), while an external call uses five. Glue converts a far call
 within the same linked resource to `push cs`, near call and a trailing NOP,
 removing its runtime relocation without shrinking the call site. Evidence:
 `Tools/glue/msobj.c`, same-segment call handling in `MSObj_PerformRelocations`,
-and BbxBrow `navigate/Navigation.goc:LoadFILEURL` calling
-`NavigationMime.goc:IdentifyMimeType`. `Tools/glue/geo.c:GeoPrepare` reserves
+and BbxBrow `urlfetch/URLSupport.goc:LoadFILEURL` calling
+`mime/ContentHandling.goc:IdentifyMimeType`. `Tools/glue/geo.c:GeoPrepare` reserves
 file space for relocation records before that conversion; `GeoWrite` emits
 the reduced relocation count. Compare linked resource-table relocation sizes
 as well as Glue's initial counts and total geode file sizes. Watcom switch

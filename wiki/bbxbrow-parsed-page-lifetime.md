@@ -9,7 +9,7 @@ Library/Breadbox/Html4Par/htmlclas/htmlclas.goc copy the hypertext arrays into
 and back out of the text object. Attachment resets image resolution/cache
 handles, retaining parser source references.
 
-ObjCacheRemoveEntry in BbxBrow/navigate/ObjectCache.goc frees text pages through
+ObjCacheRemoveEntry in BbxBrow/cache/ObjectCache.goc frees text pages through
 FreeHTMLTransferItem; locked entries cannot be evicted. ObjCacheUnlockItem
 removes an unlocked OCDF_NOCACHE entry immediately, while ordinary cacheable
 entries remain available for restoration.
@@ -24,25 +24,62 @@ its native-page serialization path returns zero.
 
 ## Shared browsing services and content retrieval
 
-`navigate/Navigation.goc` contains plain C helpers and the shared HTMLResource
-chunks, not a navigation class. It groups recent-history snapshots, home-page
-access, URL-driver selection/lifetime, FILE URL resolution, redirect/cache-file
-handling, connection checks and conditional EMAIL_ACCT_CMD account commands.
+Shared services are organized by ownership: cache/ holds source and object
+caches, urlfetch/URLSupport.goc owns URL-driver lifetime, FILE handling,
+redirects and connectivity checks, and mime/ContentHandling.goc owns MIME
+associations, the shared import-driver cache and unknown-content handling.
+Shared HTMLResource chunks remain together in htmlview/HTMLView.goc;
+recent-history helpers live in HTMLViewNavigation.goc and home-page access in
+HTMLViewOptions.goc. PortalEmail.goc holds optional portal account integration.
 Document Back/Forward is implemented in `urldoc/URLDocumentHistory.goc`;
 link targeting is in `urlframe/URLFrameNavigation.goc`.
 
 `urlframe/URLFrameFetch.goc` first tries `ObjCacheFindURL(OCT_TEXTOBJ, ...)`.
 On a miss it submits `URLFetchRequest`; fetch children in
-`urlfetch/URLFETCH.goc` call `htmlview/URLLoad.goc:LoadURLToFile`, which uses
-source-cache lookup and the Navigation URL-driver/file helpers. The frame's
+`urlfetch/URLFETCH.goc` call `urlfetch/URLLoad.goc:LoadURLToFile`, which uses
+source-cache lookup and the URLSupport URL-driver/file helpers. The frame's
 `MSG_URL_FRAME_URL_FETCHED` parses HTML/plain text or calls
-`navigate/NavigationMime.goc:HandleUnknownType` for other types. That handler
+`mime/ContentHandling.goc:HandleUnknownType` for other types. That handler
 selects native text import, an image-wrapper HTML message or the save dialog.
-Graphic-import workers in `htmlview/GraphicImport.goc:ImportGraphicByNative`
-share NavigationMime's MIME-driver cache and semaphore. These helpers serve
+Graphic-import workers in `mime/GraphicImport.goc:ImportGraphicByNative`
+share ContentHandling's MIME-driver cache and semaphore. These helpers serve
 multiple caller/thread contexts; the folder does not own fetch-thread dispatch
 or HTML rendering. Startup/shutdown integration is in `init/INIT.goc`,
 `InitNavigation` / `DeInitNavigation`.
+
+MIME-driver shutdown crosses those file boundaries: `InitNavigation` allocates
+`MimeDriverSemaphore`, while `DeInitNavigation` deliberately leaves it alive.
+`mime/GraphicImport.goc:MSG_IMPORT_THREAD_ENGINE_KILL` acquires it to
+release `lastMimeDriver`. Native text and graphic import both add a driver
+reference under the semaphore, invoke the driver after releasing the semaphore,
+and remove that reference afterwards (`ImportTextByNative`,
+`ImportGraphicByNative`). Folder ownership does not imply that the semaphore
+can be destroyed during general browsing-service teardown.
+
+## Portal email-account commands
+
+EMAIL_ACCT_CMD is browser integration for portal account management, not a
+mailto handler. Wmg3Http/WMG3HTTP.goc captures the GPCemail response header
+and returns its chunk through URLRequestBlock.URB_extraData;
+BbxBrow/urlfetch/URLLoad.goc passes it to
+htmlview/PortalEmail.goc:HandleEmailAcctCmd. That parser invokes MailHub account
+APIs. Deletion can request that the email application quit, retaining
+G_pendingEmailDelete until htmlview/PortalEmail.goc:
+MSG_NOTIFY_APP_EXITED completes the deletion and removes the GCN subscription.
+Evidence: those paths under Library/Breadbox/UrlDrv/ and Appl/Breadbox/;
+PendingEmailDeleteAcctData is private to BbxBrow/htmlview/PortalEmail.goc.
+
+EMAIL_ACCT_CMD is disabled by default. Enable -DEMAIL_ACCT_CMD through
+COMPILE_OPTIONS in local.mk and rebuild; GOC, Watcom and Glue receive the
+same flag. bbxbrow.gp imports MailHub only for that configuration. The shared
+htmlview.goh no longer imports mailhub.goh; PortalEmail.goc owns that include.
+URLLoad.goc explicitly includes socket.goh for SE_LINK_FAILED, and
+URLSupport.goc includes socket.goh plus sockmisc.h for CheckConnected. These
+replace the previous accidental networking-header dependency on MailHub.
+The default EC/NC geodes omit the portal handler, its error chunk and the
+MailHub import; enabling the flag builds the retained portal integration.
+Ordinary mailto routing is separate: bbxensem/Template/geos.ini uses the
+external URL driver and [extURL] account-independent application mapping.
 
 ## Per-view width lifetime
 
@@ -81,7 +118,7 @@ This presentation operation also changes cache recency: `SrcCacheFindURL`
 removes each found entry and appends it to the source-cache array under
 `srcCacheSem`, making it most recently used. This occurs before any expiration
 check when `CACHE_VALIDATION` is enabled. Evidence:
-`Appl/Breadbox/BbxBrow/navigate/SourceCache.goc`, `SrcCacheFindURL`,
+`Appl/Breadbox/BbxBrow/cache/SourceCache.goc`, `SrcCacheFindURL`,
 `SrcCacheIsExpired`; semaphore macros in `htmlview.goh`.
 
 ## Print ornament coordinate space and target routing
@@ -115,7 +152,7 @@ Back/forward replay duplicates the saved chunk with `LMemDup` before calling
 `MSG_URL_DOCUMENT_LOAD_FRAME_SET` in `URLDocumentNavigation.goc`; that loader
 locks the supplied block, fetches frames, frees the supplied chunk, then
 unlocks. Stack eviction/drop releases frame-record name tokens before freeing
-the saved chunks. `navigate/Navigation.goc:HistoryUpdateLRU` owns the retained
+the saved chunks. `htmlview/HTMLViewNavigation.goc:HistoryUpdateLRU` owns the retained
 recent-history snapshot and title token, releasing the previous entry on
 replacement. `urldoc/URLDOC.goc` allocates the two stack-buffer chunks during
 physical open/create and frees them during physical close, after dropping

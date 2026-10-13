@@ -36,11 +36,11 @@ local name token for that file. Cache restoration can import the file again;
 `FreeHTMLTransferItem()` deletes it when the parsed page is freed.
 `OBJ_CACHE_MINOR_VERSION` in `Appl/Breadbox/BbxBrow/htmlview.goh` is bumped
 when the persistent image-record layout changes; `AttachToObjCache()` in
-`navigate/ObjectCache.goc` recreates cache files on a protocol mismatch.
+`cache/ObjectCache.goc` recreates cache files on a protocol mismatch.
 Imported graphics are stored as `OCT_GSTRING` VM chains by
-`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `htmlview/ImportG.goc`.
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `mime/GraphicImport.goc`.
 `ObjCacheForceCachable()` retains completed graphics when object caching is
-enabled. `ObjCacheCheckPersist()` in `navigate/ObjectCache.goc` drops text items
+enabled. `ObjCacheCheckPersist()` in `cache/ObjectCache.goc` drops text items
 at detach and may also drop small graphics; an image-cache entry is not a
 guaranteed permanent copy of a page's image source.
 `HandleTag()` in `htmlpars/htmlpars.goc` resolves HTML tag names through
@@ -176,7 +176,7 @@ URL-sized local buffer there: the DBCS implementation of
 `NamePoolTokenizeLenDOS()` already uses a 128-character stack conversion
 buffer in `Library/Breadbox/Html4Par/wwwtools/namepool.goc`.
 
-`ImportLockCacheToken()` in `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`
+`ImportLockCacheToken()` in `Appl/Breadbox/BbxBrow/mime/GraphicImport.goc`
 leaves one cache reference owned by the import request and acquires another
 for the caller/notification. The normal final replacement drops the request
 reference and transfers the other to
@@ -192,7 +192,7 @@ must release it even after `HTI_imageArray` is cleared; the message's data
 block must be unlocked before it is freed.
 Evidence: `ImportLockCacheToken`, `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`,
 `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS` in `urltext/URLTextImages.goc`, and
-`ObjCacheAddURL`/`ObjCacheUnlockItem` in `navigate/ObjectCache.goc`.
+`ObjCacheAddURL`/`ObjCacheUnlockItem` in `cache/ObjectCache.goc`.
 
 Intelligent image admission happens at import time. BbxBrow passes
 `T_importGraphicRequest.imageMaxPixels` (800L*600L for Intelligent-mode
@@ -306,7 +306,7 @@ recognizes a legacy Boolean value, initialization replaces it with integer
 mode 2 before continuing. `ProcessSingleGraphic()`
 in `urltext/URLTextImages.goc` passes `LoadProgressData` to the fetch only in
 streaming mode (plus the existing reserved-position and minimum-height
-restrictions). `ImportThreadRequestImportGraphic()` in `htmlview/ImportG.goc`
+restrictions). `ImportThreadRequestImportGraphic()` in `mime/GraphicImport.goc`
 installs `IPD_callback` for any mode above final, so completed-file import
 progress is unconditional capability under `PROGRESS_DISPLAY`; the former
 `COMPILE_OPTION_IMPORT_PROGRESS_LOCAL` switch is gone. Template
@@ -320,7 +320,7 @@ for HTML layout in the UI thread. The final full-image replacement is queued to
 that object after decoding, while each progress notification owns a cache reference
 until the receiver transfers it to `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`.
 
-Evidence: `Appl/Breadbox/BbxBrow/htmlview/ImportG.goc`,
+Evidence: `Appl/Breadbox/BbxBrow/mime/GraphicImport.goc`,
 `htmlview/LoadURL.goc`, and `urltext/URLTextImages.goc` and `urltext/URLTextImageProgress.goc`; `CInclude/htmldrv.h`; and
 `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`.
 
@@ -332,12 +332,12 @@ protocol-4 drivers receive the reserved ninth, null progress argument, and
 constrained requests (`maxPixels != 0`) additionally require protocol 4.3
 for MIME entry 4, deferring on older drivers. The
 public protocol declarations are in `CInclude/htmldrv.h`, and discovery and
-dispatch are in `init/INIT.goc`, `navigate/NAVIGATE.goc`, and
-`htmlview/LoadURL.goc`.
+dispatch are in `init/INIT.goc`, `mime/ContentHandling.goc`, and
+`mime/GraphicImport.goc`.
 
 `ImpWebP()` in `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` calls the import
 progress callback after each decoded macroblock row with output lines. In
-BbxBrow, `ImportGraphicProgressCallback()` in `htmlview/ImportG.goc` coalesces
+BbxBrow, `ImportGraphicProgressCallback()` in `mime/GraphicImport.goc` coalesces
 pending updates for the same bitmap; each delivered
 `MSG_URL_TEXT_IMPORT_GRAPHIC_PROGRESS` in `urltext/URLTextImageProgress.goc` calls
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS`, which scans `HTI_imageArray`
@@ -346,7 +346,7 @@ described above.
 The callback also invokes `EnforceObjCacheHandleLimits()` before coalescing,
 because an already-cached bitmap can add VM blocks throughout progressive
 decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
-first created; its implementation in `navigate/ObjectCache.goc` updates and
+first created; its implementation in `cache/ObjectCache.goc` updates and
 trims the cache VM files when global free handles drop below 500.
 
 BbxBrow's active loading-progress stream uses `MemStream` because
@@ -374,10 +374,10 @@ five seconds without a progress change (`htmlview/UIOften.goc`,
 does not establish that the browser process thread is advancing. The
 `Loading Image.` status is posted by `MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC`
 before import and cleared by a separate queued `MsgBlank` status update after
-it (`htmlview/ImportG.goc`, `htmlview.goh`, `navigate/NAVIGATE.goc`).
+it (`mime/GraphicImport.goc`, `htmlview.goh`, `htmlview/HTMLView.goc`).
 
 With `PROGRESS_DISPLAY`, BbxBrow normally creates `G_numFetchChildren + 1`
-import threads (`htmlview/ImportG.goc`, `ImportThreadEngineStart`), while
+import threads (`mime/GraphicImport.goc`, `ImportThreadEngineStart`), while
 `[HTMLView] forceSingleImportThread = true` creates one shared importer.
 The setting is read only at engine startup. Import index 0 handles all
 requests in shared mode; otherwise streamed requests use `LPD_loadThread + 1`
@@ -395,7 +395,7 @@ after `LoadURLToFile` when that option is false, preventing the child from
 handling further fetch requests until the associated import finishes.
 
 Image import runs synchronously inside
-`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` (`htmlview/ImportG.goc`), through
+`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` (`mime/GraphicImport.goc`), through
 `ToolsImportGraphicByDriver` / `ImportGraphicByNative` (`htmlview/LoadURL.goc`).
 Streamed GIF reads in `ImpGraph/IMPBMP/impgifc.goc` and JPEG refills in
 `Ijgjpeg/DECOMP/JDATASRC.c` invoke `LPCT_READ` on
@@ -427,7 +427,7 @@ inline SVG temporary files and file-based image imports; `ProcessSingleGraphic`
 excludes reserved image positions and small authored heights from streaming,
 and `LoadGraphicProgressCallback` streams only GIF/JPEG. Importer 0 can still
 report progressive decoding through `IPD_callback`; absence of a live fetch
-stream does not mean absence of import progress (`htmlview/ImportG.goc`,
+stream does not mean absence of import progress (`mime/GraphicImport.goc`,
 `ImportThreadRequestImportGraphic`).
 
 The active RAM stream is selected by the defined local `USE_MEM_STREAM`
@@ -480,7 +480,7 @@ geometry alone does not remove that character. See `htmlclas/htmlfsiz.goc`,
 
 BbxBrow's local-file loader does not strip URL queries: `ToolsParseURL()` in
 `Library/Breadbox/Html4Par/wwwtools/wwwtools.goc` retains the query in its path,
-and `LoadFILEURL()` in `Appl/Breadbox/BbxBrow/navigate/NAVIGATE.goc` decodes
+and `LoadFILEURL()` in `Appl/Breadbox/BbxBrow/urlfetch/URLSupport.goc` decodes
 and normalizes that path before filesystem access and MIME identification.
 Use plain filenames in locally opened HTML image fixtures; HTTP image queries
 still belong to the request URL.
@@ -508,7 +508,7 @@ Broken-image drawing is separate from failure classification. BbxBrow's
 `MSG_URL_TEXT_INTERNAL_REPLACE_LIKE_GRAPHICS` in `urltext/URLTextImages.goc`
 marks every matching `HID_resolvedURL` broken when passed `OCT_NULL`.
 Fetch failures (`MSG_URL_TEXT_GRAPHIC_FETCHED`) and import failures
-(`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `htmlview/ImportG.goc`)
+(`MSG_IMPORT_THREAD_ENGINE_IMPORT_GRAPHIC` in `mime/GraphicImport.goc`)
 use this path. Html4Par's `MSG_HTML_TEXT_MARK_IMAGE_BROKEN` in
 `htmlclas/htmlclas.goc` sets BROKEN and RESOLVED, clears RESOLVING and
 SIZE_DIRTY, clears the graphic handles, and calls

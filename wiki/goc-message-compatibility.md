@@ -27,6 +27,11 @@ and `Library/Breadbox/Html4Par/local.mk`.
 
 ## Methods across source files and code resources
 
+Glue warns for any linked resource above 10,000 bytes (`Tools/glue/geo.c`,
+`GeoPrepare`, resource-size reporting). This is a residency/heap-fragmentation
+warning, not the 16-bit segment-size limit. Keep near helper call chains in
+one resource when reducing resource sizes.
+
 A class's defining file keeps its single `@classdecl` and uses
 `@extern method Class, MSG_NAME;` to register externally implemented handlers.
 The other file defines each handler with `@extern method Class, MSG_NAME`
@@ -106,9 +111,13 @@ resource normally does.
 
 BbxBrow's `LOCAL` macro in `htmlview.goh` is `_near _pascal`.
 `ProcessSingleGraphic` and all its callers (including the JavaScript
-`MSG_URL_TEXT_CHANGE_GRAPHIC`) belong in `urltext/URLTextImages.goc` so a
-source split does not require a new far helper API or a calling-convention
-change. Existing shared request metadata is declared in
+`MSG_URL_TEXT_CHANGE_GRAPHIC`) belong in `urltext/URLTextImages.goc`, now in
+`URLTextImages_TEXT`, so the near helper never crosses a resource boundary.
+The image resource is reached through existing method dispatch and far
+interfaces. `AssumeGraphic` is called across resources only when the
+progress callback opens an image; per-buffer MemStream calls remain together
+in `URLText_TEXT`. The image resource has a single contributing object,
+so its static helper no longer needs special link ordering. Existing shared request metadata is declared in
 `urltext/URLTextInternal.h`. The fetch callback and per-child `G_stream` handles
 remain in `urltext/URLTextImageProgress.goc`; byte-buffer operations, private
 layout and limits are in `urltext/MemStream.c`, with declarations in
@@ -169,7 +178,7 @@ emission in `GeoWrite`.
 
 After a case-only rename, update all shared defaults too: BbxBrow
 `urltext/URLTextImages.goc` and `urlframe/URLFrameTree.goc` select
-`URLText_TEXT` and `URLFrame_TEXT`; uppercase `-nt` defaults create separate
+`URLTextImages_TEXT` and `URLFrame_TEXT`; uppercase `-nt` defaults create separate
 empty segments. BbxBrow `local.mk` matches these names for the split files,
 including plain C `MemStream.c`, and uses `-nt=URLTEXT2_TEXT` for the clipboard
 file.

@@ -22,6 +22,28 @@ cache is therefore not evidence that parsed text pages persist across normal
 application restart. MSG_HTML_TEXT_STORE_CONTENTS is currently disabled;
 its native-page serialization path returns zero.
 
+## Shared browsing services and content retrieval
+
+`navigate/Navigation.goc` contains plain C helpers and the shared HTMLResource
+chunks, not a navigation class. It groups recent-history snapshots, home-page
+access, URL-driver selection/lifetime, FILE URL resolution, redirect/cache-file
+handling, connection checks and conditional EMAIL_ACCT_CMD account commands.
+Document Back/Forward is implemented in `urldoc/URLDocumentHistory.goc`;
+link targeting is in `urlframe/URLFrameNavigation.goc`.
+
+`urlframe/URLFrameFetch.goc` first tries `ObjCacheFindURL(OCT_TEXTOBJ, ...)`.
+On a miss it submits `URLFetchRequest`; fetch children in
+`urlfetch/URLFETCH.goc` call `htmlview/URLLoad.goc:LoadURLToFile`, which uses
+source-cache lookup and the Navigation URL-driver/file helpers. The frame's
+`MSG_URL_FRAME_URL_FETCHED` parses HTML/plain text or calls
+`navigate/NavigationMime.goc:HandleUnknownType` for other types. That handler
+selects native text import, an image-wrapper HTML message or the save dialog.
+Graphic-import workers in `htmlview/GraphicImport.goc:ImportGraphicByNative`
+share NavigationMime's MIME-driver cache and semaphore. These helpers serve
+multiple caller/thread contexts; the folder does not own fetch-thread dispatch
+or HTML rendering. Startup/shutdown integration is in `init/INIT.goc`,
+`InitNavigation` / `DeInitNavigation`.
+
 ## Per-view width lifetime
 
 HTI_viewWidth in CInclude/html4par.goh belongs to each HTMLText instance.

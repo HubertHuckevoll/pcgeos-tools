@@ -56,6 +56,18 @@ assuming identical resource IDs. `mkmf` can run over a temporary source mirror
 with ordered entries to regenerate the same lists plus the new source, without
 editing the generated Makefile by hand.
 
+Large-model `mkmf` discovers immediate child directories as source modules;
+`MkmfCreateLargeModel` calls `MkmfFindSources` / `MkmfScanDir` for each child,
+without recursively collecting nested C/GOC modules. Keep subsystem folders
+as siblings when relying on automatic discovery. `MkmfFindSubdirsCommon` skips
+a child containing the exact uppercase marker `NO_MKMF`; on Linux, a lowercase
+`no_mkmf` does not match that filesystem check. `MkmfFindSubdirs` merges source
+and Installed directory discovery, so an independently discovered matching
+Installed child can still contribute a module. Exclusion changes generated
+source/object lists; a compile-option macro alone cannot restore an excluded
+module without regenerating the build configuration.
+Evidence: `Tools/nmkmf/mkmf.c`, these four functions.
+
 Runtime handle cost follows linked resources, not object-file count.
 `Library/Kernel/Geodes/geodesLoad.asm:InitResources` iterates the resource table
 and calls `AllocateResource` (or reuses another instance's read-only resource).
@@ -89,19 +101,50 @@ the four lookup methods in `URLText_TEXT`. Preserve that compiler difference
 in source-only moves (`urltext/URLTextScript.goc`), rather than treating a
 missing pragma as an incidental cleanup.
 
-Watcom can emit an empty filename-derived default code segment alongside a
-source `#pragma code_seg` selection. Glue prints `*** Empty segment:` and
-omits that zero-sized segment from resource output (`Tools/glue/geo.c`).
-For a split file, setting Watcom's `-nt` default to the exact source pragma
-name, including case, avoids this diagnostic without adding a resource.
+### Source filenames, compiler segments and linked resources
+
+Source filenames organize translation units and generated object lists;
+compiler code-segment names determine code-resource placement. Several object
+files can contribute matching public CODE segments to one linked resource,
+and one source can switch between several segments. A source rename therefore
+does not require a resource rename. Explicit Borland `#pragma codeseg` and
+Watcom `#pragma code_seg` selections preserve the named segment independently
+of the source filename; Watcom `-nt=NAME` sets the compiler's default code
+segment and should match the intended source selection, including case.
+
+BbxBrow examples: `bookmarks/BookmarksDialog.goc` selects `BOOKCLAS_TEXT`,
+`bookmarks/BookmarksStore.goc` selects `BOOKMARK_TEXT`, and
+`urldoc/URLDocumentLocalPage.goc` selects `LOCALPAG_TEXT`. Their scoped `-nt`
+settings are in `Appl/Breadbox/BbxBrow/local.mk`. These legacy segment names
+are intentional even though the source filenames are now descriptive.
+
+There are two distinct causes of empty code segments. Watcom can emit an
+unused filename-derived default segment alongside an explicit source
+`#pragma code_seg` selection. Matching `-nt` to the source pragma prevents
+that extra default-segment diagnostic. It cannot remove an empty segment
+when the entire implementation is compiled out: the object remains in the
+build, but its selected/default segment contains no code.
+
+The bookmark sources select their segments before
+`@ifdef COMPILE_OPTION_BOOKMARKS`; the local-page source does so before
+`@ifdef COMPILE_OPTION_LOCAL_PAGES`. These features are disabled in the normal
+BbxBrow build (`local.mk` and `options.goh`), while the generated Makefile still
+includes the objects. Renaming their segment strings would only rename the
+empty-segment messages. Excluding the disabled objects from the link would
+remove those contributions; moving their source files alone does not.
+
+Glue prints `*** Empty segment:` for an ungrouped, zero-sized CODE segment,
+then adds it to dgroup so it disappears as a separate geode resource. It
+therefore requires no separate runtime resource handle. Evidence:
+`Tools/glue/geo.c`, `GeoPrepare`, the empty CODE segment loop; resource-table
+emission in `GeoWrite`.
+
 After a case-only rename, update all shared defaults too: BbxBrow
 `urltext/URLTextImages.goc` and `urlframe/URLFrameTree.goc` select
 `URLText_TEXT` and `URLFrame_TEXT`; uppercase `-nt` defaults create separate
 empty segments. BbxBrow `local.mk` matches these names for the split files,
 including plain C `MemStream.c`, and uses `-nt=URLTEXT2_TEXT` for the clipboard
-file. Empty code segments also occur when a whole implementation is disabled,
-as in `navigate/BookmarksDialog.goc`, `navigate/BookmarksStore.goc` and
-`urldoc/URLDocumentLocalPage.goc`; a filename change is not required.
+file.
 
 BbxBrow frame source ownership is separate from resource ownership:
 `urlframe/URLFrame.goc` owns the class, lifecycle/state coordination, page
@@ -167,13 +210,14 @@ implementations to remain in that same resource. `SrcCacheFindEntry` keeps its
 original far C convention. The two compiler string pools can duplicate
 `HTML_CACHE_NAME`, used in each cache's open/create paths.
 
-BbxBrow `navigate/BookmarksDialog.goc` and `BookmarksStore.goc` retain
+BbxBrow `bookmarks/BookmarksDialog.goc` and `bookmarks/BookmarksStore.goc` retain
 `BOOKCLAS_TEXT` and `BOOKMARK_TEXT`, including their empty segments when
-`COMPILE_OPTION_BOOKMARKS` is disabled. `FavoritesDialog.goc` owns the four
+`COMPILE_OPTION_BOOKMARKS` is disabled. Both bookmarks sources remain in the
+generated build. `favorites/FavoritesDialog.goc` owns the four
 favorite class declarations, list organization and UI helpers;
-`FavoritesCreate.goc` implements the four externally registered favorite/group
+`favorites/FavoritesCreate.goc` implements the four externally registered favorite/group
 creation and dialog-initialization handlers in `FAVORCLS_TEXT`.
-`FavoritesStore.goc` retains `FAVORITE_TEXT` and private VM/IBMS tree/index
+`favorites/FavoritesStore.goc` retains `FAVORITE_TEXT` and private VM/IBMS tree/index
 state. Its `FavoritesBuildUIList` directly traverses `G_favoritesIBMS` and
 `G_favoritesTopTen` and calls `ILocateEntryByPos`, so it belongs with that
 private state rather than being moved merely because it draws menu monikers.

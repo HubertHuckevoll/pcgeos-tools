@@ -100,7 +100,7 @@ to the same scheduling/abort protocol in BbxBrow `urlfetch/URLFETCH.goc`.
 
 ## Fetch/import thread configuration
 
-With PROGRESS_DISPLAY, numConn controls fetch children (range 1..2, default
+numConn controls fetch children (range 1..2, default
 1); numImportThreads independently controls import workers (range 1..3,
 default 1). Invalid counts fall back to 1. MAX_FETCH_ENGINE_CHILDREN lives
 in urlfetch.goh and MAX_IMPORT_THREADS in mime/GraphicImport.goc, under

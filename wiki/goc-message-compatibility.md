@@ -126,8 +126,8 @@ so its static helper no longer needs special link ordering. Existing shared requ
 remain in `urltext/URLTextImageProgress.goc`; byte-buffer operations, private
 layout and limits are in `urltext/MemStream.c`, with declarations in
 `MemStream.h`. The header shares `USE_MEM_STREAM` with both implementation and
-caller. The plain C implementation reads `PROGRESS_DISPLAY` from `product.h`,
-matching the existing GOC product-feature guard. The four functions retain
+caller. The plain C implementation is guarded only by `USE_MEM_STREAM`,
+which is shared with the GOC caller through `MemStream.h`. The four functions retain
 their original C calling convention and `URLText_TEXT` placement.
 
 GOC macros can require object declarations that are invisible in the method

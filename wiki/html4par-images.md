@@ -292,29 +292,17 @@ images as compact unsupported placeholders without invoking an importer.
 Extension preflight remains separate and installed MIME associations remain
 authoritative. Streaming HTTP admission is a possible later optimization.
 
-Image progress is a three-state mode selected by the integer
-`[HTMLView] progressDisplay` entry: `ImageProgressMode` with
-`IMAGE_PROGRESS_FINAL` (0, final replacement only), `IMAGE_PROGRESS_IMPORT`
-(1, progressive display only while importing completely downloaded files),
-and `IMAGE_PROGRESS_STREAM` (2, the default; live streaming when eligible,
-otherwise the same completed-file progressive import as mode 1). The type and
-type lives in `Appl/Breadbox/BbxBrow/htmlview.goh`; the default is set in
-`init/INIT.goc`, where `InitNavigation()` reads the entry with
-`InitFileReadInteger()` and keeps the default on missing, malformed, or
-out-of-range values. If integer parsing fails but `InitFileReadBoolean()`
-recognizes a legacy Boolean value, initialization replaces it with integer
-mode 2 before continuing. `ProcessSingleGraphic()`
-in `urltext/URLTextImages.goc` passes `LoadProgressData` to the fetch only in
-streaming mode (plus the existing reserved-position and minimum-height
-restrictions). `ImportThreadRequestImportGraphic()` in `mime/GraphicImport.goc`
-installs `IPD_callback` for any mode above final, so completed-file import
-progress is unconditional capability under `PROGRESS_DISPLAY`; the former
-`COMPILE_OPTION_IMPORT_PROGRESS_LOCAL` switch is gone. Template
-`[HTMLView] progressDisplay = 2` in
-`Tools/build/product/bbxensem/Template/geos.ini` supplies the default without
-changing `HTML_VIEW_INI_VERSION_NUMBER` or resetting the HTMLView category.
-Without `PROGRESS_DISPLAY`, behavior is unchanged: no load or import progress
-data and no mode global exists. Both streamed and completed-file import progress
+Image progress is enabled by the Boolean `[HTMLView] progressDisplay`
+entry, defaulting to TRUE in `init/INIT.goc` and read by
+`InitFileReadBoolean()` in `InitNavigation()`. `ProcessSingleGraphic()` in
+`urltext/URLTextImages.goc` supplies loading-progress data when enabled and
+subject to its position and minimum-height restrictions.
+`ImportThreadRequestImportGraphic()` in `mime/GraphicImport.goc` installs
+`IPD_callback` when progressDisplay is true. Without
+`COMPILE_OPTION_IMPORT_PROGRESS_LOCAL`, this additionally requires loading
+progress data; `options.goh` defines that option, while `prodbbx.goh` leaves
+it commented out. The progress APIs and structures are unconditional.
+Both streamed and completed-file import progress
 use forced-queued delivery to the same `textObj`; the import thread does not wait
 for HTML layout in the UI thread. The final full-image replacement is queued to
 that object after decoding, while each progress notification owns a cache reference
@@ -324,16 +312,12 @@ Evidence: `Appl/Breadbox/BbxBrow/mime/GraphicImport.goc`,
 `htmlview/LoadURL.goc`, and `urltext/URLTextImages.goc` and `urltext/URLTextImageProgress.goc`; `CInclude/htmldrv.h`; and
 `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`.
 
-Without `PROGRESS_DISPLAY`, MIME discovery in `LoadMimeTypes()` and
-`LoadNewMimeDriver()` first requests protocol 4, then falls back to protocol
-3 for legacy drivers. `ImportGraphicByNative()` reads the actual loaded
-protocol and selects the old eight-argument graphic entry below major 4;
-protocol-4 drivers receive the reserved ninth, null progress argument, and
-constrained requests (`maxPixels != 0`) additionally require protocol 4.3
-for MIME entry 4, deferring on older drivers. The
-public protocol declarations are in `CInclude/htmldrv.h`, and discovery and
-dispatch are in `init/INIT.goc`, `mime/ContentHandling.goc`, and
-`mime/GraphicImport.goc`.
+Native MIME discovery in `LoadMimeTypes()` and `LoadNewMimeDriver()`
+requires protocol major 4. `ImportGraphicByNative()` passes the ninth
+`ImportProgressData *` argument to `pcfm_MimeDrvGraphic`. URL drivers use
+protocol major 7, and `URLRequestBlock` contains `URB_loadProgressDataP`.
+The public declarations are in `CInclude/htmldrv.h`; discovery and dispatch
+are in `init/INIT.goc`, `mime/ContentHandling.goc`, and `mime/GraphicImport.goc`.
 
 `ImpWebP()` in `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` calls the import
 progress callback after each decoded macroblock row with output lines. In
@@ -376,18 +360,14 @@ does not establish that the browser process thread is advancing. The
 before import and cleared by a separate queued `MsgBlank` status update after
 it (`mime/GraphicImport.goc`, `htmlview.goh`, `htmlview/HTMLView.goc`).
 
-With `PROGRESS_DISPLAY`, BbxBrow normally creates `G_numFetchChildren + 1`
-import threads (`mime/GraphicImport.goc`, `ImportThreadEngineStart`), while
-`[HTMLView] forceSingleImportThread = true` creates one shared importer.
-The setting is read only at engine startup. Import index 0 handles all
-requests in shared mode; otherwise streamed requests use `LPD_loadThread + 1`
-(`ImportThreadRequestImportGraphic`). `MAX_IMPORT_THREADS` is 3; `urlfetch/URLFETCH.goc` caps the configured fetch-child count at 2 and
-reads it from `[HTMLView] numConn`, falling back to
-`DEFAULT_FETCH_ENGINE_CHILDREN` (2). The Ensemble template
-`Tools/build/product/bbxensem/Template/geos.ini` sets `numConn = 1`, yielding
-one fetch child and two import threads. There is no `numImportThreads`
-setting in the current startup or request-routing code. Without
-`PROGRESS_DISPLAY`, there is a single import thread.
+BbxBrow's `[HTMLView] numConn` and `numImportThreads` settings independently
+select fetch children (1..2) and import workers (1..3), both defaulting to 1.
+`ImportThreadEngineStart()` reads the importer count only at startup, and
+`ImportThreadRequestImportGraphic()` routes requests round-robin across
+those queues. Work files and MIME cancellation status use the selected
+import index; fetch completion uses the request's `LPD_loadThread` and
+`LPD_importSync`. Evidence: `mime/GraphicImport.goc`, `urlfetch/URLFETCH.goc`,
+`urlfetch.goh`, `options.goh`, and `prodbbx.goh`.
 
 `fetchWhileImport` does not control thread creation. In
 `urlfetch/URLFETCH.goc`, `URLFetchEngineChild` waits on `LPD_importSync`

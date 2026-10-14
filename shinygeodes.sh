@@ -5,10 +5,10 @@
 getagentsmd.sh
 
 # Build all the geodes
+set -o pipefail
 cd ~/pcgeos/Installed
 yes | clean
-pmake -L 4
-# pmake -L 4 # hack: do a second run in case pmake failed to resolve all deps
+pmake -L 4 2>&1 | tee ~/pcgeos/build.log
 
 # Build product
 shinyproduct.sh

@@ -22,6 +22,21 @@ cache is therefore not evidence that parsed text pages persist across normal
 application restart. MSG_HTML_TEXT_STORE_CONTENTS is currently disabled;
 its native-page serialization path returns zero.
 
+## Shared cache lifetime
+
+`cache/CacheLifetime.goc` owns `AddCacheFileReference` and
+`RemoveCacheFileReference`. Navigation, documents and URLText storage each
+hold a reference. `InitCacheLifetime`, called by `init/INIT.goc:InitNavigation`,
+creates the allocation watcher, reads VM-cache directory settings and acquires
+navigation's reference. `DeInitNavigation` clears history before releasing it.
+
+`urldoc/URLDOC.goc:MSG_GEN_DOCUMENT_PHYSICAL_CLOSE` holds its reference through
+frame/text destruction, because system detach can close navigation first.
+`urltext/URLText.goc` acquires before superclass `MSG_HTML_TEXT_INIT_STORAGE`
+and releases after superclass `MSG_HTML_TEXT_DEINIT_STORAGE`. The final release
+persists both caches before freeing the global name pool and closing VM files;
+the allocation watcher and cache semaphores are destroyed afterward.
+
 ## Shared browsing services and content retrieval
 
 Shared services are organized by ownership: cache/ holds source and object

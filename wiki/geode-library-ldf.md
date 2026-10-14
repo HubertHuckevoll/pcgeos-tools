@@ -6,16 +6,19 @@ The top-level `Installed/Makefile` is a hand-maintained product build graph, unl
 
 Overriding `PRODUCTS` on the pmake command line does not add the product's dependency-file include to an existing generated Makefile. If that include is missing, assembler targets can invoke ESP without a manager source in `.ALLSRC`. Regenerate the Makefile with `mkmf` so it includes the discovered products' dependency files; regenerate dependencies with `pmake depend` when absent or stale. Evidence: `Tools/nmkmf/mkmf.c:MkmfPrintPRODUCTS` and product dependency includes around lines 2587-2597; `Include/sun.geos.mk:ASSEMBLE` selects `$(.ALLSRC:M*Manager.asm)`.
 
-Glue's file-local Watcom lookup compares an OMF local external's object name
-with the containing segment's `SegDesc.file`. When several objects share a
-public code segment, that field belongs to the first contributing object.
-A later object's static function can therefore fail with `undefined2` even
-though its body is present. Put the object owning the static helper first
-among that segment's contributors, rather than changing helper visibility.
-Order `OBJS`, `EOBJS` and `GOBJS` consistently in source `local.mk` because
-`EOBJS` and `GOBJS` are already expanded by `geos.mk`.
-Evidence: `Tools/glue/pass2ms.c` (`MO_LEXTDEF`),
-`Tools/glue/sym.c:Sym_FindWithSegmentAndFile`,
-`Tools/glue/segment.c:Seg_AddSegment`,
-`Tools/glue/msobj.c:MSObjMapExternal`, and BbxBrow `local.mk`.
-`Library/WebpLib/local.mk` also arranges C before ESP for this diagnostic.
+Glue's OMF local-symbol lookup uses the owning object filename and symbol ID,
+independently of the first contributor to a merged public segment.
+`Tools/glue/pass1ms.c:Pass1MS_ProcessObject` supplies `symObjectFile` while
+CodeView/raw definitions are entered; LPUBDEF records retain local scope.
+`Tools/glue/sym.c:Sym_Enter` indexes local definitions by object/name using
+existing symbol block/offset references. The ordinary segment hash retains
+global visibility when a global shares a name with a local.
+
+`Sym_FindWithFile` resolves LEXTDEF against that object's local index first,
+then falls back to globals. EXTDEF excludes locals, so another object's static
+function cannot satisfy a missing definition. Symbol-file layout is unchanged.
+The older filename comparison against `SegDesc.file` made C static lookup
+object-order dependent and could select the wrong same-named local after
+segment merging; BbxBrow and WebpLib no longer need their ordering workarounds.
+`Tools/glue/tests/check_local_symbols.pl` exercises both link orders, duplicate
+local functions/data, global fallback, and real Watcom CodeView procedures.

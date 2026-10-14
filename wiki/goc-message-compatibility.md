@@ -78,37 +78,32 @@ Evidence: `Tools/nmkmf/mkmf.c`, these four functions.
 GOC emits a compiler-only ProtoMinorRoutine in _BOGUS_PROTOMINORRELOCS
 (Tools/goc/symbol.c). Glue's Seg_AddSegment marks _BOGUS segments SEG_LIBRARY,
 and GeoPrepare omits them from the file/resource layout (Tools/glue/segment.c,
-geo.c). The OMF path in Pass2MS_ProcessObject nevertheless writes their LEDATA
-and LIDATA bytes using nextOff (pass2ms.c). Pass1Load leaves nextOff at
-the accumulated pass-1 size (main.c); GeoPrepare does not reset it for library
-segments, and Pass2MS_Finish advances it through their data again. Their output
-can reach twice the combined stub size. GeoWrite overwrites the file header,
-which hides these bytes only while that range ends before the dgroup resource.
+geo.c). The OMF second pass still resolves their external references to record
+required library minor protocols. `Tools/glue/msobj.c:MSObj_PerformRelocations`
+then skips byte patching and runtime relocations for a SEG_LIBRARY source.
+`Tools/glue/pass2ms.c:Pass2MS_ProcessObject` discards its LEDATA/LIDATA output;
+`Pass2MS_Finish` also ignores backpatches against excluded segments.
 
-A source split or library-import change can expose this overlap without
-changing application logic. In a process geode, the first 64 dgroup bytes
-reserve ThreadPrivateData; only TPD_stackBot at offset 18 is initialized by
-GeoWrite. Nonzero file bytes elsewhere in that reserved area can corrupt
-FSIR lock counters and cause FSIR_MAY_NOT_BE_LOCKED at FileGetDestinationDisk.
-Evidence: Include/Internal/heapInt.def:ThreadPrivateData and
+Previously, the OMF path emitted these bytes using nextOff. Pass1Load left
+nextOff at the accumulated pass-1 size (Tools/glue/main.c); GeoPrepare did not
+reset it for library segments, and Pass2MS_Finish advanced it through the data
+again. Unwanted output could reach twice the combined stub size. GeoWrite
+rewrote the header and tables, masking the bug until the bytes reached dgroup.
+Tools/glue/output.c:Out_Block checks total output-buffer bounds rather than
+resource boundaries, so this overwrite could occur without a linker error.
+
+A process geode reserves 64 dgroup bytes for ThreadPrivateData; GeoWrite sets
+only TPD_stackBot at offset 18. Stray bytes can corrupt FSIR lock counters and
+cause FSIR_MAY_NOT_BE_LOCKED at FileGetDestinationDisk. Evidence:
+Include/Internal/heapInt.def:ThreadPrivateData and
 Library/Kernel/File/fileUtils.asm:FileGetDestinationDisk.
 
-BbxBrow local.mk excludes disabled PortalEmail, bookmark, AutoBrowse and
-script-timer object modules before geode.mk declares link dependencies. With the current linker, keep
-2 * stub size below the dgroup file position. Its
-Appl/Breadbox/BbxBrow/tests/check_startup_tpd.pl checks the actual reserved
-thread data in linked EC/NC geodes without running GEOS. A linker that
-processes protocol fixups but discards the stubs' output data removes this
-build-size ceiling.
-
-Parse-time feature-module exclusions must precede BbxBrow
-COMPILE_OPTIONS additions containing .TARGET expressions. Those expressions
-are evaluated for each build target and cannot reliably distinguish enabled
-features during the earlier conditional checks. AutoBrowse exclusion checks
-explicit COMPILE_OPTIONS and the selected PRODUCTS list; AB and ABDBCS builds
-retain the module. Evidence: Appl/Breadbox/BbxBrow/local.mk; inspect object
-lists without executing recipes using pmake -p 1 -u full, with and without
-PRODUCTS=AB or COMPILE_OPTIONS=-DCOMPILE_OPTION_AUTO_BROWSE.
+`Tools/glue/tests/check_protocol_stubs.pl` links standalone OMF fixtures with
+real Glue. It checks discarded data (including large LIDATA), split protocol
+fixups, imported minor versions, undefined references, and ordinary output
+relocations/backpatches. BbxBrow's local.mk no longer excludes disabled modules
+to limit stub size. `Appl/Breadbox/BbxBrow/tests/check_startup_tpd.pl` retains
+its check of the actual startup bytes in linked EC/NC geodes.
 
 Runtime handle cost follows linked resources, not object-file count.
 `Library/Kernel/Geodes/geodesLoad.asm:InitResources` iterates the resource table
@@ -219,8 +214,8 @@ Frame scripting has another legacy compiler distinction:
 uses `URLFrame_TEXT`. The timer file owns ScriptTimer/ScriptTimersHeader and
 START_TIMER, STOP_TIMER, TIMER_EXPIRED and KILL_ALL_TIMEOUTS handlers; the
 UFI_timeoutList instance field and message declarations remain in htmlview.goh.
-local.mk omits the timer object when JAVASCRIPT_SUPPORT is disabled to avoid
-adding protocol-reference stubs for an empty module.
+With JAVASCRIPT_SUPPORT disabled the timer module has no handlers; Glue
+processes its protocol references while discarding the synthetic stub data.
 The conditional Borland switch also remains in `URLFrame.goc`, because it
 continues to affect the later `MSG_URL_FRAME_CLEAR_OBJ_CACHE` implementation
 when JavaScript is enabled. String-placement options must be preserved as

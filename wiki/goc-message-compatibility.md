@@ -93,13 +93,22 @@ FSIR lock counters and cause FSIR_MAY_NOT_BE_LOCKED at FileGetDestinationDisk.
 Evidence: Include/Internal/heapInt.def:ThreadPrivateData and
 Library/Kernel/File/fileUtils.asm:FileGetDestinationDisk.
 
-BbxBrow local.mk excludes disabled PortalEmail and bookmark object modules
-before geode.mk declares link dependencies. With the current linker, keep
+BbxBrow local.mk excludes disabled PortalEmail, bookmark, AutoBrowse and
+script-timer object modules before geode.mk declares link dependencies. With the current linker, keep
 2 * stub size below the dgroup file position. Its
 Appl/Breadbox/BbxBrow/tests/check_startup_tpd.pl checks the actual reserved
 thread data in linked EC/NC geodes without running GEOS. A linker that
 processes protocol fixups but discards the stubs' output data removes this
 build-size ceiling.
+
+Parse-time feature-module exclusions must precede BbxBrow
+COMPILE_OPTIONS additions containing .TARGET expressions. Those expressions
+are evaluated for each build target and cannot reliably distinguish enabled
+features during the earlier conditional checks. AutoBrowse exclusion checks
+explicit COMPILE_OPTIONS and the selected PRODUCTS list; AB and ABDBCS builds
+retain the module. Evidence: Appl/Breadbox/BbxBrow/local.mk; inspect object
+lists without executing recipes using pmake -p 1 -u full, with and without
+PRODUCTS=AB or COMPILE_OPTIONS=-DCOMPILE_OPTION_AUTO_BROWSE.
 
 Runtime handle cost follows linked resources, not object-file count.
 `Library/Kernel/Geodes/geodesLoad.asm:InitResources` iterates the resource table
@@ -196,15 +205,22 @@ canonical rename, retaining the acknowledgement's Borland `-dc-` switch. `URLFra
 completion together, allowing their `.wav` literals to share one compiler
 string pool without a new shared global. `MSG_URL_FRAME_EMBED_FETCHED`
 retains `FRFETCH_TEXT` and its original string defaults before the file
-switches to `FRFETCH3_TEXT` / Borland `-dc-` for received-page metadata,
-presentation/completion and frame geometry.
+switches to `FRFETCH3_TEXT` / Borland `-dc-` for received-page metadata and
+presentation/completion. `URLFrameGeometry.goc` implements
+`MSG_URL_FRAME_GET_COMPUTED_DIMENSION_PIXELS` and `MSG_URL_FRAME_UPDATE_FRAME_UI`
+in the same resource with the same string options.
 `ReadFileIntoHA`, `DialogError` and their callers remain together in
 `URLFrameFetch.goc`, retaining `LOCAL` (`_near _pascal`). Scoped `-nt` options for
 the new frame sources are in `Appl/Breadbox/BbxBrow/local.mk`.
 
 Frame scripting has another legacy compiler distinction:
-`URLFrameScript.goc` retains the Borland `FRAME_JS_TEXT` / `-dc-` switch
-without adding a Watcom equivalent; Watcom uses `URLFrame_TEXT`.
+`URLFrameScript.goc` and `URLFrameTimers.goc` retain the Borland
+`FRAME_JS_TEXT` / `-dc-` switch without adding a Watcom equivalent; Watcom
+uses `URLFrame_TEXT`. The timer file owns ScriptTimer/ScriptTimersHeader and
+START_TIMER, STOP_TIMER, TIMER_EXPIRED and KILL_ALL_TIMEOUTS handlers; the
+UFI_timeoutList instance field and message declarations remain in htmlview.goh.
+local.mk omits the timer object when JAVASCRIPT_SUPPORT is disabled to avoid
+adding protocol-reference stubs for an empty module.
 The conditional Borland switch also remains in `URLFrame.goc`, because it
 continues to affect the later `MSG_URL_FRAME_CLEAR_OBJ_CACHE` implementation
 when JavaScript is enabled. String-placement options must be preserved as

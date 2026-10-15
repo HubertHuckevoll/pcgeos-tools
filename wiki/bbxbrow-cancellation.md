@@ -46,7 +46,7 @@ Evidence:
   `MSG_URL_TEXT_LOAD_GRAPHIC_PROGRESS` and `LoadGraphicProgressCallback`
 - `Appl/Breadbox/BbxBrow/urltext/URLTextImages.goc`,
   `MSG_URL_TEXT_GRAPHIC_FETCHED` and `MSG_URL_TEXT_INTERNAL_CANCEL_LIKE_GRAPHICS`
-- `Appl/Breadbox/BbxBrow/urlfetch/URLFETCH.goc`, `URLFetchEngineStop`,
+- `Appl/Breadbox/BbxBrow/urlfetch/URLFetchEngine.goc`, `URLFetchEngineStop`,
   `URLFetchExtraMemoryAlloc`, and `URLFetchExtraMemoryFree`
 - `CInclude/htmlprog.h`, `LoadProgressData.LPD_request`
 - `Library/Breadbox/UrlDrv/Wmg3Http/WMG3HTTP.goc`, loading-progress callback
@@ -58,7 +58,7 @@ releases it before invocation: LoadGraphicProgressCallback itself acquires
 LPD_sem for READ/WRITE/CLOSE. A captured callback may finish after cancellation;
 the fetch child remains busy until LoadURLToFile returns, keeping its stream
 state alive. See WMG3HTTP.goc LoadProgressCallbackSnapshot/HTTPGet and
-BbxBrow/urlfetch/URLFETCH.goc URLFetchEngineChild.
+BbxBrow/urlfetch/URLFetchEngine.goc URLFetchEngineChild.
 
 `MSG_HMLVA_ABORT_OPERATION` calls `UserAbortStart` and then `ParseAbort`
 before aborting the fetch/import engines. `WARNING_PARSE_ABORT_TIMED_OUT`
@@ -96,7 +96,7 @@ children are busy. `URLFetchEngineAbortAll` therefore marks/aborts active
 children directly before queuing START_ABORT at the front and END_ABORT at
 the back. `G_abortPending` prevents GET_URL from clearing child abort flags
 before START_ABORT is handled. These paths share `G_fetchChildren` and belong
-to the same scheduling/abort protocol in BbxBrow `urlfetch/URLFETCH.goc`.
+to the same scheduling/abort protocol in BbxBrow `urlfetch/URLFetchEngine.goc`.
 
 ## Fetch/import thread configuration
 
@@ -112,7 +112,7 @@ not importer; its size follows MAX_FETCH_ENGINE_CHILDREN.
 Fetch/import completion is associated with the request, not the import slot:
 GraphicImport.goc releases IPD_loadProgressDataP->LPD_importSync, or clears
 G_importActive[LPD_loadThread] when fetchWhileImport is enabled. In
-urlfetch/URLFETCH.goc, URLFetchChildThread waits on LPD_importSync after
+urlfetch/URLFetchEngine.goc, URLFetchChildThread waits on LPD_importSync after
 LoadURLToFile when fetchWhileImport is false. With fetchWhileImport true,
 the fetch engine suppresses loading-progress callbacks for the
 next request while that fetch child's prior import remains active.

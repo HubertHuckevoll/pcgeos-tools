@@ -115,6 +115,6 @@ Cell allocation becomes `HCD_calcWidth` in `ILayoutCellStandardAction`.
 `htmlclas/htmltpos.goc` takes the furthest formatted region right edge,
 subtracting the extra pixel; `MSG_HTML_TEXT_CALCULATE_BOUNDARIES` publishes
 that edge as `VLTI_displayModeWidth` and content document bounds. BbxBrow's
-`urldoc/URLDOC.goc:ViewTemplate` enables horizontal scrolling; large-content
+`urldoc/URLDocument.goc:ViewTemplate` enables horizontal scrolling; large-content
 `MSG_VIS_CONTENT_SET_DOC_BOUNDS` forwards the extent to the view
 (`Library/User/Vis/visContentClass.asm:VisContentSetDocBounds`).

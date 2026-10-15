@@ -26,11 +26,11 @@ its native-page serialization path returns zero.
 
 `cache/CacheLifetime.goc` owns `AddCacheFileReference` and
 `RemoveCacheFileReference`. Navigation, documents and URLText storage each
-hold a reference. `InitCacheLifetime`, called by `init/INIT.goc:InitNavigation`,
+hold a reference. `InitCacheLifetime`, called by `init/Init.goc:InitNavigation`,
 creates the allocation watcher, reads VM-cache directory settings and acquires
 navigation's reference. `DeInitNavigation` clears history before releasing it.
 
-`urldoc/URLDOC.goc:MSG_GEN_DOCUMENT_PHYSICAL_CLOSE` holds its reference through
+`urldoc/URLDocument.goc:MSG_GEN_DOCUMENT_PHYSICAL_CLOSE` holds its reference through
 frame/text destruction, because system detach can close navigation first.
 `urltext/URLText.goc` acquires before superclass `MSG_HTML_TEXT_INIT_STORAGE`
 and releases after superclass `MSG_HTML_TEXT_DEINIT_STORAGE`. The final release
@@ -40,7 +40,7 @@ the allocation watcher and cache semaphores are destroyed afterward.
 Text-object storage and the global name pool use the separate per-session
 `TEXTOBJF.000` VM file (`htmlview.goh:TEXT_OBJ_FILE_NAME`,
 `cache/CacheLifetime.goc:AddCacheFileReference`). `URLFrameTree.goc` initializes
-text storage with `textObjFile`; `URLDOC.goc` also returns that file on physical
+text storage with `textObjFile`; `URLDocument.goc` also returns that file on physical
 open. Object-cache and import-work files use the configured `vmCacheSP` and
 `vmCacheDir`, while the source cache retains `HTML_VMCACHE_SP` /
 `HTML_VMCACHE_DIR`. Preserve that directory switch when sharing cache lifetime.
@@ -59,7 +59,7 @@ link targeting is in `urlframe/URLFrameNavigation.goc`.
 
 `urlframe/URLFrameFetch.goc` first tries `ObjCacheFindURL(OCT_TEXTOBJ, ...)`.
 On a miss it submits `URLFetchRequest`; fetch children in
-`urlfetch/URLFETCH.goc` call `urlfetch/URLLoad.goc:LoadURLToFile`, which uses
+`urlfetch/URLFetchEngine.goc` call `urlfetch/URLLoad.goc:LoadURLToFile`, which uses
 source-cache lookup and the URLSupport URL-driver/file helpers. The frame's
 `MSG_URL_FRAME_URL_FETCHED` parses HTML/plain text or calls
 `mime/ContentHandling.goc:HandleUnknownType` for other types. That handler
@@ -67,7 +67,7 @@ selects native text import, an image-wrapper HTML message or the save dialog.
 Graphic-import workers in `mime/GraphicImport.goc:ImportGraphicByNative`
 share ContentHandling's MIME-driver cache and semaphore. These helpers serve
 multiple caller/thread contexts; the folder does not own fetch-thread dispatch
-or HTML rendering. Startup/shutdown integration is in `init/INIT.goc`,
+or HTML rendering. Startup/shutdown integration is in `init/Init.goc`,
 `InitNavigation` / `DeInitNavigation`.
 
 MIME-driver shutdown crosses those file boundaries: `InitNavigation` allocates
@@ -158,7 +158,7 @@ BbxBrow's `URLDocumentClass::MSG_PRINT_GET_DOC_NAME` routes the request as a
 classed event to `TO_TARGET` through the document display. If an HTML form's
 in-place text entry holds that target, `InPlaceTextEntryClass` forwards the
 print messages to `IPTEI_urlTextObj`. Evidence:
-`Appl/Breadbox/BbxBrow/urldoc/URLDOC.goc` and
+`Appl/Breadbox/BbxBrow/urldoc/URLDocument.goc` and
 `Library/Breadbox/Html4Par/htmlclas/htmlfedi.goc`,
 `MSG_PRINT_GET_DOC_NAME` and `MSG_PRINT_START_PRINTING`.
 
@@ -177,6 +177,6 @@ locks the supplied block, fetches frames, frees the supplied chunk, then
 unlocks. Stack eviction/drop releases frame-record name tokens before freeing
 the saved chunks. `htmlview/HTMLViewNavigation.goc:HistoryUpdateLRU` owns the retained
 recent-history snapshot and title token, releasing the previous entry on
-replacement. `urldoc/URLDOC.goc` allocates the two stack-buffer chunks during
+replacement. `urldoc/URLDocument.goc` allocates the two stack-buffer chunks during
 physical open/create and frees them during physical close, after dropping
 saved snapshots and before frame destruction/cache-reference release.

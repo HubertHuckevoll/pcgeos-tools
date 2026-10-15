@@ -293,7 +293,7 @@ Extension preflight remains separate and installed MIME associations remain
 authoritative. Streaming HTTP admission is a possible later optimization.
 
 Image progress is enabled by the Boolean `[HTMLView] progressDisplay`
-entry, defaulting to TRUE in `init/INIT.goc` and read by
+entry, defaulting to TRUE in `init/Init.goc` and read by
 `InitFileReadBoolean()` in `InitNavigation()`. `ProcessSingleGraphic()` in
 `urltext/URLTextImages.goc` supplies loading-progress data when enabled and
 subject to its position and minimum-height restrictions.
@@ -317,7 +317,7 @@ requires protocol major 4. `ImportGraphicByNative()` passes the ninth
 `ImportProgressData *` argument to `pcfm_MimeDrvGraphic`. URL drivers use
 protocol major 7, and `URLRequestBlock` contains `URB_loadProgressDataP`.
 The public declarations are in `CInclude/htmldrv.h`; discovery and dispatch
-are in `init/INIT.goc`, `mime/ContentHandling.goc`, and `mime/GraphicImport.goc`.
+are in `init/Init.goc`, `mime/ContentHandling.goc`, and `mime/GraphicImport.goc`.
 
 `ImpWebP()` in `Library/Breadbox/ImpGraph/IMPBMP/impwebp.goc` calls the import
 progress callback after each decoded macroblock row with output lines. In
@@ -366,11 +366,11 @@ select fetch children (1..2) and import workers (1..3), both defaulting to 1.
 `ImportThreadRequestImportGraphic()` routes requests round-robin across
 those queues. Work files and MIME cancellation status use the selected
 import index; fetch completion uses the request's `LPD_loadThread` and
-`LPD_importSync`. Evidence: `mime/GraphicImport.goc`, `urlfetch/URLFETCH.goc`,
+`LPD_importSync`. Evidence: `mime/GraphicImport.goc`, `urlfetch/URLFetchEngine.goc`,
 `urlfetch.goh`, `options.goh`, and `prodbbx.goh`.
 
 `fetchWhileImport` does not control thread creation. In
-`urlfetch/URLFETCH.goc`, `URLFetchEngineChild` waits on `LPD_importSync`
+`urlfetch/URLFetchEngine.goc`, `URLFetchEngineChild` waits on `LPD_importSync`
 after `LoadURLToFile` when that option is false, preventing the child from
 handling further fetch requests until the associated import finishes.
 
@@ -387,7 +387,7 @@ current import returns; the separate file importer avoids that queue delay.
 
 Streaming state is indexed by fetch child, independently of importer objects:
 `G_stream[2]` in `urltext/URLTextImageProgress.goc`, and `G_importActive[]` /
-`G_importLoadProgressData[]` in `urlfetch/URLFETCH.goc`. `LPCT_WRITE` buffers
+`G_importLoadProgressData[]` in `urlfetch/URLFetchEngine.goc`. `LPCT_WRITE` buffers
 input without waiting for the importer to consume it; a queued stream can
 therefore retain its downloaded input. `fetchWhileImport = false` holds a
 fetch child at `LPD_importSync` after download until its import finishes.

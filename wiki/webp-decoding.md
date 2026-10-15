@@ -67,7 +67,7 @@ allocation: `AllocWatcherAllocate()` compares/subtracts `dword AW_amount`
 `IBS_NO_MEMORY` through cleanup without entering the decode loop. BbxBrow's
 `InitNavigation()` initializes the shared watcher to `0x400000` units by
 default; the `HTMLVIEW_CATEGORY`/`memlimit` INI setting overrides this as
-`Kavail * 1000` (`Appl/Breadbox/BbxBrow/init/INIT.goc`).
+`Kavail * 1000` (`Appl/Breadbox/BbxBrow/init/Init.goc`).
 INI category/key comparison is case-insensitive
 (`Library/Kernel/Initfile/initfileLow.asm:CmpString`), so `memLimit` matches
 `memlimit`. `InitFileReadInteger()` returns false on success

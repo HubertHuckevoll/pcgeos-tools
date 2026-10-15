@@ -61,6 +61,13 @@ assuming identical resource IDs. `mkmf` can run over a temporary source mirror
 with ordered entries to regenerate the same lists plus the new source, without
 editing the generated Makefile by hand.
 
+When regenerating several product dependency files together, use
+`pmake -L 1 "PRODUCTS=AB DBCS ABDBCS" depend`: `makedpnd` creates and deletes
+basename-derived `.cpp` intermediates in the current directory, so concurrent
+product scans can collide (`Tools/pmake/makedpnd/makedpnd.c`, `main`). This
+repository's pmake uses `-u` for a command-only dry run and `-n` for NC builds
+(`Tools/pmake/pmake/main.c`, option parsing; `pmake -h`).
+
 Large-model `mkmf` discovers immediate child directories as source modules;
 `MkmfCreateLargeModel` calls `MkmfFindSources` / `MkmfScanDir` for each child,
 without recursively collecting nested C/GOC modules. Keep subsystem folders
@@ -232,18 +239,27 @@ the headers and flags; GEOS 2 file positions are relative to the end of the
 256-byte `GeosFileHeader2`. Match resources by name from `bin/printobj`
 output, excluding library/absolute segments, rather than by numeric ID.
 
-BbxBrow's document command split shares `URLDOC_TEXT`:
-`urldoc/URLDOC.goc` owns the single class declaration, object/templates and
+BbxBrow's document command split shares `URLDocument_TEXT`:
+`urldoc/URLDocument.goc` owns the single class declaration, object/templates and
 document lifecycle; `URLDocumentHistory.goc` and `URLDocumentNavigation.goc`
 define externally registered handlers. `URLDocumentLocalPage.goc` keeps the
 local-page persistence concern in its original `LOCALPAG_TEXT` segment using
 explicit Borland/Watcom pragmas and scoped Watcom `-nt=LOCALPAG_TEXT`.
-The segment is empty when `COMPILE_OPTION_LOCAL_PAGES` is disabled. URLDOC's
+The segment is empty when `COMPILE_OPTION_LOCAL_PAGES` is disabled. URLDocument's
 Watcom string pool contains the backslash and `.URL` strings from physical
 open; retaining that handler intact avoids splitting its literal pool.
-`local.mk` sets scoped Watcom `-nt=URLDOC_TEXT` for both new command sources;
+`local.mk` sets scoped Watcom `-nt=URLDocument_TEXT` for both new command sources;
 their source pragmas preserve Borland and Watcom code placement without
 changing string options.
+
+BbxBrow `init/Init.goc` and `cache/CacheLifetime.goc` share `Init_TEXT`.
+`urldocct/URLDocumentControl.goc` uses `URLDocumentControl_TEXT` for both the
+controller and document-group handlers. `urlfetch/URLFetchEngine.goc` selects
+`URLFetchEngine_TEXT`, which must remain `code fixed` in `bbxbrow.gp` for its
+worker-thread entry point. The source compiler pragmas and scoped Watcom
+`-nt` defaults in `local.mk` use these exact names and case. Shared includes
+retain their actual lowercase filenames, including `htmlview.goh` and
+`urlfetch.goh`; source and resource renames do not imply header renames.
 
 BbxBrow `cache/SourceCache.goc` owns source-cache state, persistence,
 recency and URL/expiration policy; `ObjectCache.goc` owns object-cache state,
@@ -277,7 +293,7 @@ BbxBrow's MIME-driver cache is shared by text and graphic imports:
 `mime/GraphicImport.goc:ImportGraphicByNative` use `MimeDriverSemaphore`,
 `lastMimeDriver`, `lastMimeName` and `LoadNewMimeDriver`. Each adds a geode
 reference before releasing the semaphore, invokes the driver, then removes
-the reference. `init/INIT.goc:InitNavigation` loads the association arrays
+the reference. `init/Init.goc:InitNavigation` loads the association arrays
 before creating the semaphore. `DeInitNavigation` deliberately leaves that
 semaphore for automatic exit cleanup because
 `mime/GraphicImport.goc:MSG_IMPORT_THREAD_ENGINE_KILL` still acquires it to free

@@ -73,7 +73,7 @@ Do not record:
 - facts obvious from a single local function
 
 Prefer correcting an existing entry over adding a contradictory one.
-Keep entries concise.
+Keep entries concise. After changing code, re-evaluate corresponding entries.
 
 ## General GEOS rules
 

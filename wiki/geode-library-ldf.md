@@ -41,3 +41,13 @@ continuing. A successful wrapper exit alone does not prove a complete rebuild;
 check logged errors and required artifacts. Unix `Include/sun.geode.mk` emits
 library definitions during the EC link unless `NO_EC` is set, then `full`/`lib`
 publishes them; its copy target is marked `.IGNORE`.
+
+Watcom CodeView `$$TYPES` streams start with a four-byte signature (value 1).
+Compiled-out files, such as SSL's host-service-only TLS units, can have a
+signature-only stream and no type records. `Tools/glue/codeview32.c` collects
+this stream in `CV32_Check`; `CV32LocateType` and
+`CV32ProcessUnprocessedTypeRecords` must skip the signature before reading
+length-prefixed records. Treating the signature as a record can read beyond
+such empty streams and produce spurious scalar-type errors. The regression
+cases in `Tools/glue/tests/check_local_symbols.pl` cover missing, empty,
+unreferenced and truncated type data through the real linker.

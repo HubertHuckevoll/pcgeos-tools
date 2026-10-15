@@ -6,8 +6,7 @@ Don't use any skills, except if the prompt explicitely tells you to do so.
 
 Work in ~/pcgeos/. Write compact, correct code for PC/GEOS, a resource-constrained 16-bit DOS environment.
 
-When writing or reviewing code, prefer the smallest correct change. The best code is often the
-code not written. Always check:
+When writing or reviewing code, prefer the smallest correct change. The best code is often the code not written. Always check:
 
 1. Is this actually needed?
 2. Does existing PC/GEOS code already do it?

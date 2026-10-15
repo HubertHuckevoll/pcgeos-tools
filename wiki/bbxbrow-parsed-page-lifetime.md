@@ -37,6 +37,14 @@ and releases after superclass `MSG_HTML_TEXT_DEINIT_STORAGE`. The final release
 persists both caches before freeing the global name pool and closing VM files;
 the allocation watcher and cache semaphores are destroyed afterward.
 
+Text-object storage and the global name pool use the separate per-session
+`TEXTOBJF.000` VM file (`htmlview.goh:TEXT_OBJ_FILE_NAME`,
+`cache/CacheLifetime.goc:AddCacheFileReference`). `URLFrameTree.goc` initializes
+text storage with `textObjFile`; `URLDOC.goc` also returns that file on physical
+open. Object-cache and import-work files use the configured `vmCacheSP` and
+`vmCacheDir`, while the source cache retains `HTML_VMCACHE_SP` /
+`HTML_VMCACHE_DIR`. Preserve that directory switch when sharing cache lifetime.
+
 ## Shared browsing services and content retrieval
 
 Shared services are organized by ownership: cache/ holds source and object

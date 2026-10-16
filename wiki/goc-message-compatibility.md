@@ -132,10 +132,9 @@ so its static helper no longer needs special link ordering. Existing shared requ
 `urltext/URLTextInternal.h`. The fetch callback and per-child `G_stream` handles
 remain in `urltext/URLTextImageProgress.goc`; byte-buffer operations, private
 layout and limits are in `urltext/MemStream.c`, with declarations in
-`MemStream.h`. The header shares `USE_MEM_STREAM` with both implementation and
-caller. The plain C implementation is guarded only by `USE_MEM_STREAM`,
-which is shared with the GOC caller through `MemStream.h`. The four functions retain
-their original C calling convention and `URLText_TEXT` placement.
+`MemStream.h`. The memory stream implementation and caller are unconditional.
+The four functions retain their original C calling convention and
+`URLText_TEXT` placement.
 
 GOC macros can require object declarations that are invisible in the method
 text. With `UPDATE_ON_UI_THREAD`, `CallStatusUpdate`, `SendStatusUpdateOptr`,

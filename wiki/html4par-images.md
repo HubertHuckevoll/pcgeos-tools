@@ -333,15 +333,22 @@ decoding. `ObjCacheAddURL()` invokes that routine only when the cache entry is
 first created; its implementation in `cache/ObjectCache.goc` updates and
 trims the cache VM files when global free handles drop below 500.
 
-BbxBrow's active loading-progress stream uses `MemStream` because
-`USE_MEM_STREAM` is defined in the private `urltext/MemStream.h`. Its buffer
-implementation and limits are in `urltext/MemStream.c`; `G_stream` and callback
-synchronization stay in `urltext/URLTextImageProgress.goc`. It allocates 8 KB blocks lazily in 200 slots for each fetch child. Its
-absolute tail limit is `MEM_STREAM_BLOCK_SIZE * MEM_STREAM_INIT_BLKS`;
+BbxBrow's loading-progress stream uses `MemStream` unconditionally, declared
+in the private `urltext/MemStream.h`. Its buffer implementation and limits are
+in `urltext/MemStream.c`; `G_stream` and callback synchronization stay in
+`urltext/URLTextImageProgress.goc`. It allocates 8 KB blocks lazily in 200 slots
+for each fetch child. Its absolute tail limit is
+`MEM_STREAM_BLOCK_SIZE * MEM_STREAM_INIT_BLKS`;
 `MemStreamWrite` appends only while `tail + bufSize` is strictly below that
 limit. Consuming reads free blocks but do not reset the absolute tail, and
-there is no producer backpressure. The VM-backed HugeArray alternative
-remains behind `#ifndef USE_MEM_STREAM`; it is not the active stream path.
+there is no producer backpressure.
+
+`LoadProgressData.LPD_dataFile` and `LPD_dataStream` remain shared fields in
+`CInclude/htmlprog.h`. The fetch engine still assigns `LPD_dataStream` from
+`G_fetchProgressDataStream` (`urlfetch/URLFetchEngine.goc`), and the active
+JPEG/GIF importers test it for stream presence before using the callback
+(`Library/Breadbox/ImpGraph/IMPBMP/impjpeg.goc`, `impfjpeg.goc`, and
+`impgifc.goc`). Using MemStream for bytes does not remove that dependency.
 
 The stream wait must atomically recheck both completion and byte availability
 before joining the wait queue: `WakeUp()` drops a signal if no reader is
@@ -395,10 +402,8 @@ fetch child at `LPD_importSync` after download until its import finishes.
 The read-side wait must atomically recheck `LPD_fileDone` and
 `LPD_bytesAvail - LPD_preReadOffset >= needed` before `ThreadBlockOnQueue`:
 `WAKEUP` drops signals when no thread is already queued, so checking only
-`LPD_fileDone` can sleep after data arrived in the check-to-block gap. The
-HugeArray byte stream also needs chunked deletes because `HugeArrayGetCount()`
-returns a DWORD while `HugeArrayDelete()` accepts a WORD
-(`CInclude/hugearr.h`, `URLTextImageProgress.goc`, `ASMTOOLS/asmtoolsManager.asm`).
+`LPD_fileDone` can sleep after data arrived in the check-to-block gap
+(`URLTextImageProgress.goc`, `ASMTOOLS/asmtoolsManager.asm`).
 
 In the default layout, importer 0 receives all requests with a null
 load-progress pointer: `ProcessInlineSVG`, `MSG_URL_TEXT_GRAPHIC_FETCHED`,
@@ -410,9 +415,8 @@ report progressive decoding through `IPD_callback`; absence of a live fetch
 stream does not mean absence of import progress (`mime/GraphicImport.goc`,
 `ImportThreadRequestImportGraphic`).
 
-The active RAM stream is selected by the defined local `USE_MEM_STREAM`
-switch. It allocates 8 KB blocks lazily, with 200 slots, has no producer
-backpressure, and stops appending at an absolute tail ceiling while
+The unconditional RAM stream allocates 8 KB blocks lazily, with 200 slots,
+has no producer backpressure, and stops appending at an absolute tail ceiling while
 `LPCT_WRITE` still increments `LPD_bytesAvail`. These limits apply to the
 active stream; reducing its slot count also reduces input capacity.
 

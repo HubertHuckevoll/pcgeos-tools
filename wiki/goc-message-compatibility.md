@@ -160,8 +160,8 @@ Watcom `#pragma code_seg` selections preserve the named segment independently
 of the source filename; Watcom `-nt=NAME` sets the compiler's default code
 segment and should match the intended source selection, including case.
 
-BbxBrow examples: `bookmarks/BookmarksDialog.goc` selects `BOOKCLAS_TEXT`,
-`bookmarks/BookmarksStore.goc` selects `BOOKMARK_TEXT`, and
+BbxBrow examples: `collections/BookmarksDialog.goc` selects `BOOKCLAS_TEXT`,
+`collections/BookmarksStore.goc` selects `BOOKMARK_TEXT`, and
 `urldoc/URLDocumentLocalPage.goc` selects `LOCALPAG_TEXT`. Their scoped `-nt`
 settings are in `Appl/Breadbox/BbxBrow/local.mk`. These legacy segment names
 are intentional even though the source filenames are now descriptive.
@@ -274,14 +274,14 @@ implementations to remain in that same resource. `SrcCacheFindEntry` keeps its
 original far C convention. The two compiler string pools can duplicate
 `HTML_CACHE_NAME`, used in each cache's open/create paths.
 
-BbxBrow `bookmarks/BookmarksDialog.goc` and `bookmarks/BookmarksStore.goc` retain
+BbxBrow `collections/BookmarksDialog.goc` and `collections/BookmarksStore.goc` retain
 `BOOKCLAS_TEXT` and `BOOKMARK_TEXT`, including their empty segments when
 `COMPILE_OPTION_BOOKMARKS` is disabled. Both bookmarks sources remain in the
-generated build. `favorites/FavoritesDialog.goc` owns the four
+generated build. `collections/FavoritesDialog.goc` owns the four
 favorite class declarations, list organization and UI helpers;
-`favorites/FavoritesCreate.goc` implements the four externally registered favorite/group
+`collections/FavoritesCreate.goc` implements the four externally registered favorite/group
 creation and dialog-initialization handlers in `FAVORCLS_TEXT`.
-`favorites/FavoritesStore.goc` retains `FAVORITE_TEXT` and private VM/IBMS tree/index
+`collections/FavoritesStore.goc` retains `FAVORITE_TEXT` and private VM/IBMS tree/index
 state. Its `FavoritesBuildUIList` directly traverses `G_favoritesIBMS` and
 `G_favoritesTopTen` and calls `ILocateEntryByPos`, so it belongs with that
 private state rather than being moved merely because it draws menu monikers.

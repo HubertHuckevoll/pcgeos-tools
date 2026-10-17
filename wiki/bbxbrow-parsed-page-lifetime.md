@@ -45,6 +45,134 @@ open. Object-cache and import-work files use the configured `vmCacheSP` and
 `vmCacheDir`, while the source cache retains `HTML_VMCACHE_SP` /
 `HTML_VMCACHE_DIR`. Preserve that directory switch when sharing cache lifetime.
 
+## Alternate cache routing
+
+ALT_SRC_CACHE is disabled in BbxBrow/options.goh. When enabled,
+init/Init.goc reads altSrcCacheHosts and altSrcCacheExts. SourceCache.goc:
+UseAltCache requires a configured host match; a configured extension list
+further restricts eligible URLs. SrcCacheGenerateID marks selected source IDs
+with CACHE_ALT_FLAG, and CreateTempName uses ALT-prefixed source directories.
+ObjectCache.goc:ObjCacheGetVMFile independently applies the same URL classifier
+to select the second bank of VM files. htmlview.goh doubles NUM_CACHE_FILES
+from NUM_VMCACHE_FILES when the alternate mode is enabled (currently 5 to 10).
+
+EnforceSrcCacheSizeLimits and EnforceObjCacheSizeLimits account bytes separately
+for the regular/alternate partitions and skip the other partition's entries
+when evicting for byte limits. Both partitions share each cache's index;
+reaching SRC_CACHE_COUNT_LIMIT or OBJ_CACHE_COUNT_LIMIT permits eviction across
+partitions. INI-only configurations can set altSrcCacheLimit/altObjCacheLimit;
+configurations with cache-size UI use the same UI value for either partition.
+Expiration and revalidation use the same policy for both partitions.
+The bbxensem Template/Windemo/net.ini and Template/DBCS/net2.ini select
+www.myturn.com through altSrcCacheHosts; Windemo also restricts extensions to
+jpg gif wav. These templates document a concrete site-specific use.
+
+## Cache-all mode
+
+BbxBrow's demo-copy mode is controlled at runtime, without CACHE_ALL build
+guards. SourceCache.goc initializes G_cacheAll to FALSE;
+init/Init.goc:InitNavigation documents and reads HTMLView/cacheAll.
+URLLoad.goc retains otherwise noncacheable source
+entries when it is true; URLFrameFetch.goc, URLFramePage.goc and
+URLTextImages.goc also override selected no-cache cleanup/cacheability paths.
+SrcCacheIsExpired clears expired in this mode but does not clear tryModified,
+so cache-all is not a guarantee that all revalidation/network access stops.
+HTMLViewLifecycle.goc suppresses its startup OpenConnection call in this mode.
+
+## Formatting-cache runtime policy
+
+Formatting-cache controls have no separate build switch. UI/menuOptions.goh
+provides objCacheOpt/objCacheLimit under the general settings/miscellaneous UI
+conditions. options.goh includes HTMLV_OBJECT_CACHE in DEFAULT_VARIOUS_SETTINGS;
+ObjectCache.goc:EnforceObjCacheSizeLimits uses the configured size limit.
+Runtime page/image cache lookup tests HTMLV_OBJECT_CACHE
+(urlframe/URLFrameFetch.goc, urltext/URLTextImages.goc).
+Init.goc:AdaptUItoSystemConfiguration still marks objCacheOpt not usable when
+COMPILE_OPTION_ENABLE_SETTINGS is enabled. Cache infrastructure also holds
+live, noncacheable objects until their last in-use reference is released
+(ObjectCache.goc:ObjCacheUnlockItem).
+
+The historical COMPILE_OPTION_FORMATTING_CACHE_ON switch selected these
+controls/defaults and used limit = 0 when disabled. Its introduction and
+related default-bit fix are recorded in notes/WHATSNEW.TXT (08/23/98, 10/12/98).
+
+## Embedded WAV playback
+
+Embedded WAV support is unconditional in BbxBrow and Html4Par. The shared
+HypertextTransferBlockHeader (CInclude/html4par.goh) contains
+HTBH_other.HTBHO_embed; URLFrame retains its embed instance field and messages,
+and the parser retains EMBED tag handling. These are the former enabled
+EMBED_SUPPORT layouts; the build flag and guards are removed. Both geodes
+must agree on the shared transfer-header layout.
+Html4Par/htmlpars/opentags.goc:Open_EMBED records a nonempty SRC in the single
+HTBHO_embed slot, releasing any previous token. BbxBrow/urlframe/URLFramePage.goc:
+MSG_URL_FRAME_GOT_URL copies it to UFI_embed through MSG_URL_FRAME_SET_EMBED;
+MSG_URL_FRAME_GOT_PAGE_NOFRAME fetches it only when the URL ends in .wav.
+MSG_URL_FRAME_EMBED_FETCHED accepts WAV MIME types (or a .wav filename when
+MIME is absent), calls WavPlayFile, and performs normal fetch cleanup.
+BbxBrow/bbxbrow.gp imports wav. This traced path implements one WAV source
+per parsed page and is not a general embedded-object/plugin interface.
+Html4Par/htmlsty.goh marks EMBED TAG_NO_FORMATTING; Open_EMBED only reads SRC,
+so this path creates no inline player or size reservation. Library/Wav/wav.asm:
+WavPlayFile copies the path/name and creates WavPlaySoundAndDestroyThread;
+WavPlayFromWavFilePathBlock opens the file and calls PlaySoundFromFile. The
+browser's embed playback is asynchronous audio without an inline control UI.
+The EMBED_FETCHED handler explicitly calls for eventual delegation to ImpDoc.
+Library/Breadbox/ImpDoc/impdoc.goc:MimeDrvMain selects a configured MIME-to-app
+token, copies the file to SP_PRIVATE_DATA/impdoc, and opens an IACP connection
+to that application. BbxBrow/notes/gpc_changes.txt (8/24/99) explains that the
+private copy avoids relying on the temporary cache file. This is helper-app
+dispatch, not an implementation of inline object rendering.
+
+## Status/progress dispatch threads
+
+UPDATE_ON_UI_THREAD is enabled in options.goh. htmlview.goh routes status
+update/query macros and SendUpdateProgress to HTMLVApp/MSG_HMLVA_* when set,
+or process/MSG_HMLVP_* when unset. HTMLViewStatus.goc selects the corresponding
+HTMLVApplicationClass or HTMLVProcessClass handlers while retaining their
+bodies. The progress timer targets HTMLVApp or the process optr accordingly.
+The handlers still update LinkStatus/ProgressIndicator through object messages;
+AppResource and StatusResource are ui-object resources (bbxbrow.gp).
+MSG_HMLVA_UPDATE_DOWNLOAD_PROGRESS_DIALOG remains an application-class method
+in both configurations. UI-thread creation is unconditional in
+HTMLViewLifecycle.goc:MSG_PROCESS_CREATE_UI_THREAD; the flag does not select
+whether the UI, fetch or import threads exist.
+HTMLView.goc has one unconditional @classdecl HTMLVApplicationClass and
+registers MSG_HMLVA_UPDATE_DOWNLOAD_PROGRESS_DIALOG outside UPDATE_ON_UI_THREAD,
+matching that handler's unconditional application-class implementation.
+Switching this flag changes message numbering in htmlview.goh; rebuild all
+BbxBrow object/resource outputs when switching to avoid linking mixed variants.
+
+## Page-progress infrastructure
+
+BbxBrow includes page-progress infrastructure unconditionally. The status bar
+contains ProgressIndicatorBox/FastStatus (UI/statusIndicators.goh,
+UI/mainWrapper.goh). htmlview.goh declares PI_* state constants; HTMLView.goc
+owns G_progressStatus and transfer-dialog state. HTMLViewStatus.goc owns the
+state/timer handlers. HTMLViewOperation.goc sends PI_START/PI_DONE;
+URLText.goc sends PI_NEW_ITEM/PI_DONE_ITEM and PI_FORMATTING. The progress timer
+also calls UpdateDownloadProgressDialogTimes. G_progressStatus selects
+download-progress presentation; it is not a user preference enabling/disabling
+the infrastructure. The historical COMPILE_OPTION_PROGRESS_INDICATOR flag and
+guards are removed; runtime state, timers and calculations retain their behavior.
+
+## Transfer-progress dialog
+
+BbxBrow includes the transfer-progress dialog unconditionally. It uses the
+shared page-progress state, timer and UI update handler. HTMLViewStatus.goc owns
+DownloadProgressDialogResource, its modal dialog, progress calculations and
+MSG_HMLVA_UPDATE_DOWNLOAD_PROGRESS_DIALOG; bbxbrow.gp declares the same resource.
+HTMLView.goc owns the text templates and
+G_fileDownload/G_fileUpload/G_allowFileDownloadStatus, initially FALSE.
+URLLoad.goc:LoadURLCallback selects upload display for multipart/form-data and
+download display for non-text/non-image MIME types (excluding external script
+MIME in script/autobrowse builds). Byte-progress updates require both
+G_fileDownload and G_allowFileDownloadStatus. Navigation sets the latter;
+URLFramePage.goc clears it when a parsed HTML page is installed. These flags
+are transfer state, not user preferences. Completion/abort dismisses the dialog
+(HTMLViewStatus.goc, HTMLViewOperation.goc). UI/dialogDownload.goh is the separate
+save-destination UI, not this transfer-progress dialog.
+
 ## Shared browsing services and content retrieval
 
 Shared services are organized by ownership: cache/ holds source and object
@@ -140,9 +268,26 @@ them up in the source cache (`urltext/URLTextLinks.goc`).
 This presentation operation also changes cache recency: `SrcCacheFindURL`
 removes each found entry and appends it to the source-cache array under
 `srcCacheSem`, making it most recently used. This occurs before any expiration
-check when `CACHE_VALIDATION` is enabled. Evidence:
+check. Evidence:
 `Appl/Breadbox/BbxBrow/cache/SourceCache.goc`, `SrcCacheFindURL`,
 `SrcCacheIsExpired`; semaphore macros in `htmlview.goh`.
+
+Cache validation is unconditional in BbxBrow and Wmg3Http. Cache lookup/add
+and URL loading declare their validation parameters explicitly in
+BbxBrow/htmlview.goh, cache/SourceCache.goc and urlfetch/URLLoad.goc.
+The source-cache record retains expiration and lastModDate; Wmg3Http's
+WMG3HTTP.goc handles cache headers, conditional requests and not-modified
+responses. Cache record formats and URLRequestBlock validation fields are
+unchanged. Historical CACHE_VALIDATION guards and CACHE_VAL_* wrappers are
+removed; before BrowserUI2024 (fc9c10a7d), the browser selected validation
+under GLOBAL_INTERNET_BUILD for major products.
+
+The runtime HTMLView/weakCacheExpiration setting remains
+(SrcCacheIsExpired; init/Init.goc). With weakCacheExpiration true and no maxAge,
+SrcCacheAddURL assigns DEFAULT_MAX_AGE (one day in htmlview.goh); false stores
+zero expiration, which SrcCacheIsExpired marks for revalidation. Explicit
+expiration is still checked in either mode. The bbxensem Template/geos.ini
+sets this option true.
 
 ## Print ornament coordinate space and target routing
 

@@ -267,7 +267,7 @@ VM chains, item reference counts and eviction. Both retain `NAVCACHE_TEXT`.
 and three existing `LOCAL` (`_near _pascal`) declarations: `CacheGetLocalToken`
 serves `SrcCacheFindEntry`, `ObjCacheFindEntry` and `ObjCacheForceNocache`;
 `UseAltCache` (under `ALT_SRC_CACHE`) serves `SrcCacheGenerateID` and
-`ObjCacheGetVMFile`; `SrcCacheIsExpired` (under `CACHE_VALIDATION`) also serves
+`ObjCacheGetVMFile`; `SrcCacheIsExpired` also serves
 `ObjCacheFindURL`. Near calls across these translation units require both
 implementations to remain in that same resource. `SrcCacheFindEntry` keeps its
 original far C convention. The two compiler string pools can duplicate

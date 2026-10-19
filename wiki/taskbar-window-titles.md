@@ -7,14 +7,11 @@
 - In `Library/SpecUI/CommonUI/CWin/cwinBase.asm`,
   `OLBaseWinUpdateVisMoniker` handles `MSG_SPEC_UPDATE_VIS_MONIKER` and
   falls through to `OLBaseWinSetWindowEntryMoniker`.
-  `OLBaseWinCreateCombinationMoniker` shares title selection with desktop
-  icons: it prefers a primary's nonempty text `GPI_longTermMoniker`, using
-  the supplied window/app moniker as fallback. It prefixes the title with
-  the app name and " - ", or uses just the app name when the selected
-  moniker is the app fallback, empty, or not text. Ordinary window captions
-  whose text equals the app name are also suppressed; a selected primary
-  `GPI_longTermMoniker` with that same text is still appended. Text is built
-  in the existing temporary LMem block; the source monikers are unchanged.
+  `OLBaseWinSetWindowEntryMoniker` prefers a primary's nonempty text
+  `GPI_longTermMoniker`, then the window moniker, then the app moniker.
+  `OLBaseWinCreateCombinationMoniker` combines the selected text with an
+  icon in a temporary LMem block; it does not prepend an app name or
+  change the source monikers.
   The window-list entry is replaced and `UpdateTaskBarList` is called.
 - App fallback monikers need not share a handle with the application's
   original moniker. `OLMenuedWinFindTitleMoniker` in
@@ -27,6 +24,14 @@
   `Appl/Breadbox/BbxBrow/urldoc/URLDOC.goc` by sending
   `MSG_GEN_REPLACE_VIS_MONIKER_TEXT` to its display or primary window, using
   the page title or URL. With neither available, it uses `Untitled`.
+- Title-bar drawing is separate from taskbar composition:
+  `OpenWinDrawMoniker` in `CWin/cwinClassCommonLow.asm` draws
+  `GI_visMoniker` and, for a primary with room, a separator and
+  `GPI_longTermMoniker`. It does not independently prepend the app name.
+  `OLMenuedWinFindTitleMoniker` in `CWin/cwinMenuedWin.asm` copies the app
+  name into a primary only when its own moniker is missing. Thus replacing
+  that primary's `GI_visMoniker` with a browser page title/URL replaces the
+  app caption rather than automatically keeping it as a prefix.
 - A primary's visible title can also include `GPI_longTermMoniker`, which
   is separate from `GI_visMoniker`. `GenDisplayControlUpdateUI` in
   `Library/User/UI/uiDispCtrl.asm` copies the active maximized display's
@@ -35,8 +40,7 @@
   (`Appl/GeoDraw/UI/uiDocument.ui`, `DrawDocumentControlObj`).
   `OpenWinDrawMoniker` in `cwinClassCommonLow.asm` draws this extra text.
   `OLBaseWinUseLongTermMoniker` redraws the header and refreshes the
-  window-list entry and desktop icon caption, including when the extra
-  title is removed.
+  window-list entry, including when the extra title is removed.
   Overlapping document windows clear the primary's extra title; the
   taskbar then uses the ordinary fallback.
 - `MSG_GEN_PRIMARY_GET_LONG_TERM_MONIKER` provides public access to a
@@ -55,10 +59,4 @@
   `CWin/cwinWinIcon.asm` copies the caption into the icon's object block
   and updates the separate `OLWinGlyphDisplay` caption object.
   `MSG_OL_MENUED_WIN_UPDATE_ICON_MONIKER` already exposes that refresh path.
-  `OLMenuedWinSendIconMonikers` uses the shared builder with a zero icon
-  handle for text-only `App - Title` captions, unless the app-only hint
-  is present. The temporary caption block is freed after synchronous
-  delivery; `OLMDWI_iconCaptionMoniker` retains its original source optr,
-  not a pointer into that temporary block. The builder is compiled when
-  desktop icons are supported even if taskbar/window-list support is off.
   These `CWin` paths are under `Library/SpecUI/CommonUI/`.

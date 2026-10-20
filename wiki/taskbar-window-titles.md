@@ -60,3 +60,13 @@
   and updates the separate `OLWinGlyphDisplay` caption object.
   `MSG_OL_MENUED_WIN_UPDATE_ICON_MONIKER` already exposes that refresh path.
   These `CWin` paths are under `Library/SpecUI/CommonUI/`.
+- Taskbar entries use the shared toolbox-item moniker drawing path in
+  `CommonUI/CItem/citemItemColor.asm`, `ItemDrawColorItem`. Ordinary items
+  retain left justification and vertical centering; the tab-style test must
+  not overwrite AL (DrawMonikerFlags) with `OLII_extraRecord`. The native
+  `TOOLBOX_INSET_X/Y` values are two pixels (`CItem/citemConstant.def`),
+  which only cover the taskbar's double border. For colour taskbar entries,
+  `ItemDrawColorItem` checks for a `TaskBarListClass` parent and uses
+  `TOOLBOX_INSET_X + 2` horizontally, leaving face padding inside that frame.
+  `OLButtonDrawMoniker` supplies matching left/right insets and
+  `CUtils/copenMoniker.asm:SetupMaxWidth` subtracts both before clipping.

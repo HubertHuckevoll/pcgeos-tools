@@ -224,15 +224,29 @@
   OLButtonDrawISUI2000DropDown retains OL_DOWN_MARK_WIDTH; its matching mark
   renderer preserves the caller's area mask and shifts only pressed glyph ink.
   Their bounds and hit handling remain in the existing geometry/event paths.
+  DrawColorButton calls OLButtonSetDrawColors before the dropdown mark and
+  draws the moniker afterward. OLButtonDrawISUI2000DropDownMark saves/restores
+  the GState to preserve the moniker colour and full mask (including custom
+  masks). Library/Color/Art/mkrAreaPattern.ui uses GSFillBitmapAtCP with BMF_MONO,
+  which takes the current area colour; pattern/draw-mask samples in
+  Library/Color/UI/uiColor.ui inherit that ink too.
 - MakePopupListIfNeeded in CItem/citemItemGroupClass.asm synthesizes a popup
-  GenInteraction and copies the item group's HINT_GADGET_TEXT_COLOR to it.
-  Text/UI/uiFont.ui and uiPointSize.ui specify blue for both text states.
-  OLButtonSetDrawColors honours the copied selected byte even when ISUI opens
-  the trigger on a blue highlight. Both ISUI variants now change only the
-  generated trigger's identical selected colour to white; the original list
-  hint and explicitly different selected colours stay intact. Item groups with
-  HINT_GADGET_BACKGROUND_COLORS keep their explicit colour pairing. This is a
-  build policy, so the popup must be rebuilt to receive the new hint.
+  GenInteraction and copies HINT_GADGET_TEXT_COLOR without modifying it. ISUI
+  variants also copy HINT_GADGET_BACKGROUND_COLORS. CopyHintIfSpecified handles
+  zero, two or four data bytes, saving both words before ObjVarAddData can
+  relocate the source. ISUI 2000 field painting honours both normal background
+  colours. OLButtonSetDrawColors uses the unselected text/area colour for
+  standalone dropdowns; their background is likewise painted in normal colours.
+- DrawColorButton applies MM_INVERT after OLButtonDrawMoniker for enabled,
+  depressed standalone ISUI-family dropdowns. This covers the completed image,
+  including fixed-colour GStrings and colour samples, rather than recolouring
+  just monochrome ink. The rectangle starts two pixels inside the field and
+  ends before the arrow: right bound minus OL_DOWN_MARK_WIDTH+2 in ISUI 2000,
+  minus OL_DOWN_MARK_WIDTH+3 in classic ISUI, bottom bound minus three.
+  Empty interiors are skipped. GrSaveState/GrRestoreState preserve masks and
+  mix mode around the solid fill. Full normal repaint precedes inversion on
+  every draw; native clipping handles partial exposure. No additional theme
+  setting is involved. Menu/caption controls and Motif retain their old paths.
 - Framed GenText backgrounds have two paint paths: OLTextDraw in
   CGadget/copenTextCommon.asm fills the full bounds via OpenDrawAndFillRect;
   VisText clears its interior with VTI_washColor, clipped inside VTI_tbMargin
@@ -246,3 +260,14 @@
   match the text interior without changing the border or classic UI builds.
   MSG_VIS_TEXT_SET_WASH_COLOR also changes only VisText's wash colour, without
   setting the specific UI flag (Text/Text/textMethodInstance.asm).
+- GrSetMixMode(MM_INVERT) inverts existing destination pixels, ignoring source
+  colour (Include/graphics.def, MixMode). A post-draw filled region can invert
+  a completed moniker without an offscreen bitmap; ReDrawBWButton in
+  CButton/copenButtonBW.asm already does this for menu focus when
+  _MENU_BUTTONS_SHOW_FOCUS_BY_INVERTING is enabled. It saves/restores the mix
+  mode around DrawBWRegionAtCP. This is not a contrast-selection operation:
+  8-bit VidMem uses NOTtable in Driver/Video/Dumb/VidMem/Clr8/clr8Output.asm;
+  24-bit ModeINVERT complements RGB in Clr24/clr24Output.asm. Graphical monikers
+  are GStrings played by VisDrawMoniker (Library/User/Vis/visUtilsResident.asm)
+  and can set their own colours or mix mode, so caller text/area colours do
+  not universally recolour them.

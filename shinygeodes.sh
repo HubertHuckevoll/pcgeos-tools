@@ -8,7 +8,7 @@ getagentsmd.sh
 set -o pipefail
 cd ~/pcgeos/Installed
 yes | clean
-pmake -L 4 2>&1 | tee ~/pcgeos/build.log
+pmake -L 4 2>&1 | tee ~/build.log
 
 # Build product
 shinyproduct.sh

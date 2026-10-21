@@ -51,8 +51,13 @@
   bounds. CButton/copenButtonColor.asm uses native horizontal centering and
   zero inset for system-icon buttons with the compact caption width; wider
   system-menu buttons retain their original inset. Header height and artwork
-  remain native. Introductory Done-button
-  layouts are excluded; their natural-width reservation needs separate work.
+  remain native. Introductory Done-button widths are recalculated by
+  EnableDisableAndPosSysIcon using MSG_VIS_RECALC_SIZE. Title-space reservation
+  is separate: OpenWinCalcWinHdrGeometry subtracts fixed caption slots from
+  OLWI_titleBarBounds.R_right, and OpenWinPositionSysMenuIcons starts the
+  right-hand controls at that reduced bound. Changing a caption-slot constant
+  therefore also changes Done-button positioning unless the introductory path
+  is explicitly excluded.
 - Toolbar appearance spans DrawColorButton in CButton/copenButtonColor.asm
   and ItemDrawColorTool in CItem/citemItemColor.asm (OLIS_DRAW_AS_TOOLBOX).
   ISUI 2000 uses OLButtonIsFlatToolbox/OLButtonDrawToolboxFrame for actual colour

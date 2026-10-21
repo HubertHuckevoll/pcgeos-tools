@@ -233,3 +233,16 @@
   hint and explicitly different selected colours stay intact. Item groups with
   HINT_GADGET_BACKGROUND_COLORS keep their explicit colour pairing. This is a
   build policy, so the popup must be rebuilt to receive the new hint.
+- Framed GenText backgrounds have two paint paths: OLTextDraw in
+  CGadget/copenTextCommon.asm fills the full bounds via OpenDrawAndFillRect;
+  VisText clears its interior with VTI_washColor, clipped inside VTI_tbMargin
+  and VTI_lrMargin (Text/TextRegion/trSmallGState.asm, SmallSetClip).
+  With DRAW_STYLES=FALSE, TextWhiteWashColor in copenTextBuild.asm sets white
+  but does not set TDSS_COLOR_SET, unlike TextWashColor. OLTextDraw therefore
+  uses OpenSetInsetRectColors' UI face fill for the margins even though the
+  text interior is white. Larger text margins expose this colour mismatch.
+  ISUI 2000's setNormalColors path now overrides only the fill with the full
+  VTI_washColor ColorQuad after obtaining the normal bevel colours, so margins
+  match the text interior without changing the border or classic UI builds.
+  MSG_VIS_TEXT_SET_WASH_COLOR also changes only VisText's wash colour, without
+  setting the specific UI flag (Text/Text/textMethodInstance.asm).

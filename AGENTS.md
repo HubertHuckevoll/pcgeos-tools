@@ -191,6 +191,8 @@ Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created
 
 For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use aihelp.py build.
 
+Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc
+
 ## Testing
 
 Do not try to run PC/GEOS to test stuff.

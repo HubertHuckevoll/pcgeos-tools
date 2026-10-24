@@ -22,3 +22,11 @@ embedded NULs; graphic markers require matching graphic runs.
 Evidence: `Library/Text/Text/textMethodSet.asm` (`VisTextAppendPtr`,
 `AppendWithSomething`) and `Library/Text/TextAttr/taRunQuery.asm`
 (`TA_GetGraphicForPosition`, `NO_GRAPHIC_RUN_AT_GIVEN_POSITION`).
+
+GEOS SBCS differs from modern MacRoman at 0xc6 (U+0394 capital delta),
+0xd7 (U+25C6 black diamond), 0xde (U+00FD y acute) and 0xdf (U+00DD Y acute).
+Both map 0xdb to U+20AC euro; Include/char.def calls this C_CURRENCY and
+aliases it as C_EURO_CHAR. GEOS 0xf0 is C_LOGO and has no Unicode mapping
+in the TrueType driver. Evidence: geosCharMap in
+Driver/Font/TrueType/Adapter/ttcharmapper.c, CInclude/unicode.h and
+Include/char.def. Do not use an unmodified MacRoman decoder for font import.

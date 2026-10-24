@@ -51,3 +51,9 @@ length-prefixed records. Treating the signature as a record can read beyond
 such empty streams and produce spurious scalar-type errors. The regression
 cases in `Tools/glue/tests/check_local_symbols.pl` cover missing, empty,
 unreferenced and truncated type data through the real linker.
+
+`bin/geodump` can inspect built geode protocols and imported-library
+requirements without running GEOS. `Tools/geodump/geodump.c:main` uppercases
+the input basename and extension before opening it, so use an uppercase
+temporary symlink on case-sensitive hosts. Its `void main` has no explicit
+success exit; validate the decoded fields rather than its exit status.

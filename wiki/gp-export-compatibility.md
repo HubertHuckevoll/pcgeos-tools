@@ -35,3 +35,11 @@ and publishing its `.ldf`, newly linked clients inherit that base minimum:
 library dependency (around line 1694). An `incminor` appended after all
 existing exports would raise the library's advertised protocol but would
 leave calls to those existing exports at the old requirement.
+
+At runtime, `Library/Kernel/Geodes/geodesLibrary.asm:UseLibraryLow` checks
+the imported protocol against the loaded library, including an already
+resident library (`checkProtocol`, around lines 1898-1910).
+`geodesLoad.asm:TestProtocolNumbers` requires equal majors and an exporter
+minor at least as high as the importer minor (around lines 2281-2307).
+Thus a client requiring 2.1 cannot use a 2.0 library; a client requiring
+2.0 can use 2.1. This is a load-time check, not a per-call argument check.

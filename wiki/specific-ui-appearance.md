@@ -50,8 +50,14 @@
   cwinClassCommonLow.asm use the caption slot for min/max width and title
   bounds. CButton/copenButtonColor.asm uses native horizontal centering and
   zero inset for system-icon buttons with the compact caption width; wider
-  system-menu buttons retain their original inset. Header height and artwork
-  remain native. Introductory mode retains the new widget styling and compact
+  system-menu buttons retain their original inset. Caption artwork remains
+  native. Both ISUI variants use CUAS_WIN_HEADER_Y_SPACING=8 and
+  TITLE_TEXT_Y_OFFSET=2. GEOS UI Sans is a 10 pt bitmap with a 14-pixel
+  font box; header sizing uses the point-size label, not that box height.
+  The CGA correction yields CUAS_CGA_WIN_HEADER_Y_SPACING=4.
+  The shared value also feeds
+  CWin/cwinGeometry.asm, keeping client geometry consistent with drawing.
+  Introductory mode retains the new widget styling and compact
   caption icons. EnableDisableAndPosSysIcon sizes its Done button through
   MSG_VIS_RECALC_SIZE. OpenWinGetCloseButtonWidth uses the same query so
   OpenWinPositionSysMenuIcons reserves its measured width plus the Close gap
@@ -276,3 +282,14 @@
   are GStrings played by VisDrawMoniker (Library/User/Vis/visUtilsResident.asm)
   and can set their own colours or mix mode, so caller text/area colours do
   not universally recolour them.
+
+- UI combo font defaults are written by ConfigUI's SetUIOptions in
+  Library/Pref/ConfigUI/configui.asm: [ui] fontid and editableTextFontID,
+  plus [system] editableTextFontID. GetSPUIFont selects preview font IDs.
+  ISUI 2000 uses GEOS UI Sans, FID_GEOS_UI_SANS=0x022c in Include/fontID.def
+  and CInclude/fontID.h; classic ISUI retains Esquire. Ensemble packages
+  FontData/DejaVuSC.fnt and Tools/fntpatch/LICENSE-DejaVu.txt in USERDATA/FONT
+  (bbxensem.filetree). CommonUI/CMain/cmainCode.asm's GetFontFromInitFile
+  calls GrFindNearestPointsize. The original ISUI2000 font has only a
+  10 pt bitmap strike; FontData/DejaVuSC/dejavusc.asm now also provides
+  9, 12, 14 and 18 pt, allowing saved preferences to select those sizes.

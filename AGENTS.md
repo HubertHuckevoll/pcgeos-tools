@@ -191,14 +191,14 @@ Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created
 
 For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use aihelp.py build.
 
-Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc This will send geodes via "Swat" (the debugger) to the so called "target", which is the PC/GEOS Ensemble installation at /gbuild/localpc/ensemble.
+Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc This will send geodes via "Swat" (the debugger) to the so called "target", which is the PC/GEOS Ensemble installation at /gbuild/localpc/ensemble. swat.rc must end with the letter "c" in the last line (for "continue").
 
 ## Testing
 
 Do not try to run PC/GEOS to test stuff.
 
-Non-trivial logic leaves one small runnable check in a project local "tests" folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
+Non-trivial logic leaves one small runnable check in a project local "Tests" folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
 
 ## Debugging
 
-When asked to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.
+When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.

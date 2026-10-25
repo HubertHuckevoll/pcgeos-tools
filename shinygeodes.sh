@@ -2,7 +2,7 @@
 # Try to build all the geodes and the product
 
 # grab AGENTS.MD
-getagentsmd.sh
+getamd.sh
 
 # Build all the geodes
 set -o pipefail

@@ -133,6 +133,13 @@
   layout, UI control policy and command enablement; its helper
   `EnableDisableSysMenuItem` targets `OLWI_sysMenu` and skips menu entries
   in Close-only mode. It is not an independent taskbar-menu state updater.
+  Raw capability flags do not fully encode user command policy:
+  `CWin/cwinBase.asm:OLBaseWinInitialize` deliberately retains
+  `OWA_MAXIMIZABLE` for automatic startup maximization when
+  `UIWO_PRIMARY_MIN_MAX_RESTORE_CONTROLS` is clear, while clearing
+  minimizable/restorable flags. The separate policy check used by native
+  menu construction is `OpenWinCheckIfMinMaxRestoreControls` in
+  `CWin/cwinUtils.asm`.
 - Normal taskbar registration is per GenPrimary, not per application or
   document display. `CSpec/cspecPrimary.asm:OLBuildPrimary` normally chooses
   `OLBaseWinClass`; its spec-build/attach handlers call

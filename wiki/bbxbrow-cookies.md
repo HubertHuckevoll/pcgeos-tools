@@ -22,8 +22,10 @@ query-string slashes are excluded. CookieFind tests the stored path as a
 prefix of the requested path. Evidence: CookieSet and CookieFind in
 Library/Cookies/Cookies.goc. The host check
 Library/Cookies/tests/check_cookie_parse.pl extracts the actual parser and
-default-path code; it covers modern attributes, session cookies, default
-paths and restoration of the request buffer.
+default-path code; it checks parser outputs, modern attributes, default
+paths and restoration of the request buffer. An optional pre-change git
+revision checks compatibility and intended differences. GEOS allocation,
+expiration and persistence are outside this host check.
 
 Cookies without Expires are session cookies (TDAT_year == SESSION_COOKIE).
 CookiesWrite deliberately omits them from SP_PRIVATE_DATA/cookies.txt;

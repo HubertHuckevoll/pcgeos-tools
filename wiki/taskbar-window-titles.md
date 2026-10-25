@@ -97,6 +97,12 @@
   `VisSetPosition`, and requests native keep-visible/shrink-to-fit
   constraints. This differs from the OpenLook-only background-menu code
   in `CommonUI/CWin/cwinPtr.asm:OpenWinStartMenu`.
+- A buttonless `GIV_POPUP` (`GIA_NOT_USER_INITIATABLE`) needs explicit
+  menu build flags: `CSpec/cspecInteraction.asm:OLMapGroup` skips the
+  `SGQT_BUILD_INFO` parent query and otherwise selects `OLCtrlClass`.
+  `HINT_AVOID_MENU_BAR` invokes `MapGroupHintAvoidMenuBar`, which sets
+  `OLBR_TOP_MENU` so the popup maps to `OLMenuWinClass`;
+  `CWin/cwinPopup.asm:OLPopupWinSpecBuild` still suppresses its initiator.
 - A context-menu lookup must be distinguished from normal task selection:
   `OLBaseWinNotifyWindowSelected` in `CommonUI/CWin/cwinBase.asm` explicitly
   sends `MSG_GEN_DISPLAY_SET_NOT_MINIMIZED` and then `MSG_GEN_BRING_TO_TOP`.
@@ -189,3 +195,12 @@
   genUtils.asm`, `genClassCommon.asm`). `ATTR_GEN_TRIGGER_IMMEDIATE_ACTION`
   instead invokes the trigger before normal menu completion; it is not
   required merely to deliver a command to another object on that thread.
+
+- `MSG_GEN_COPY_TREE` rebuilds generic links but preserves trigger action
+  destinations, including references to objects within the template tree.
+  Retarget such triggers to their copied receiver (for example with
+  `MSG_GEN_TRIGGER_SET_DESTINATION`). Evidence: `Library/User/Gen/
+  genClassBuild.asm:GenCopyTree` copies object data wholesale and rebuilds
+  `GI_link`/`GI_comp`; `GenTriggerClass` has no copy-tree override
+  (`Library/User/Gen/genTrigger.asm`). Resource duplication and tree copying
+  therefore have different implications for internal action destinations.

@@ -70,3 +70,122 @@
   `TOOLBOX_INSET_X + 2` horizontally, leaving face padding inside that frame.
   `OLButtonDrawMoniker` supplies matching left/right insets and
   `CUtils/copenMoniker.asm:SetupMaxWidth` subtracts both before clipping.
+- Taskbar buttons are a separate dynamic list backed by the field's window
+  list. `OLFieldUpdateTaskBarList` sets their destination to
+  `OLFI_windowListList`; `WindowListListSelectItem` resolves the button's
+  positional identifier with `MSG_GEN_FIND_CHILD_AT_POSITION` and sends
+  `MSG_META_NOTIFY_TASK_SELECTED` to the window-list item
+  (`CommonUI/CWin/cwinFieldUncommon.asm`). The item stores the actual window
+  optr in `OLWLI_windowObj`; `OLWindowListItemNotifyWindowSelected` raises
+  its geode and queues the notification to that window.
+  `OLWindowListItemCloseWindow` instead queues `MSG_GEN_DISPLAY_CLOSE`
+  directly to that window (`CommonUI/CWin/cwinBase.asm`). Taskbar button
+  identifiers are therefore positions, not window optrs.
+- A window's existing system menu is not guaranteed to exist as a popup.
+  `OpenWinEnsureSysMenu` in `CommonUI/CWin/cwinClassCUAS.asm` checks
+  `OWA_HAS_SYS_MENU`; in non-ISUI builds, clearing `UIWO_WINDOW_MENU`
+  creates only a close button and sets `OWA_SYS_MENU_IS_CLOSE_BUTTON`.
+  This is a window-chrome construction choice, not a general popup ban:
+  `OLMenuWinActivate` and `OLPopupGenInitiate` do not test
+  `UIWO_WINDOW_MENU`. An independently created taskbar popup need not
+  change that option. `OpenWinDuplicateBlock` in `CommonUI/CWin/cwinUtils.asm`
+  sets the copied block's output to the owning window and its upward
+  generic parent link; copying the resource alone does not establish these.
+  Normal menu copies are referenced by `OLWI_sysMenu` and target the
+  owning window. `OLMenuWinActivate` in `CommonUI/CWin/cwinMenu.asm`
+  accepts a position through `MSG_OL_POPUP_ACTIVATE`, calls
+  `VisSetPosition`, and requests native keep-visible/shrink-to-fit
+  constraints. This differs from the OpenLook-only background-menu code
+  in `CommonUI/CWin/cwinPtr.asm:OpenWinStartMenu`.
+- A context-menu lookup must be distinguished from normal task selection:
+  `OLBaseWinNotifyWindowSelected` in `CommonUI/CWin/cwinBase.asm` explicitly
+  sends `MSG_GEN_DISPLAY_SET_NOT_MINIMIZED` and then `MSG_GEN_BRING_TO_TOP`.
+  Default two/three-button input maps in `Library/User/User/userMain.asm`
+  map unmodified `BUTTON_2` to `MSG_META_START_MOVE_COPY`, not
+  `MSG_META_START_FEATURES`; `userFlowInput.asm:TranslateButton` uses the
+  active mapping. `OLItemClass` inherits `OLButtonClass`; with `BUBBLE_HELP`,
+  its inherited `OLButtonStartMoveCopy`/`OLButtonEndMoveCopy` handlers
+  create/destroy bubble help and grab/release the mouse
+  (`CommonUI/CButton/copenButtonCommon.asm`). These are existing behaviors
+  to account for when adding a taskbar context-menu input path.
+- Minimized-window popups need explicit visibility treatment.
+  `OLMenuedWinGenSetMinimized` sets `SA_BRANCH_MINIMIZED` and clears
+  `SA_REALIZABLE` on the window (`CommonUI/CWin/cwinMenuedWin.asm`).
+  `Library/User/Vis/visComp.asm:VisCompUpdateWindow` hides window groups
+  whose `VisGetGenBranchInfo` result includes `GBI_BRANCH_MINIMIZED`.
+  `visSpecUtils.asm:VisContinueGenBranchCheck` provides a native exception:
+  `VA_BRANCH_NOT_MINIMIZABLE` clears that result. Modal dialogs use this
+  attribute (`CommonUI/CWin/cwinDialog.asm`); ordinary system-menu
+  construction does not set it.
+- System-menu action reuse does not by itself supply minimized-window
+  semantics. `OLMenuedWinRestoreWin` checks `OLWSS_MINIMIZED` to choose
+  unminimize versus unmaximize. `OLMenuedWinTranslateToGenMessage` maps
+  Maximize only to `MSG_GEN_DISPLAY_SET_MAXIMIZED`; the existing
+  `OLWinIconMaximizeFromIcon` in `CommonUI/CWin/cwinWinIcon.asm` sends that
+  message and then falls through to explicitly unminimize the primary.
+  `OpenWinPositionSysMenuIcons` in `cwinClassCUAS.asm` mixes title-bar
+  layout, UI control policy and command enablement; its helper
+  `EnableDisableSysMenuItem` targets `OLWI_sysMenu` and skips menu entries
+  in Close-only mode. It is not an independent taskbar-menu state updater.
+- Normal taskbar registration is per GenPrimary, not per application or
+  document display. `CSpec/cspecPrimary.asm:OLBuildPrimary` normally chooses
+  `OLBaseWinClass`; its spec-build/attach handlers call
+  `CWin/cwinBase.asm:EnsureItemAddedToWindowList`. That routine requires
+  `GS_USABLE`, skips an existing entry, custom bottom-layer windows
+  (`OWMFA_CUSTOM_WINDOW` plus `ATTR_GEN_WINDOW_CUSTOM_LAYER_PRIORITY` equal
+  to `LAYER_PRIO_ON_BOTTOM`), and either `HINT_AVOID_MENU_BAR` or
+  `HINT_PRIMARY_AVOID_MENU_BAR_IF_EXTENDIBLE_SYSTRAY`. It does not require
+  closable/minimizable/maximizable capability or non-minimized state.
+  `OLDisplayWinClass` is a sibling of `OLBaseWinClass` under
+  `OLMenuedWinClass`, so ordinary GenDisplays do not inherit registration.
+  With window-icon support, `HINT_WIN_ICON` can resolve a GenPrimary to
+  `OLWinIconClass` instead of `OLBaseWinClass`.
+- Positioned popup activation and stay-up initiation are distinct:
+  `CWin/cwinMenu.asm:OLMenuWinActivate` handles `MSG_OL_POPUP_ACTIVATE`,
+  clears `OMWSS_IN_STAY_UP_MODE`, sets the position and starts grabs;
+  `OLMenuWinInitiate` handles `MSG_GEN_INTERACTION_INITIATE` and explicitly
+  sends `MSG_MO_MW_ENTER_STAY_UP_MODE`. Buttonless menu gadget/focus
+  queries use the generic parent (`OLMenuWinGrabRemoteGadgetExcl`,
+  `OLMenuWinCallButtonOrGenParent`). Positioning alone does not establish
+  the desired click-release interaction.
+- `CWin/cwinBase.asm:EnsureItemRemovedFromWindowList` destroys the backing
+  item and requests taskbar list reinitialization. Positional button IDs
+  must not be treated as stable identities across an open popup's lifetime.
+  `CWin/cwinFieldUncommon.asm:OLWindowListItemDestroy` now invalidates the
+  taskbar popup before the entry's chunk can be reused, rather than waiting
+  for the subsequent list refresh.
+- `CWin/cwinFieldUncommon.asm:ToolAreaAutoHide` postpones hiding while the
+  first child's Express menu or the taskbar context menu is visible.
+  Both lookups depend on the tool area's child order; the Express control
+  is inserted ahead of the template children.
+- A buttonless popup's generic parent need not supply a live native window
+  for the remote gadget grab. `CWin/cwinMenu.asm:OLMenuWinCallButtonOrGenParent`
+  sends to `GenCallParent`; `cwinClassCommonMiddle.asm:OpenWinVupQuery`
+  translates the remote grab into `MSG_VIS_TAKE_GADGET_EXCL`.
+  `Library/User/Vis/visComp.asm:VisCompTakeGadgetExcl` stores the object
+  reference and stops propagation at a window group, without requiring
+  `VCI_window` or visible state.
+  The popup window's visual parent is separately selected through
+  `CWin/cwinUtils.asm:GetVisParentForDialog`; `CUtils/copenAppCommon.asm:
+  OLApplicationGupQueryVisParent` returns the application and its field
+  window for `SQT_VIS_PARENT_FOR_POPUP`.
+  `CWin/cwinClassCommonHigh.asm:OLWinGupQuery` passes `SGQT_WIN_GROUP`
+  uphill if `VCI_window` is zero, so `cwinClassCommonLow.asm:
+  OpenWinModifyWithNearestWinGroupPriority` does not use a minimized
+  primary's absent window handle. Custom parent/priority inheritance
+  from such a primary is therefore not established by this path.
+- The first/global UI thread cannot synchronously call an application
+  thread. `Library/Kernel/Geodes/geodesEvent.asm:ObjMessage` rejects
+  cross-thread `MF_CALL` with `CANNOT_REMOTE_CALL_FROM_UI` in EC builds;
+  the input-manager thread and secondary UI threads are exceptions.
+  Use queued requests and replies when UI-owned controls need app-owned
+  state. Ordinary messages to objects on the current thread are direct
+  calls unless `MF_FORCE_QUEUE` is set (same routine's documented contract).
+- Normal button activation queues `MSG_GEN_TRIGGER_SEND_ACTION` at the
+  front of the owning thread's queue (`CButton/copenButtonCommon.asm:
+  OLButtonActivate`). `GenProcessAction` and `GenOutputAction` then dispatch
+  the recorded action to its destination; an action targeting the same UI
+  thread does not require another queue round trip (`Library/User/Gen/
+  genUtils.asm`, `genClassCommon.asm`). `ATTR_GEN_TRIGGER_IMMEDIATE_ACTION`
+  instead invokes the trigger before normal menu completion; it is not
+  required merely to deliver a command to another object on that thread.

@@ -43,3 +43,12 @@ resident library (`checkProtocol`, around lines 1898-1910).
 minor at least as high as the importer minor (around lines 2281-2307).
 Thus a client requiring 2.1 cannot use a 2.0 library; a client requiring
 2.0 can use 2.1. This is a load-time check, not a per-call argument check.
+
+Structures exchanged through existing messages are also part of the binary
+ABI. For example, HTMLTextClass::MSG_HTML_TEXT_GET_IMAGE copies
+sizeof(HTMLimageData) into caller storage, and MSG_HTML_TEXT_RESOLVE_IMAGE
+reads that structure back. Growing it can overrun an older caller buffer;
+appending exports with incminor does not protect that caller. An incompatible
+layout needs a major protocol boundary or an explicitly compatible API.
+Evidence: CInclude/html4par.goh and
+Library/Breadbox/Html4Par/htmlclas/htmlclas.goc, those message handlers.

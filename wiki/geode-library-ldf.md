@@ -81,3 +81,20 @@ Evidence: Library/Kernel/Geodes/geodesResource.asm:FOM_common,
 PROCCALLFIXEDORMOVABLE_PASCAL and _ProcCallFixedOrMovable_cdecl;
 CInclude/hwr.h:CallHWRLibrary_OneArg/TwoArgs; and
 Library/SvgLib/Export/svgExportWriter.goc:SvgExportPCFMSink.
+
+## Calling callbacks within the active code resource
+
+ResourceCallInt locks a movable code resource before entry and unlocks it on
+return (Library/Kernel/Geodes/geodesResource.asm:ResourceCallIntProfiling,
+FastLock1/FullLockNoReload and doUnlock). While that resource is active, its
+current CS is a real segment. A callback proven to belong to the same resource
+can be called with its stable offset and that CS, preserving its normal far
+Pascal ABI and avoiding another kernel resource call. Do not overwrite the
+stored virtual pointer or retain the reconstructed real pointer after return.
+This substitution is unsafe for callbacks in a different resource.
+
+Library/MP3Dec/mp3huff.c keeps all table decoders and Huffman parsing together
+in MP3HuffCode. core/pv_mp3_huffman.h:MP3_HUFF_CALL uses a Watcom pragma-aux
+MOV AX,CS intrinsic. Tests/thunk.c exercises 1000 calls with a poisoned virtual
+segment and checks pointer retention, return value and stack balance;
+Tests/watcom.pl enables the same path for its EC/NC PCM comparisons.

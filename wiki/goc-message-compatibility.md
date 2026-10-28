@@ -367,3 +367,14 @@ duplicate `HTMLVIEW_CATEGORY` (`"HTMLView"`) when operation and option handlers
 are separated. Inspect OMF with Watcom `wdis`, then compare linked resource
 sizes and relocation tables; source-token equality does not imply identical
 instruction sizes or constant-pool padding.
+
+## Same-thread continuation messages
+
+A plain GOC @send is not necessarily queued. ObjMessage directly invokes a
+message when the destination is on the current thread and MF_FORCE_QUEUE is
+absent (Library/Kernel/Geodes/geodesEvent.asm:thread/directCall). A process
+handler sending its own continuation must use @send, forceQueue process::...
+to return and unwind before the next step. Otherwise repeated continuations
+recurse, growing both the C stack and GEOS resource-call pseudo-stack; the
+event queue can remain empty. Tools/goc/parse.y maps forceQueue to
+MF_FORCE_QUEUE (0x4000). Appl/MP3Wav/mp3wav.goc is a bounded continuation example.

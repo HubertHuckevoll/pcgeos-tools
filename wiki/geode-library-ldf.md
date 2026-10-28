@@ -57,3 +57,27 @@ requirements without running GEOS. `Tools/geodump/geodump.c:main` uppercases
 the input basename and extension before opening it, so use an uppercase
 temporary symlink on case-sensitive hosts. Its `void main` has no explicit
 success exit; validate the decoded fields rather than its exit status.
+
+Watcom -zc puts constant arrays into code segments as well as strings. A
+cross-resource C data reference such as mov ax,seg HUFFTABLE_1 followed by a
+memory read cannot use a movable code resource's virtual segment directly.
+DoRelocation in Library/Kernel/Geodes/geodesResource.asm replaces GRT_SEGMENT
+references to movable resources with handle-derived virtual segments; only
+GRT_CALL and ProcCallFixedOrMovable paths lock/resolve code before execution.
+MP3Dec therefore omits -zc and declares dgroup fixed read-only shared in its
+GP file. Immutable tables are directly addressable without mutable global
+instance state. See Library/MP3Dec/local.mk, mp3dec.gp and the Watcom output
+for pvmp3_decode_huff_cw_tab1 in mp3huff.eobj. Moving such tables requires
+explicit locking/rebinding or code/data placement that avoids cross-resource
+data references, not merely a read-only shared resource flag.
+
+The two ProcCallFixedOrMovable C trampolines place the callback differently:
+ProcCallFixedOrMovable_pascal takes normal callback arguments first and the
+callback pointer last; ProcCallFixedOrMovable_cdecl takes the callback first.
+The far return address is removed by FOM_common, which then pops the callback
+from the top of the argument stack. Match this order in any typed trampoline
+cast; an ordinary typed cast does not rearrange arguments for the trampoline.
+Evidence: Library/Kernel/Geodes/geodesResource.asm:FOM_common,
+PROCCALLFIXEDORMOVABLE_PASCAL and _ProcCallFixedOrMovable_cdecl;
+CInclude/hwr.h:CallHWRLibrary_OneArg/TwoArgs; and
+Library/SvgLib/Export/svgExportWriter.goc:SvgExportPCFMSink.

@@ -18,3 +18,9 @@ workaround until Library/MP3Dec/Tests/dsp.c passes with the replacement compiler
 its history[6]/history[9] assertions reproduce the failure, and watcom.pl runs
 it using the target compiler. This is an observed code-generation difference,
 not a claim about all Watcom versions or all fixed-point routines.
+
+A 32-bit Pascal C return in 16-bit mode is DX:AX, even when the ESP routine
+uses EAX/EDX internally. Returning only EAX loses the high word at C call sites.
+See Library/AnsiC/wcc_rtl.asm's DX:AX long-arithmetic ABI and
+Library/MP3Dec/mp3dsp.asm:MP3MULSHIFT; Tests/target.c and Tests/watcom.pl compare
+6486 signed/rounding products through the assembled entry against the C oracle.

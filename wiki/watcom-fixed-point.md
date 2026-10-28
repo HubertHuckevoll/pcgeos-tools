@@ -24,3 +24,12 @@ uses EAX/EDX internally. Returning only EAX loses the high word at C call sites.
 See Library/AnsiC/wcc_rtl.asm's DX:AX long-arithmetic ABI and
 Library/MP3Dec/mp3dsp.asm:MP3MULSHIFT; Tests/target.c and Tests/watcom.pl compare
 6486 signed/rounding products through the assembled entry against the C oracle.
+
+With SUPPORT_32BIT_DATA_REGS enabled, kernel thread switching preserves full
+EBP, including its high word: Include/Internal/heapInt.def:ThreadBlockState
+has TBS_bp/TBS_ebpHigh; Library/Kernel/Thread/threadSem.asm:BlockAndDispatchSI
+pushes EBP and threadThread.asm:RecoverFromFullBlock pops it. An ESP leaf block
+can therefore temporarily borrow EBP as a 32-bit accumulator, saving/restoring
+the full register before any BP-relative frame access. See
+Library/MP3Dec/mp3dsp.asm:Mp3Window; the surrounding kernel still needs the
+normal SUPPORT_32BIT_DATA_REGS configuration.

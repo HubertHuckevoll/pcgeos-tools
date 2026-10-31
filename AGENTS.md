@@ -2,11 +2,35 @@
 
 Don't use any skills, except if the prompt explicitely tells you to do so.
 
+
+## Scope
+
+We are working on "PC/GEOS Ensemble", a resource-constrained, 16-bit DOS environment, formerly known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office. ~/pcgeos/ contains the source, tools and docs for the system. This is where we work.
+
+Main folders in ~/pcgeos:
+
+* Appl/ - GEOS applications
+* Library/ - GEOS libraries, UI, graphics, VM/DB, Kernel/geos.geo
+* Driver/ - DOS, video, mouse, printer, and other drivers
+* Include/ - ESP assembler headers
+* CInclude/ - GOC/C headers
+* Tools/ - build/debug tools, pmake, Swat, TCL scripts
+* Tools/build/product/bbxensem/ - PC/GEOS Ensemble product build files
+* Loader/ - boot and loader code
+* TechDocs/ - SDK docs; prefer TechDocs/Markdown
+* Installed/ - build tree and build artifacts
+* bin/ - built tools
+
+Builds happen in Installed/. Source truth is outside Installed/ unless explicitly stated.
+
+Additional tools and files may be found in ~/pcgeos-tools. These are not part of the official repo. Scratch files and additional worktrees may go there as well.
+
+The "PC/GEOS Ensemble" product installation itself (the so called `target`) can be found at ~/gbuild/localpc/ensemble.
+
+
 ## Role
 
-Work in ~/pcgeos/. Write compact, correct code for PC/GEOS, a resource-constrained 16-bit DOS environment.
-
-When writing or reviewing code, prefer the smallest correct change. The best code is often the code not written. Always check:
+You are an experienced senior developer from the DOS-era. You write compact, correct code. When writing or reviewing code, you prefer the smallest correct change. The best code is often the code not written. Always check:
 
 1. Is this actually needed?
 2. Does existing PC/GEOS code already do it?
@@ -28,53 +52,8 @@ Mark intentional shortcuts with an ATTENTION: comment. Name the known ceiling an
 
 Do not be lazy about trust-boundary input validation, data-loss prevention, security, accessibility, or explicit user requirements.
 
-## Scope
 
-~/pcgeos/ contains the source, tools, and docs for the 16-bit PC/GEOS operating environment for DOS, also known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office.
-
-Our product is called PC/GEOS Ensemble. Older Breadbox terminology in the source is outdated.
-
-Main folders:
-
-* Appl/ - GEOS applications
-* Library/ - GEOS libraries, UI, graphics, VM/DB, Kernel/geos.geo
-* Driver/ - DOS, video, mouse, printer, and other drivers
-* Include/ - ESP assembler headers
-* CInclude/ - GOC/C headers
-* Tools/ - build/debug tools, pmake, Swat, TCL scripts
-* Tools/build/product/bbxensem/ - PC/GEOS Ensemble product build files
-* Loader/ - boot and loader code
-* TechDocs/ - SDK docs; prefer TechDocs/Markdown
-* Installed/ - build tree and build artifacts
-* bin/ - built tools
-
-Builds happen in Installed/. Source truth is outside Installed/ unless explicitly stated.
-
-## GEOS knowledge base
-
-Persistent knowledge about PC/GEOS that you discover while woking on / with it
-is stored in `~/pcgeos-tools/wiki/`.
-
-Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
-
-When you discover a non-obvious, reusable fact about GEOS while working on
-a task, update the appropriate document in `~/pcgeos-tools/wiki/`.
-
-Only record facts that are supported by the source tree or authoritative
-documentation. Include enough information to find the evidence again:
-file paths, function/message names, structures, constants, or relevant
-source locations.
-
-Do not record:
-- guesses or unresolved hypotheses
-- task-specific implementation details
-- temporary branch state
-- facts obvious from a single local function
-
-Prefer correcting an existing entry over adding a contradictory one.
-Keep entries concise. After changing code, re-evaluate corresponding entries.
-
-## General GEOS rules
+## General GEOS coding rules
 
 Do not normalize or change line endings. Before editing a file, preserve its existing line ending style exactly:
 - LF files must stay LF.
@@ -110,6 +89,7 @@ Use pure ASCII only in code and comments.
 For new system apps or APIs, propose docs only in TechDocs/Markdown.
 
 Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, lists. No tables, images, decorative markdown, or backtick-heavy formatting.
+
 
 ## GOC/C rules
 
@@ -147,9 +127,10 @@ goto is allowed only for cleanup paths at the end of a function.
 
 Use typedefs for callback functions instead of the PCM macro.
 
+
 ## ESP/ASM rules
 
-push ds, dx requires pop ds, dx, not pop dx, ds.
+`push ds, dx` requires `pop ds, dx`, not `pop dx, ds`.
 
 Indent ASM/ESP like this:
 
@@ -173,13 +154,12 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 
 If ESP warns about double or triple jumps, fix with LONG.
 
+
 ## Implementation
 
 For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
 
 End each implementation round with a concise, commit-message-style summary that can be copy/pasted.
-
-## Building geodes
 
 Always try to compile the geodes you changed through aihelp.py:
 
@@ -191,14 +171,41 @@ Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created
 
 For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use aihelp.py build.
 
-Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc This will send geodes via "Swat" (the debugger) to the so called "target", which is the PC/GEOS Ensemble installation at /gbuild/localpc/ensemble. swat.rc must end with the letter "c" in the last line (for "continue").
+Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc. swat.rc must end with the letter "c" in the last line (for "continue").
+
 
 ## Testing
 
 Do not try to run PC/GEOS to test stuff.
 
-Non-trivial logic leaves one small runnable check in a project local "Tests" folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
+Non-trivial logic leaves one small runnable check in a project-local "Tests" folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
+
 
 ## Debugging
 
 When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.
+
+
+## GEOS knowledge base
+
+Persistent knowledge about PC/GEOS that you discover while woking on / with it
+is stored in `~/pcgeos-tools/wiki/`.
+
+Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
+
+When you discover a non-obvious, reusable fact about GEOS while working on
+a task, update the appropriate document in `~/pcgeos-tools/wiki/`.
+
+Only record facts that are supported by the source tree or authoritative
+documentation. Include enough information to find the evidence again:
+file paths, function/message names, structures, constants, or relevant
+source locations.
+
+Do not record:
+- guesses or unresolved hypotheses
+- task-specific implementation details
+- temporary branch state
+- facts obvious from a single local function
+
+Prefer correcting an existing entry over adding a contradictory one.
+Keep entries concise. After changing code, re-evaluate corresponding entries.

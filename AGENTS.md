@@ -129,7 +129,8 @@ goto is allowed only for cleanup paths at the end of a function.
 
 Use typedefs for callback functions instead of the PCM macro.
 
-When writing message handlers, use GeoWorks-style comments before the method implementation, like this:
+When writing message handlers and bigger coordinator functions (not helpers),
+use GeoWorks-style comments before the implementation, like this:
 `/***********************************************************************
  *
  * MESSAGE:     MSG_GEN_DOCUMENT_INITIALIZE_DOCUMENT_FILE

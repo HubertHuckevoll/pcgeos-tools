@@ -90,6 +90,8 @@ For new system apps or APIs, propose docs only in TechDocs/Markdown.
 
 Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, lists. No tables, images, decorative markdown, or backtick-heavy formatting.
 
+Mark code with `Implemented with ChatGPT Codex, prompted by MeyerK` in appropriate places.
+
 
 ## GOC/C rules
 
@@ -127,6 +129,30 @@ goto is allowed only for cleanup paths at the end of a function.
 
 Use typedefs for callback functions instead of the PCM macro.
 
+When writing message handlers, use GeoWorks-style comments before the method implementation, like this:
+`/***********************************************************************
+ *
+ * MESSAGE:     MSG_GEN_DOCUMENT_INITIALIZE_DOCUMENT_FILE
+ *
+ * DESCRIPTION: Initialize new database document file.
+ *              Set up map block for GeoFile, containing map blocks
+ *              for both the spreadsheet data and the GrObj body.
+ *
+ * PARAMETERS:
+ *              Boolean (void)
+ *
+ * STRATEGY:
+ *
+ * KNOWN BUGS/SIDE EFFECTS/CAVEATS/IDEAS:
+ *
+ * REVISION HISTORY:
+ *      Name    Date            Description
+ *      ----    ----            -----------
+ *      anna    1/92            Initial Revision
+ *      anna    4/29/92         Added code for GrObj inclusion
+ *      AMS     9/8/92          Removed VMA_PRESERVE_HANDLES
+ *
+ ***********************************************************************/`
 
 ## ESP/ASM rules
 
@@ -154,12 +180,44 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 
 If ESP warns about double or triple jumps, fix with LONG.
 
+When writing ESP code, use GeoWorks-style comments before the implementation, like this:
+`COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		DeskDisplayRelocate
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+SYNOPSIS:	synopsis
+
+CALLED BY:	MSG_META_RELOCATE
+
+PASS:		*ds:si	= object
+		ax - MSG_META_RELOCATE/MSG_META_UNRELOCATE
+		cx - handle of block containing relocation
+		dx - VMRelocType:
+			VMRT_UNRELOCATE_BEFORE_WRITE
+			VMRT_RELOCATE_AFTER_READ
+			VMRT_RELOCATE_AFTER_WRITE
+		bp - data to pass to ObjRelocOrUnRelocSuper
+RETURN:		carry - set if error
+		bp - unchanged
+
+DESTROYED:
+
+PSEUDO CODE/STRATEGY:
+
+KNOWN BUGS/SIDE EFFECTS/IDEAS:
+		none
+
+REVISION HISTORY:
+	Name	Date		Description
+	----	----		-----------
+	brianc	01/02/90	Initial version
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@`
+
 
 ## Implementation
 
 For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
-
-End each implementation round with a concise, commit-message-style summary that can be copy/pasted, like this: `feat(prefsndn): combine system sound toggles and follow master sound state`.
 
 Always try to compile the geodes you changed through aihelp.py:
 
@@ -170,6 +228,8 @@ aihelp.py maps source paths to the matching Installed/ directory, runs pmake as 
 Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created or updated, use `mkmf` and `pmake depend`.
 
 For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use aihelp.py build.
+
+End each implementation round with a concise, commit-message-style summary that can be copy/pasted, like this: `feat(prefsndn): combine system sound toggles and follow master sound state`.
 
 Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc. swat.rc must end with the letter "c" in the last line (for "continue").
 

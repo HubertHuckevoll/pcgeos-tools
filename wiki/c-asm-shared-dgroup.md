@@ -68,8 +68,18 @@ PrefItemGroupSendStatusMsg, PrefItemGroupReset and EnableOrDisableObjects.
 A one-child PrefBooleanGroupClass with
 ATTR_GEN_BOOLEAN_GROUP_INIT_FILE_BOOLEAN uses native Boolean load/save and
 Pref's Apply/Reset behavior; GBGI_selectedBooleans supplies the absent-key
-default. See Prefsndn/prefsndn.goc, CInclude/Objects/gBoolGC.goh,
-User/Gen/genBooleanGroup.asm and Config/Pref/prefBooleanGroup.asm.
+default. Its checkbox must use GBI_identifier = TRUE (0xffff), with TRUE
+also used for an enabled default. InitFileReadBoolean returns 0xffff for
+true, and GenBooleanGroupLoadOptions stores that entire word. Unchecking
+an identifier of 1 clears only bit 0, leaving 0xfffe, which saves as true
+again. Integer/bitmask groups without the Boolean INI attribute can still
+use identifiers such as 1. See Prefsndn/prefsndn.goc,
+Prefkbd/prefkbd.ui:KeyboardAltGrBoolean, CInclude/geos.h:TRUE,
+Kernel/Initfile/initfileHigh.asm:InitFileReadBoolean and
+User/Gen/genBooleanGroup.asm:GenBooleanGroupLoadOptions, SetBooleanState,
+GenBooleanGroupSaveOptions. Config/Pref/prefBooleanGroup.asm provides the
+Pref Apply/Reset behavior; Wav/Tests/completion.pl checks the Boolean
+save/reopen mask round trip.
 
 The shutdown hook waits using WavLockExclusive/WavUnlockExclusive.
 WavPlayFile must reserve wavSem before ThreadCreate, not inside the worker:

@@ -53,10 +53,18 @@ filenames in SP_PRIVATE_DATA/sounds, or SP_USER_DATA/sounds under
 PRODUCT_NDO2000. The default product template maps the keys to sy001.wav
 and sy002.wav; bbxensem.filetree ships the existing files into privdata/sounds.
 
-PrefSndn exposes separate [ui]/startupSound and [ui]/shutdownSound Boolean
-settings. UserAttach/UserDetach read them at playback time; missing or invalid
-keys leave sounds enabled. [ui]/sound remains the master switch in
-Wav's PlaySoundFromFileLow. No restart is needed to apply these preferences.
+PrefSndn's combined startup/shutdown checkbox saves the Boolean
+[ui]/startupShutdownSounds. UserAttach/UserDetach read it at playback time;
+missing or invalid keys leave sounds enabled. [ui]/sound remains the master
+switch in Wav's PlaySoundFromFileLow. No restart is needed to apply it.
+SoundEnableList uses ATTR_PREF_ITEM_GROUP_ENABLE with TRUE and flags 0 to
+enable StartupShutdownSoundList only while the master Sound selection is on;
+disabling the group preserves its checkbox selection. PrefDialogMMClass's
+MSG_GEN_RESET handler sends the master's status message after superclass reset
+to refresh that dependency. PrefItemGroupClass scans enable dependencies on
+load/status messages, but its reset handler does not send a status message.
+See Config/Pref/prefItemGroup.asm:PrefItemGroupMetaLoadOptions,
+PrefItemGroupSendStatusMsg, PrefItemGroupReset and EnableOrDisableObjects.
 A one-child PrefBooleanGroupClass with
 ATTR_GEN_BOOLEAN_GROUP_INIT_FILE_BOOLEAN uses native Boolean load/save and
 Pref's Apply/Reset behavior; GBGI_selectedBooleans supplies the absent-key

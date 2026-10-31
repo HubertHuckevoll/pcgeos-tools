@@ -159,7 +159,7 @@ If ESP warns about double or triple jumps, fix with LONG.
 
 For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
 
-End each implementation round with a concise, commit-message-style summary that can be copy/pasted.
+End each implementation round with a concise, commit-message-style summary that can be copy/pasted, like this: `feat(prefsndn): combine system sound toggles and follow master sound state`.
 
 Always try to compile the geodes you changed through aihelp.py:
 

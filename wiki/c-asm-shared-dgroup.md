@@ -53,6 +53,16 @@ filenames in SP_PRIVATE_DATA/sounds, or SP_USER_DATA/sounds under
 PRODUCT_NDO2000. The default product template maps the keys to sy001.wav
 and sy002.wav; bbxensem.filetree ships the existing files into privdata/sounds.
 
+PrefSndn exposes separate [ui]/startupSound and [ui]/shutdownSound Boolean
+settings. UserAttach/UserDetach read them at playback time; missing or invalid
+keys leave sounds enabled. [ui]/sound remains the master switch in
+Wav's PlaySoundFromFileLow. No restart is needed to apply these preferences.
+A one-child PrefBooleanGroupClass with
+ATTR_GEN_BOOLEAN_GROUP_INIT_FILE_BOOLEAN uses native Boolean load/save and
+Pref's Apply/Reset behavior; GBGI_selectedBooleans supplies the absent-key
+default. See Prefsndn/prefsndn.goc, CInclude/Objects/gBoolGC.goh,
+User/Gen/genBooleanGroup.asm and Config/Pref/prefBooleanGroup.asm.
+
 The shutdown hook waits using WavLockExclusive/WavUnlockExclusive.
 WavPlayFile must reserve wavSem before ThreadCreate, not inside the worker:
 a shutdown waiter can otherwise overtake a delayed worker. The worker

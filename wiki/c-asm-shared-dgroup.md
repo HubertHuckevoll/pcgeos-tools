@@ -7,7 +7,7 @@ and library.def alone do not supply those declarations. Without them, an
 unqualified udata segment can become an independent default code resource,
 while DS-relative access still addresses the C dgroup. Verify the linked
 resource flags, not just the source segment name. Evidence:
-Library/Audio/BSNAudio/Driver/driverManager.asm and Include/resource.def:30-39;
+Library/Audio/BSNWav/Driver/driverManager.asm and Include/resource.def:30-39;
 its linked driverInfo state belongs to writable dgroup, not a four-byte
 read-only code resource.
 
@@ -21,14 +21,48 @@ GEODE alone can still link with protocol 0.0. BSNAudio/local.mk demonstrates
 grev getproto/neweng against the permanent-name revision file. File-case
 mismatches such as Bsnwav.rev vs bsnwav.rev also prevent Unix discovery.
 
-The top-level UI build dependencies must follow Library/User/ui.gp and
-User/userManager.asm: Wav is commented out in both, so UI does not require
-Wav to build. Adding UI -> Wav creates a cycle through Wav -> BSNAudio ->
-AnsiC -> Math -> UI. See Installed/Makefile's User, Wav, BSNAudio, AnsiC and
-Math targets and Library/AnsiC/ansic.gp / Library/Math/math.gp. pmake -q -p 1
-prints the parsed dependency graph without executing compilation recipes;
-validate cycles in that graph rather than treating -q's exit 1 (outdated
-outputs) as a build failure.
+The UI startup-sound dependency must remain UI -> Wav -> BSNWav -> geos.
+Importing AnsiC from BSNWav creates UI -> Wav -> BSNWav -> AnsiC -> Math -> UI,
+even when BSNWAV_NO_UI removes all direct UI calls. See Library/User/ui.gp,
+Library/Wav/wav.gp, Library/Audio/BSNWav/bsnwav.gp,
+Library/AnsiC/ansic.gp, Library/Math/math.gp and Installed/Makefile.
+pmake -q -p 1 prints the parsed dependency graph without compiling; its exit
+1 can simply mean outdated outputs.
+
+Watcom generates external calls to __U4M/__U4D/__I4M/__I4D for 32-bit integer
+arithmetic. AnsiC publishes these in ansic.gp and implements them in
+wcc_rtl.asm. MP3 also calls MEMSET/MEMCPY/MEMMOVE/MEMCMP (MP3Dec/mp3api.c and
+core/*.inc); memory_asm.asm supplies these. BSNWav's Runtime and Memory
+managers include these existing sources in separate assembly modules:
+ansicGeode.def's error constants cannot be included twice in one module.
+WCC_TEXT and STRINGCODE are fixed/code/read-only/shared in bsnwav.gp.
+No AnsiC import or new public entry points are needed. Removing C headers
+alone cannot remove compiler arithmetic helpers.
+
+For modular ESP builds, .PATH.asm/.PATH.def makes shared sources resolvable
+by pmake and dependency generation, but the ASSEMBLE rule removes -I flags
+from ASMFLAGS. Add assembler include directories to -IFLAGS as well. See
+BSNWav/local.mk, CoProcessor/Intx87/local.mk and Include/sun.geos.mk:ASSEMBLE
+(the equivalent rule also exists in Include/Win32/geos.mk).
+
+UI's PLAY_STARTUP_SHUTDOWN_MUSIC is tested with ifdef, so even an equ FALSE
+definition enables the hooks. User/userMain.asm calls WavPlayInitSound with
+UI00's token and UIS_STARTUP/UIS_SHUTDOWN. Configuration is under [sound],
+keys 85_73_48_48_0_0 and 85_73_48_48_0_1. WavReadInitKeyToPlay resolves
+filenames in SP_PRIVATE_DATA/sounds, or SP_USER_DATA/sounds under
+PRODUCT_NDO2000. The default product template maps the keys to sy001.wav
+and sy002.wav; bbxensem.filetree ships the existing files into privdata/sounds.
+
+The shutdown hook waits using WavLockExclusive/WavUnlockExclusive.
+WavPlayFile must reserve wavSem before ThreadCreate, not inside the worker:
+a shutdown waiter can otherwise overtake a delayed worker. The worker
+releases the reservation after WavPlayFromWavFilePathBlock closes the file
+and frees the request; creation failure releases it in the caller. Direct
+PlaySoundFromFile calls acquire the same semaphore around PlaySoundFromFileLow;
+the worker calls Low under its existing reservation. Both BestSound and
+legacy playback therefore run under one lock, with no nested fallback lock.
+See Library/Wav/wav.asm and Tests/completion.pl for the delayed-worker,
+direct/queued-playback and failure-cleanup checks.
 
 GenFileSelector accepts one filename mask. For alternatives such as WAV or
 MP3, subclass GenFileSelectorClass, set FSFC_FILE_FILTER | FSFC_FILTER_IS_C,

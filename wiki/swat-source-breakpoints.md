@@ -44,3 +44,32 @@ Evidence: `Library/Kernel/Heap/heapLow.asm:FullLockNoReload`,
 `Library/Kernel/Thread/threadThread.asm:ThreadBorrowStackSpace`,
 `Include/Internal/threadIn.def`, `Tools/swat/ibm86.c:Ibm86NextFrame`, and
 `Tools/swat/lib.new/stack.tcl:backtrace`.
+
+## Swat send and EC DOS filenames
+
+Swat's send destination can differ from the product builder's DOS filename
+for long EC geode basenames. In Tools/build/build/fileutil.pl:Dosify, a
+basename longer than nine characters ending in ec is shortened to its first
+seven characters plus e. Thus prefsndnec.geo ships as prefsnde.geo, while
+the NC prefsndn.geo remains prefsndn.geo.
+
+Tools/swat/lib.new/filexfer.tcl:get-send-dest instead uses file tail of
+file-mangle-for-dos. That helper (file-err.tcl) leaves Unix paths unchanged
+and only normalizes separators on Win32; it does not apply the product's EC
+naming rule. Sending prefsndnec.geo can therefore create PREFSNDN.GEO on
+DOS alongside an old prefsnde.geo, rather than replacing the installed EC
+module. pcs.pat maps preference modules to SYSTEM/PREF.
+
+The resulting symptoms can be a symbol version-mismatch prompt and the old
+UI despite a successful rebuild. Compare the installed and built geodes,
+including duplicate files with the same permanent name, before investigating
+compiler output or adding runtime diagnostics.
+
+Workaround: use send-file with an explicit product-compatible destination.
+For example:
+
+    send-file /home/konstantinmeyer/pcgeos/Installed/Library/Pref/Prefsndn/prefsndnec.geo SYSTEM/PREF/PREFSNDE.GEO
+
+Unload/reload the module after replacement. Check for unintended duplicate
+geodes left by earlier sends; do not treat ignoring the symbol prompt as
+confirmation that the new binary was loaded.

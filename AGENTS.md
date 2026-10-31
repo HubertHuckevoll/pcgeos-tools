@@ -129,7 +129,7 @@ goto is allowed only for cleanup paths at the end of a function.
 
 Use typedefs for callback functions instead of the PCM macro.
 
-When writing message handlers and bigger coordinator functions (not helpers),
+When writing methods and bigger coordinator functions (not helpers),
 use GeoWorks-style comments before the implementation, like this:
 `/***********************************************************************
  *
@@ -181,7 +181,8 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 
 If ESP warns about double or triple jumps, fix with LONG.
 
-When writing ESP code, use GeoWorks-style comments before the implementation, like this:
+When writing ESP code, use GeoWorks-style comments before the implementations of bigger
+coordinator functions or methods (not helpers), like this:
 `COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 		DeskDisplayRelocate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

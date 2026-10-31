@@ -2,7 +2,7 @@
 
 A new library geode's normal build creates its `.ldf` in its own `Installed/` build directory. Dependent geodes look for library definitions in `Installed/Include/`. After building the library, run `pmake lib` in its Installed build directory to copy the `.ldf` there before building dependents. `CInclude/geode.mk` defines `LIBOBJ`, `LIB_DEST`, and the `lib` target that performs the copy (around lines 176-221). `pcgeos-tools/aihelp.py` builds EC and NC with plain `pmake` (functions `build_once` and `cmd_build`), so its successful build alone does not run that copy target.
 
-The top-level `Installed/Makefile` is a hand-maintained product build graph, unlike the mkmf-generated Makefiles in `Installed/` module subdirectories. Its `MAKELIB` rule runs `pmake full lib` for dependencies, so a new library must have a named target and must be included in the dependency list of each consumer. The product file tree only selects geodes to copy into the assembled runtime; it does not build missing dependencies. See `Installed/Makefile` (`MAKELIB`, `impgraph`, `graphvwr`) and `Tools/build/product/bbxensem/bbxensem.filetree` (ImpGraph and SvgLib entries).
+The top-level `Installed/Makefile` is a hand-maintained product build graph, unlike the mkmf-generated Makefiles in `Installed/` module subdirectories. Its `MAKELIB` rule runs `pmake full lib` for dependencies, so a new library must have a named target and must be included in the dependency list of each consumer. The product file tree only selects geodes to copy into the assembled runtime; it does not build missing dependencies. The `full` target also builds each generated Makefile's `PRODUCTS` variants (`Include/sun.geode.mk`), so filetree paths such as `Library/Breadbox/ImpGraph/FJPEG/impgraph{ec}.geo` are covered by the parent module target. See `Installed/Makefile` (`MAKELIB`, `impgraph`, `graphvwr`) and `Tools/build/product/bbxensem/bbxensem.filetree` (ImpGraph and SvgLib entries).
 
 Overriding `PRODUCTS` on the pmake command line does not add the product's dependency-file include to an existing generated Makefile. If that include is missing, assembler targets can invoke ESP without a manager source in `.ALLSRC`. Regenerate the Makefile with `mkmf` so it includes the discovered products' dependency files; regenerate dependencies with `pmake depend` when absent or stale. Evidence: `Tools/nmkmf/mkmf.c:MkmfPrintPRODUCTS` and product dependency includes around lines 2587-2597; `Include/sun.geos.mk:ASSEMBLE` selects `$(.ALLSRC:M*Manager.asm)`.
 
@@ -64,10 +64,10 @@ memory read cannot use a movable code resource's virtual segment directly.
 DoRelocation in Library/Kernel/Geodes/geodesResource.asm replaces GRT_SEGMENT
 references to movable resources with handle-derived virtual segments; only
 GRT_CALL and ProcCallFixedOrMovable paths lock/resolve code before execution.
-MP3Dec therefore omits -zc and declares dgroup fixed read-only shared in its
-GP file. Immutable tables are directly addressable without mutable global
-instance state. See Library/MP3Dec/local.mk, mp3dec.gp and the Watcom output
-for pvmp3_decode_huff_cw_tab1 in mp3huff.eobj. Moving such tables requires
+BSNWav therefore omits -zc and declares dgroup fixed in bsnwav.gp.
+Immutable decoder tables share this directly addressable segment with mutable
+playback state. See Library/Audio/BSNWav/local.mk, bsnwav.gp and the Watcom
+output for pvmp3_decode_huff_cw_tab1 in mp3huff.eobj. Moving such tables requires
 explicit locking/rebinding or code/data placement that avoids cross-resource
 data references, not merely a read-only shared resource flag.
 
@@ -93,8 +93,18 @@ Pascal ABI and avoiding another kernel resource call. Do not overwrite the
 stored virtual pointer or retain the reconstructed real pointer after return.
 This substitution is unsafe for callbacks in a different resource.
 
-Library/MP3Dec/mp3huff.c keeps all table decoders and Huffman parsing together
+Library/Audio/BSNWav/MP3Dec/mp3huff.c keeps table decoders and Huffman parsing together
 in MP3HuffCode. core/pv_mp3_huffman.h:MP3_HUFF_CALL uses a Watcom pragma-aux
 MOV AX,CS intrinsic. Tests/thunk.c exercises 1000 calls with a poisoned virtual
 segment and checks pointer retention, return value and stack balance;
 Tests/watcom.pl enables the same path for its EC/NC PCM comparisons.
+
+Product integration can be checked without rebuilding the runtime tree: run
+`gbuild Tools/build/product/bbxensem/pcbbx.build shipFiles=true syntaxtest=true
+makeImages=false makeFloppyImages=false deleteDestTree=false` with explicit
+`sourceDirs` and a temporary `desttree`; repeat with `ec=true` for EC geodes.
+`Tools/build/build/build.pl` skips destination deletion in syntax mode, and
+`filetree.pl`/`fileutil.pl` still resolve source files and report destinations.
+Set `shipFiles=true` explicitly: without site defaults the tool can report
+no errors while skipping the filetree entirely. Inspect its final error list;
+its exit status alone does not establish that all artifacts were found.

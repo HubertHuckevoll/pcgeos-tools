@@ -17,3 +17,5 @@ Analysiere die Änderungen anhand der Commit-Messages und des tatsächlichen Cod
 - Keine Argumente oder Diskussionen erfinden. Fehlende Belege ausdrücklich benennen.
 - Whitespace- und rein kosmetische Änderungen ignorieren.
 - Sachlich, direkt und in der Sprache eines Entwicklers, der seine Änderungen gegenüber einem skeptischen Maintainer begründet.
+
+Wenn Du mit der Erstellung fertig bis, übersetze den ganzen Text noch einmal in einfaches Deutsch, aber behalte den Link auf die betroffene Datei / Funktion / Zeile bei.

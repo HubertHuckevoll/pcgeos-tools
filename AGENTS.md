@@ -90,8 +90,6 @@ For new system apps or APIs, propose docs only in TechDocs/Markdown.
 
 Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, lists. No tables, images, decorative markdown, or backtick-heavy formatting.
 
-Mark code with `Implemented with ChatGPT Codex, prompted by MeyerK` in appropriate places.
-
 
 ## GOC/C rules
 

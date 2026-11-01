@@ -13,11 +13,10 @@ The mutex also covers pending-result slot registration. HIF_PENDING returns
 the slot in AH; HostIfCall stores a pointer to AsyncSlotData on the caller's
 stack before releasing asyncOpSem. HostIfProcEventProcess fetches completions
 through HostIfCall/HIF_GET_EVENT, fills that structure and signals its
-semaphore. HostIfCall waits without an operation timeout. In EC builds a
-five-second timed wait emits HOSTIF_ASYNC_OPERATION_STILL_PENDING once,
-then resumes waiting normally. A timed-out waiter must not abandon its stack
-slot: the host can still complete into it. HOSTIF_ASYNC_RESULT_WITHOUT_WAITER
-is the EC warning for a completion without a registered waiter.
+semaphore. HostIfCall waits without an operation timeout. A waiter must not abandon its
+stack slot while the host can still complete into it.
+HOSTIF_ASYNC_RESULT_WITHOUT_WAITER is the EC warning for a completion without
+a registered waiter.
 
 ## Browser TLS path
 
@@ -69,7 +68,7 @@ queries. The PM merge 260eccbb4 added these SafePop calls. The browser change
 and made import worker counts independent; neither change removes the HTTP
 driver's global sslSem serialization.
 
-## TLS socket binding and fast request failures
+## TLS socket binding
 
 Host-only SSL_set_fd (Library/SSL/ssl/ssl_lib.c) forwards the socket's
 SO_CONNECTION_HDL to HIF_SSL_SET_FD. That option reads
@@ -79,14 +78,6 @@ which is assigned during SocketDataConnect
 SocketConnect succeeds; the old native SSL placement before SocketConnect
 passes a zero host connection handle. HTTPGet checks the post-connect binding
 result before the TLS handshake.
-
-HTTP_REQUEST_FAILED is the Wmg3Http EC warning after the final failed attempt.
-At this point HTTPGet's responseCode (reset for every attempt), rcode, err and
-p_conn remain available for Swat locals. p_conn includes host, errBuf, msg and
-sockErr. A responseCode of zero means that the attempt did not parse an HTTP
-status. Browser generic file/parse errors use MsgLoadError in
-Appl/Breadbox/BbxBrow/urlframe/FRFETCH.goc; breakpoints on those assignments
-separate a successful fetch followed by a parser failure from an HTTP failure.
 
 ## SSL pointer representation
 

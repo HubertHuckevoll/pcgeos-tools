@@ -378,3 +378,29 @@ to return and unwind before the next step. Otherwise repeated continuations
 recurse, growing both the C stack and GEOS resource-call pseudo-stack; the
 event queue can remain empty. Tools/goc/parse.y maps forceQueue to
 MF_FORCE_QUEUE (0x4000). Appl/MP3Wav/mp3wav.goc is a bounded continuation example.
+
+## Saved UI object classes
+
+Do not declare a custom UI class `neverSaved` when its instances can be
+saved to application state. That flag suppresses the class relocation table
+(Include/object.def: CLASSF_NEVER_SAVED); the EC kernel rejects relocation
+of such objects (Library/Kernel/Object/objectReloc.asm: RelocOrUnRelocClass).
+Use a normal @classdecl and export the class for dynamically copied UI that
+is marked dirty and retained in saved generic trees.
+
+## Copying generic UI trees across object blocks
+
+MSG_GEN_COPY_TREE executes on the source object's thread and directly locks
+the destination block (Library/User/Gen/genClassBuild.asm: GenCopyTree).
+Both object blocks must therefore have the same owner thread; use ui-object
+for UI templates copied into ui-object resources. A synchronous @call can
+switch to the source thread, but cannot change the destination's owner.
+ObjLockObjBlock rejects a destination owned by another thread in EC builds
+(Library/Kernel/Object/objectClass.asm: ObjLockObjBlock).
+
+The local @dup(obj) macro in Library/FMTools/OpenWith/openwith.goh combines
+OptrToHandle(oself) with OptrToChunk(obj). It addresses chunks in an already
+duplicated resource; it does not perform duplication or change thread
+ownership. Library/Breadbox/Impex/PNG/API/ui.goc uses the same pattern.
+Use that pattern for whole-resource duplicates that retain chunk handles;
+MSG_GEN_COPY_TREE allocates new chunks and returns their new optrs.

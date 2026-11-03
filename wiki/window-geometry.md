@@ -25,3 +25,13 @@
   AX contains the message number (`Include/Objects/visC.def`).
   `OLWinSpecSetAttrs` tests CL for `SA_REALIZABLE` before preparing bounds
   for reopening, not AX.
+- For compact generic layouts, HINT_DONT_FULL_JUSTIFY_CHILDREN prevents
+  a specific UI from distributing surplus space between children;
+  HINT_CUSTOM_CHILD_SPACING sets the normal gap. Wrapping has a separate
+  HINT_CUSTOM_CHILD_WRAP_SPACING (CInclude/Objects/genC.goh).
+  Evidence: TechDocs/Markdown/Concepts/cgeom.md, sections 12.2.3.4 and
+  12.2.7 (child spacing).
+- HINT_DIVIDE_WIDTH_EQUALLY belongs on the containing GenInteraction,
+  not a GenValue. Children must accept expansion, for example through
+  HINT_EXPAND_WIDTH_TO_FIT_PARENT on their interaction wrappers.
+  Evidence: TechDocs/Markdown/Concepts/cgeom.md, section 12.2.4.2.

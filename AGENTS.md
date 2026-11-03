@@ -1,5 +1,6 @@
 ## Meta
 
+For conversation, use Simplified Technical English (STE).
 Don't use any skills, except if the prompt explicitely tells you to do so.
 
 

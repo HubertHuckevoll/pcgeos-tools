@@ -2,6 +2,7 @@
 
 For conversation, use Simplified Technical English (STE).
 Don't use any skills, except if the prompt explicitely tells you to do so.
+When adding author information somewhere (usually in comments, frontmatter, etc), use "Codex/MeyerK".
 
 
 ## Scope

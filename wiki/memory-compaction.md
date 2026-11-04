@@ -3,6 +3,17 @@
 - Glue's `Fixed size should be reduced` warning is a heuristic at more than 1024 bytes, summing `sd->size` for `RESF_FIXED` resources. Uninitialized data and stack are reported separately, so this is not the full runtime fixed-memory footprint (`Tools/glue/geo.c:GeoPrepare`, resource summary loop and `fixedSize` test).
 - C `ThreadCreate` accepts a virtual far entry pointer: `Library/Kernel/Thread/threadC.asm:THREADCREATE` starts `_THREADCREATE_callback`, which invokes the entry through `ProcCallFixedOrMovable`; `Include/thread.def:ThreadCreateVirtual` explicitly documents that the C stub already accepts this. A movable resource containing a thread's whole lifetime loop remains locked for that invocation, including semaphore waits. Merely removing `fixed` therefore does not recover that code's memory while the thread lives; separate short-lived work from the lifetime loop (`Library/Kernel/Geodes/geodesResource.asm:ProcCallFixedOrMovable`).
 
+- A C thread entry in movable code should return its word exit value. The
+  `_THREADCREATE_callback` wrapper returns through `ProcCallFixedOrMovable`
+  to release the code lock, then passes AX as the exit code to the kernel's
+  `ThreadDestroy`. Calling C `ThreadDestroy` directly from movable code
+  bypasses that return and raises
+  `THREAD_DESTROY_CALLED_FROM_MOVABLE_RESOURCE` in EC builds. Do not mark
+  a whole playback module fixed to suppress this warning. Evidence:
+  `Library/Kernel/Thread/threadC.asm:THREADDESTROY/_THREADCREATE_callback`,
+  `Library/Kernel/Geodes/geodesResource.asm:ResourceCallInt` return path,
+  and `Appl/Audio/Bsqp/Main/subcode.goc:BQ_PlayThread`.
+
 - GEOS compacts the global heap during allocation pressure and in the idle-time heap scrub thread. `CompactHeap` is a near, internal routine (`Library/Kernel/Heap/heapCore.asm`; `Library/Kernel/Heap/heapScrub.asm:HeapScrubThread`), with no application-level force-collection API. See also `TechDocs/Markdown/Concepts/cmemory.md`, section 15.2.2.4.
 - The scrub thread runs at `PRIORITY_IDLE` (`Library/Kernel/Heap/heapInit.asm:HeapStartScrub`). It waits on `scrubSem` for `SCRUB_TIMEOUT = 60 * INTERRUPT_RATE` ticks, one minute (`Library/Kernel/Heap/heapConstant.def`; `Library/Kernel/kernelConstant.def:INTERRUPT_RATE`). On timeout it compacts the heap. `FindFree` can wake it earlier through `VScrub` near the danger level (`Library/Kernel/Heap/heapCore.asm`; `Library/Kernel/Heap/heapScrub.asm`). Thus there is no required continuous idle period; one minute is its periodic wake-up interval, subject to idle-priority scheduling.
 - For a valid ordinary block, C `MemLock` returns NULL when the block has been discarded, not as a recoverable low-memory result. `HF_DYNAMIC` is only `HF_SWAPABLE`, so a live block allocated with it cannot be discarded by heap pressure (`CInclude/heap.h`; `Library/Kernel/Heap/heapHigh.asm:MEMLOCK/NearLock`; `heapLow.asm:FullLockNoReload`). If swapped out, locking uses `MemSwapIn`, which retries allocation via `AllocationFailure`; exhausted retries reach `NotifyAllocError` (retry or shutdown), rather than returning NULL (`heapSwap.asm:MemSwapIn`; `heapLow.asm:AllocationFailure/NotifyAllocError`; `TechDocs/Markdown/Concepts/cmemory.md`, section 15.3.4).

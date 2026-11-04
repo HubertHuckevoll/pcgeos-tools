@@ -62,6 +62,17 @@ Library/Audio/BSNWav/Tests/isr.pl tests the actual ISR instruction bodies in
 standalone DOS, including odd lengths, guard bytes, clear options, and
 counter wrap. It does not start PC/GEOS or measure audio latency.
 
+MP3Dec/Tests/profile.pl measures decoder stages in standalone DOS and writes
+per-frame timing/work counts to frames.csv. Use MP3_ASM_OBJECT with the
+production DSP object extracted by MP3Dec/Tests/watcom.pl (MP3_ASM=1) to
+measure the assembler path. TOTAL_ONLY=1 removes the stage clocks to check
+their overhead. DOS clock values are coarse; average many frames rather
+than treating each row as a precise latency measurement. Source reads,
+PCM writes, and CSV writes are outside the measured decoder call. GEOS
+heap/resource waits and driver work are absent, so this test cannot certify
+the timing of complete GEOS playback. Both profiler modes compare the
+native PCM with the uninstrumented host core.
+
 Swat normally installs automatic breakpoints on WarningNotice and
 CWARNINGNOTICE (Tools/swat/lib.new/swat.tcl:_check_fatal_error).
 The why-warning handler prints the warning and returns 0 to resume

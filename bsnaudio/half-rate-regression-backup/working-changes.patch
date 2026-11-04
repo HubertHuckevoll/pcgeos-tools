@@ -1,0 +1,1024 @@
+diff --git a/Appl/Audio/Bsqp/Main/bsqp.goh b/Appl/Audio/Bsqp/Main/bsqp.goh
+index 2bb01b228..90bad58ab 100755
+--- a/Appl/Audio/Bsqp/Main/bsqp.goh
++++ b/Appl/Audio/Bsqp/Main/bsqp.goh
+@@ -31,6 +31,7 @@ DESCRIPTION:
+ #define BQ_OPTION_CLOSE_SELECTOR    0x0001
+ #define BQ_OPTION_LEVELMETER        0x0002
+ #define BQ_OPTION_ENDLESS       0x0004
++#define BQ_OPTION_MP3_HALF_RATE 0x0008
+ 
+ // QuickMode
+ #define BQ_QUICK_OFF    0
+diff --git a/Appl/Audio/Bsqp/Main/subcode.goc b/Appl/Audio/Bsqp/Main/subcode.goc
+index 3dd72df8f..b66ed557b 100755
+--- a/Appl/Audio/Bsqp/Main/subcode.goc
++++ b/Appl/Audio/Bsqp/Main/subcode.goc
+@@ -484,7 +484,11 @@ static int _pascal BQ_Audio(FileHandle fileH, Boolean testOnly)
+         return BSNW_SOURCE_ERROR;
+     mp3 = signature != CODE_RIFF;
+     if (mp3) {
+-        result = BSNMP3DecOpen(&reader.mp3, fileH);
++        /* Set quality before probing. The live decoder keeps this choice
++         * until it closes, even if the user changes the Options menu.
++         */
++        result = BSNMP3DecOpenEx(&reader.mp3, fileH,
++                     (bqOptions & BQ_OPTION_MP3_HALF_RATE) ? BSN_MP3_HALF_RATE : 0);
+         sourceP = &reader.mp3.source;
+     } else {
+         result = BSNWavOpen(&reader.wav, fileH);
+diff --git a/Appl/Audio/Bsqp/Tests/check.pl b/Appl/Audio/Bsqp/Tests/check.pl
+index 8cfea5f87..87471cd25 100644
+--- a/Appl/Audio/Bsqp/Tests/check.pl
++++ b/Appl/Audio/Bsqp/Tests/check.pl
+@@ -63,6 +63,8 @@ static int LocalCmpStringsNoCase(const char *aP, const char *bP, word limit)
+ static dword bqSampleRate, bqAllBytes, bqSampleBytes;
+ static word bqChannels, bqBits;
+ static Boolean bqStopRequested;
++#define BQ_OPTION_MP3_HALF_RATE 0x0008
++static word bqOptions, expectedOptions;
+ static dword magic;
+ static int openResult, playResult, wavOpens, mp3Opens, wavCloses, mp3Closes, plays;
+ static word expectedFlags, readCount;
+@@ -85,17 +87,20 @@ int BSNWavOpen(BSNWav *wavP, FileHandle fileH)
+     wavP->source.format = format; wavP->source.pcmBytes = 176400;
+     return openResult;
+ }
+-int BSNMP3DecOpen(BSNMP3Dec *mp3P, FileHandle fileH)
++int BSNMP3DecOpenEx(BSNMP3Dec *mp3P, FileHandle fileH, word options)
+ {
+-    assert(fileH == 55); mp3Opens++;
++    assert(fileH == 55 && options == expectedOptions); mp3Opens++;
+     mp3P->source.format = format; mp3P->source.pcmBytes = BSN_PCM_LENGTH_UNKNOWN;
++    if (options) mp3P->source.format.sampleRate /= 2;
+     return openResult;
+ }
+ void BSNWavClose(BSNWav *wavP) { (void)wavP; wavCloses++; }
+ void BSNMP3DecClose(BSNMP3Dec *mp3P) { (void)mp3P; mp3Closes++; }
+ int BSNPcmPlay(BSNPcmSource *sourceP, word flags, optr parent)
+ {
+-    assert(sourceP->format.sampleRate == format.sampleRate && flags == expectedFlags && !parent);
++    assert(sourceP->format.sampleRate ==
++           (magic != CODE_RIFF && expectedOptions ? format.sampleRate/2 : format.sampleRate));
++    assert(flags == expectedFlags && !parent);
+     plays++; return playResult;
+ }
+ typedef word GStateHandle;
+@@ -158,6 +163,17 @@ int main(void)
+         bqStopRequested = FALSE;
+     }
+     assert(wavOpens == wavCloses && mp3Opens == mp3Closes);
++    /* The saved option affects MP3 probe and playback, but not WAV. */
++    bqOptions = BQ_OPTION_MP3_HALF_RATE; expectedOptions = BSN_MP3_HALF_RATE;
++    for (mp3=0; mp3<2; mp3++) {
++        magic = mp3 ? 0x00334449UL : CODE_RIFF;
++        for (preview=0; preview<2; preview++) {
++            expectedFlags = preview ? BSNW_TEST_ONLY : BSNW_SHOW_ERROR_MSG;
++            assert(BQ_Audio(55, preview) == BSNW_STATUS_OK);
++            assert(bqSampleRate == (mp3 ? 22050 : 44100));
++        }
++    }
++    bqOptions = expectedOptions = 0;
+     i = plays; failSeek = TRUE;
+     assert(BQ_Audio(55, FALSE) == BSNW_SOURCE_ERROR && plays == (int)i);
+     failSeek = FALSE; readCount = 3;
+diff --git a/Appl/Audio/Bsqp/UI/uimain.goc b/Appl/Audio/Bsqp/UI/uimain.goc
+index 66f3ab675..aacf852bd 100755
+--- a/Appl/Audio/Bsqp/UI/uimain.goc
++++ b/Appl/Audio/Bsqp/UI/uimain.goc
+@@ -358,7 +358,8 @@ DESCRIPTION:
+ {
+     GI_comp =   @OptionsBoolItem1,
+     @OptionsBoolItem2,
+-    @OptionsBoolItem3;
++    @OptionsBoolItem3,
++    @OptionsBoolItem4;
+     GBGI_selectedBooleans = 0;
+     GBGI_destination = process;
+     GBGI_applyMsg = MSG_BSQP_OPTIONS_APPLY;
+@@ -385,6 +386,13 @@ DESCRIPTION:
+     GBI_identifier =BQ_OPTION_ENDLESS;
+ }
+ 
++/* The existing option mask and Save Options command store this bit. */
++@object GenBooleanClass OptionsBoolItem4 =
++{
++    GI_visMoniker = 'R',"Reduce MP3 Quality (Lower CPU Use)";
++    GBI_identifier = BQ_OPTION_MP3_HALF_RATE;
++}
++
+ /***************
+  * SaveTrigger *
+  ***************/
+diff --git a/CInclude/bsnwav.h b/CInclude/bsnwav.h
+index 3e06e94e8..d9357707b 100644
+--- a/CInclude/bsnwav.h
++++ b/CInclude/bsnwav.h
+@@ -86,6 +86,13 @@ typedef struct {
+     word damaged; /* Recovery occurred; strict converters may reject it. */
+ } BSNMP3Dec;
+ extern int _pascal _export BSNMP3DecOpen(BSNMP3Dec *mp3P, FileHandle file);
++/* Optional lower CPU use. MPEG-1 outputs half rate; lower rates stay normal.
++ * Set options at Open, before probing. Unknown option bits are rejected.
++ * Existing Open selects normal decoding. The context layout is unchanged.
++ */
++#define BSN_MP3_HALF_RATE 0x0001
++extern int _pascal _export BSNMP3DecOpenEx(BSNMP3Dec *mp3P, FileHandle file,
++                                          word options);
+ extern word _pascal _export BSNMP3DecReadPCM(void *contextP, void *destP,
+                                             word maxBytes);
+ extern void _pascal _export BSNMP3DecClose(BSNMP3Dec *mp3P);
+diff --git a/Library/Audio/BSNWav/MP3Dec/Tests/corecheck.c b/Library/Audio/BSNWav/MP3Dec/Tests/corecheck.c
+index 52129cd6f..3aa0670c2 100644
+--- a/Library/Audio/BSNWav/MP3Dec/Tests/corecheck.c
++++ b/Library/Audio/BSNWav/MP3Dec/Tests/corecheck.c
+@@ -35,6 +35,9 @@ int main(int argc, char **argvP)
+     assert(sourceP && destP);
+     memset(&ext, 0, sizeof(ext));
+     pvmp3_InitDecoder(&ext, &state);
++#ifdef MP3_HALF_RATE_TEST
++    ext.halfRate = 1;
++#endif
+     for (;;) {
+         assert(fseek(sourceP, offset, SEEK_SET) == 0);
+         got = fread(input, 1, 4, sourceP);
+@@ -63,6 +66,9 @@ int main(int argc, char **argvP)
+         ext.outputFrameSize = 2304;
+         ext.crcEnabled = 1;
+         error = pvmp3_framedecoder(&ext, &state);
++#ifdef MP3_HALF_RATE_TEST
++        if (version == 3) rate >>= 1;
++#endif
+         if (error == NO_DECODING_ERROR ||
+             (error == NO_ENOUGH_MAIN_DATA_ERROR && ext.inputBufferUsedLength)) {
+             assert(ext.outputFrameSize > 0 && ext.outputFrameSize <= 2304);
+diff --git a/Library/Audio/BSNWav/MP3Dec/Tests/profile.pl b/Library/Audio/BSNWav/MP3Dec/Tests/profile.pl
+index 3ab49ba0b..3df405264 100644
+--- a/Library/Audio/BSNWav/MP3Dec/Tests/profile.pl
++++ b/Library/Audio/BSNWav/MP3Dec/Tests/profile.pl
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env perl
+ # Instrument a temporary copy only; the shipped library has no timing hooks.
+ # Standalone DOS; never boots PC/GEOS. CPU/CYCLES select an emulator scenario.
++# TOTAL_ONLY skips the stage clocks, to check the cost of those clocks.
+ use strict;
+ use warnings;
+ use Cwd qw(abs_path);
+@@ -12,7 +13,10 @@ use File::Compare qw(compare);
+ my $lib = abs_path(dirname(__FILE__).'/..');
+ my $input = abs_path(shift // die "usage: $0 input.mp3\n");
+ my $tmp = tempdir('mp3prof-XXXXXX',TMPDIR=>1,CLEANUP=>!$ENV{KEEP_TESTS});
++my $asmObject = $ENV{MP3_ASM_OBJECT} ? abs_path($ENV{MP3_ASM_OBJECT}) : undef;
+ my $watcom = $ENV{WATCOM} // die 'set WATCOM';
++# Keep WCL response files separate from other concurrent compiler runs.
++chdir $tmp or die $!;
+ make_path("$tmp/core");
+ for my $source (glob("$lib/*.c"),glob("$lib/*.h"),glob("$lib/core/*")) {
+     next unless -f $source;
+@@ -28,6 +32,29 @@ substr($source,$start,0)=<<'PROFILE';
+ #include <stdio.h>
+ #include <time.h>
+ static unsigned long profileTicks[8];
++static FILE *profileFrames;
++static unsigned long profileFrameNumber;
++static void Mp3ProfileFrame(const unsigned long *ticks,
++                           const tmp3dec_file *stateP,
++                           unsigned granules, unsigned long lines)
++{
++    unsigned i, ch, gr;
++    unsigned long bits = 0, pairs = 0, shorts = 0;
++    if (!profileFrames) {
++        profileFrames = fopen("frames.csv", "w");
++        fprintf(profileFrames,"frame,huffman,dequant,stereo,reorder,alias,imdct,synth,total,main_bits,big_pairs,short_blocks,imdct_band_index_sum\n");
++    }
++    for (ch=0; ch<(unsigned)stateP->num_channels; ch++) {
++        for (gr=0; gr<granules; gr++) {
++            bits += stateP->sideInfo.ch[ch].gran[gr].part2_3_length;
++            pairs += stateP->sideInfo.ch[ch].gran[gr].big_values;
++            shorts += stateP->sideInfo.ch[ch].gran[gr].block_type == 2;
++        }
++    }
++    fprintf(profileFrames,"%lu",profileFrameNumber++);
++    for (i=0; i<8; i++) fprintf(profileFrames,",%lu",ticks[i]);
++    fprintf(profileFrames,",%lu,%lu,%lu,%lu\n",bits,pairs,shorts,lines);
++}
+ void Mp3ProfileReport(void)
+ {
+     FILE *f=fopen("profile.txt","w");
+@@ -35,37 +62,41 @@ void Mp3ProfileReport(void)
+     fprintf(f,"ticks_per_second %lu\n",(unsigned long)CLOCKS_PER_SEC);
+     for(i=0;i<8;i++) fprintf(f,"%u %lu\n",i,profileTicks[i]);
+     fclose(f);
++    if (profileFrames) fclose(profileFrames);
+ }
+ PROFILE
+ $start=index($source,'ERROR_CODE pvmp3_framedecoder(');
+ my $brace=index($source,'{',$start);
+-substr($source,$brace+1,0)="\n    clock_t stamp, totalStamp;\n";
++substr($source,$brace+1,0)="\n    clock_t stamp, totalStamp;\n    unsigned long frameTicks[8], profileDelta, profileLines = 0;\n    unsigned profileIndex;\n";
+ my $first=index($source,'    pVars->inputStream.pBuffer',$brace);
+-substr($source,$first,0)="    totalStamp=clock();\n";
++substr($source,$first,0)="    for (profileIndex=0; profileIndex<8; profileIndex++) frameTicks[profileIndex]=0;\n    totalStamp=clock();\n";
+ my @functions=qw(pvmp3_huffman_parsing pvmp3_dequantize_sample pvmp3_stereo_proc
+                  pvmp3_reorder pvmp3_alias_reduction pvmp3_imdct_synth pvmp3_poly_phase_synthesis);
+-for my $i (0..$#functions) {
++for my $i ($ENV{TOTAL_ONLY} ? () : (0..$#functions)) {
+     for my $name ($functions[$i],$i==2 ? 'pvmp3_mpeg2_stereo_proc' : ()) {
+         my $at=index($source,"$name(",$brace);
+         my $line=rindex($source,"\n",$at)+1;
+         my $end=index($source,';',$at)+1;
+-        substr($source,$end,0)="\nprofileTicks[$i]+=(unsigned long)(clock()-stamp);\n";
+-        substr($source,$line,0)="stamp=clock();\n";
++        substr($source,$end,0)="\nprofileDelta=(unsigned long)(clock()-stamp);\nprofileTicks[$i]+=profileDelta;\nframeTicks[$i]+=profileDelta;\n";
++        my $lines = $i==5 ? "profileLines+=(unsigned long)pChVars[ch]->used_freq_lines;\n" : '';
++        substr($source,$line,0)=$lines."stamp=clock();\n";
+     }
+ }
+ my $end=index($source,'    return errorCode;',index($source,'    pExt->inputBufferUsedLength ='));
+-substr($source,$end,0)="    profileTicks[7]+=(unsigned long)(clock()-totalStamp);\n";
++# Write the row after taking the total time. CSV I/O is not decoder work.
++substr($source,$end,0)="    frameTicks[7]=(unsigned long)(clock()-totalStamp);\n    profileTicks[7]+=frameTicks[7];\n    Mp3ProfileFrame(frameTicks,pVars,1+!info->version_x,profileLines);\n";
+ write_file("$tmp/core/pvmp3_framedecoder.inc",$source);
+ my $harness=read_file("$lib/Tests/corecheck.c");
+ $harness=~s/int main\(/void Mp3ProfileReport(void);\nint main(/;
+ $harness=~s/    return 0;/    Mp3ProfileReport();\n    return 0;/;
+ write_file("$tmp/bench.c",$harness);
+ my @core=map {"$tmp/$_.c"} qw(mp3frame mp3huff mp3imdct mp3synth mp3quant mp3ster);
+-my @asm = $ENV{MP3_ASM_OBJECT} ? ('-DMP3_386_DSP', $ENV{MP3_ASM_OBJECT}) : ();
++my @asm = $asmObject ? ('-DMP3_386_DSP', $asmObject) : ();
++my @mode = $ENV{HALF_RATE} ? ('-DMP3_HALF_RATE_TEST') : ();
+ run('wcl',qw(-q -bt=dos -ml -3 -zp1 -zu -s -ecp -of -of+ -ol -ol+ -ei -zdp -fpc -ox -DMP3_HUFF_LOCAL),
+     "-i=$watcom/h","-i=$tmp/core","-fo=$tmp/","-fe=$tmp/bench.exe",
+-    "$tmp/bench.c",@core,"$tmp/mp3fxp.c",@asm);
+-run('gcc','-std=c89','-O2','-fwrapv','-I',"$lib/core","$lib/Tests/corecheck.c",
++    "$tmp/bench.c",@core,"$tmp/mp3fxp.c",@asm,@mode);
++run('gcc','-std=c89','-O2','-fwrapv',@mode,'-I',"$lib/core","$lib/Tests/corecheck.c",
+     map({"$lib/$_.c"} qw(mp3frame mp3huff mp3imdct mp3synth mp3quant mp3ster)), '-o',"$tmp/host");
+ run("$tmp/host",$input,"$tmp/host.pcm");
+ copy($input,"$tmp/input.mp3") or die $!;
+diff --git a/Library/Audio/BSNWav/MP3Dec/Tests/pull.c b/Library/Audio/BSNWav/MP3Dec/Tests/pull.c
+index 52c84f487..a83206741 100644
+--- a/Library/Audio/BSNWav/MP3Dec/Tests/pull.c
++++ b/Library/Audio/BSNWav/MP3Dec/Tests/pull.c
+@@ -9,7 +9,7 @@ word FileRead(FileHandle file, void *destP, word size, word flags)
+ {
+     (void)flags;
+     assert(file && file < 3 && files[file]);
+-    assert(++reads < 1000000);
++    assert(++reads < 10000000); /* Also allow one-byte reads of long tracks. */
+     if (failRead) return 0xffff;
+     if (size > inputChunk) size = inputChunk;
+     return (word)fread(destP, 1, size, files[file]);
+@@ -29,25 +29,33 @@ int main(int argc, char **argv)
+     BSNMP3Dec mp3, other;
+     FILE *outputP;
+     byte pcm[511], otherPCM[4];
+-    word count, second, i, expectError;
++    word count, second, i, expectError, options;
+     unsigned long total;
+     assert(argc == 4 || argc == 5);
+-    expectError = argc == 5;
++    expectError = argc == 5 && strstr(argv[4], "error") != (void *)0;
++    options = argc == 5 && strstr(argv[4], "half") ? BSN_MP3_HALF_RATE : 0;
+     inputChunk = (word)atoi(argv[3]);
+     files[1] = fopen(argv[1], "rb"); assert(files[1]);
+     files[2] = fopen(argv[1], "rb"); assert(files[2]);
+     for (i=1; i<=3; i++) {
+         failAllocation = i; allocation = 0;
+-        assert(BSNMP3DecOpen(&mp3, 1) == BSNW_MEMORY_ERROR);
++        assert(BSNMP3DecOpenEx(&mp3, 1, options) == BSNW_MEMORY_ERROR);
+         BSNMP3DecClose(&mp3); CheckFree();
+     }
+     failAllocation = 0;
+     failRead = 1;
+-    assert(BSNMP3DecOpen(&mp3, 1) == BSNW_SOURCE_ERROR);
++    assert(BSNMP3DecOpenEx(&mp3, 1, options) == BSNW_SOURCE_ERROR);
+     BSNMP3DecClose(&mp3); CheckFree();
+     failRead = 0;
+-    assert(BSNMP3DecOpen(&mp3, 1) == BSNW_STATUS_OK);
++    assert(BSNMP3DecOpenEx(&mp3, 1, 2) == BSNW_SOURCE_ERROR);
++    CheckFree();
++    assert(BSNMP3DecOpenEx(&mp3, 1, options) == BSNW_STATUS_OK);
+     assert(BSNMP3DecOpen(&other, 2) == BSNW_STATUS_OK);
++    /* The option belongs to one context. The other keeps normal output. */
++    assert(mp3.source.format.sampleRate ==
++           (options && other.source.format.sampleRate >= 32000 ?
++            other.source.format.sampleRate / 2 : other.source.format.sampleRate));
++    assert(mp3.source.format.channels == other.source.format.channels);
+     assert(mp3.source.pcmBytes == BSN_PCM_LENGTH_UNKNOWN);
+     assert(mp3.source.format.bitsPerSample == 16);
+     assert(mp3.source.format.channels == 1 || mp3.source.format.channels == 2);
+@@ -78,7 +86,12 @@ int main(int argc, char **argv)
+     BSNMP3DecClose(&mp3); BSNMP3DecClose(&mp3);
+     BSNMP3DecClose(&other); CheckFree();
+     /* A file error after probing/draining pending PCM remains an error. */
+-    assert(BSNMP3DecOpen(&mp3, 1) == BSNW_STATUS_OK);
++    assert(BSNMP3DecOpenEx(&mp3, 1, options) == BSNW_STATUS_OK);
++    /* Reset keeps the output mode, although it clears buffered PCM/input. */
++    assert(Mp3DecReset(mp3.decoderH) == MP3DEC_PCM);
++    assert(FilePos(1, 0, FILE_POS_START) == 0);
++    count = BSNMP3DecReadPCM(&mp3, pcm, sizeof(pcm));
++    assert(count && count != BSN_PCM_READ_ERROR);
+     failRead = 1;
+     while ((count = BSNMP3DecReadPCM(&mp3, pcm, sizeof(pcm))) != BSN_PCM_READ_ERROR)
+         assert(count);
+diff --git a/Library/Audio/BSNWav/MP3Dec/Tests/watcom.pl b/Library/Audio/BSNWav/MP3Dec/Tests/watcom.pl
+index ececb951b..e504810d9 100644
+--- a/Library/Audio/BSNWav/MP3Dec/Tests/watcom.pl
++++ b/Library/Audio/BSNWav/MP3Dec/Tests/watcom.pl
+@@ -12,13 +12,18 @@ my $lib = abs_path(dirname(__FILE__) . '/..');
+ my $repo = abs_path("$lib/../../../..");
+ my $up = abs_path(shift // die "usage: $0 micro-mp3-checkout [vectors]\n");
+ my $vectors = shift;
++$vectors = abs_path($vectors) if defined $vectors;
+ my $tmp = tempdir('mp3wat-XXXXXX', TMPDIR => 1, CLEANUP => !$ENV{KEEP_TESTS});
+ my $watcom = $ENV{WATCOM} // die "set WATCOM\n";
++# WCL uses a fixed response-file name in its working directory.
++chdir $tmp or die $!;
+ my @core = map { "$lib/$_.c" } qw(mp3frame mp3huff mp3imdct mp3synth mp3quant mp3ster);
+ my @flags = qw(-q -bt=dos -ml -3 -zp1 -zu -s -ecp -of -of+ -ol -ol+ -ei -zdp -fpc -DMP3_HUFF_LOCAL);
++my @mode = $ENV{HALF_RATE} ? ('-DMP3_HALF_RATE_TEST') : ();
++push @flags, @mode;
+ sub run { system(@_) == 0 or die "failed: @_\n"; }
+ sub same { compare($_[0], $_[1]) == 0 or die "target data differs: @_\n"; }
+-run('gcc', '-std=c89', '-O2', '-fwrapv', '-I', "$lib/core",
++run('gcc', '-std=c89', '-O2', '-fwrapv', @mode, '-I', "$lib/core",
+     "$lib/Tests/corecheck.c", @core, '-o', "$tmp/host");
+ run('gcc', '-std=c89', '-O2', '-fwrapv', '-I', "$lib/core",
+     "$lib/Tests/dsp.c", "$lib/mp3imdct.c", '-o', "$tmp/hostdsp");
+diff --git a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_framedecoder.inc b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_framedecoder.inc
+index b9cb333da..88c9c8887 100644
+--- a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_framedecoder.inc
++++ b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_framedecoder.inc
+@@ -160,6 +160,7 @@ ERROR_CODE pvmp3_framedecoder(tPVMP3DecoderExternal *pExt,
+ {
+     int32 outputFrameSize;
+     int32 temp;
++    int32 halfRate;
+     uint16 mixedBlocksLongBlocks;
+ 
+ 
+@@ -230,11 +231,13 @@ ERROR_CODE pvmp3_framedecoder(tPVMP3DecoderExternal *pExt,
+     pVars->num_channels = (info->mode == MPG_MD_MONO) ? 1 : 2;
+     pExt->num_channels = pVars->num_channels;
+ 
++    halfRate = pExt->halfRate && info->version_x == MPEG_1;
+     outputFrameSize = (info->version_x == MPEG_1) ?
+                             2 * SUBBANDS_NUMBER * FILTERBANK_BANDS :
+                             SUBBANDS_NUMBER * FILTERBANK_BANDS;
+ 
+     outputFrameSize = (info->mode == MPG_MD_MONO) ? outputFrameSize : outputFrameSize << 1;
++    outputFrameSize >>= halfRate;
+ 
+ 
+     /*
+@@ -530,6 +533,12 @@ ERROR_CODE pvmp3_framedecoder(tPVMP3DecoderExternal *pExt,
+                     }
+                 }
+ 
++                /* Keep 15 low subbands. The next band is a guard below
++                 * the new Nyquist limit. Upper overlap stays zero because
++                 * the mode is fixed before the first frame of the stream.
++                 */
++                if (halfRate && pChVars[ch]->used_freq_lines > 13)
++                    pChVars[ch]->used_freq_lines = 13;
+                 pvmp3_imdct_synth(pChVars[ch]->work_buf_int32,
+                                   pChVars[ch]->overlap,
+                                   pVars->sideInfo.ch[ch].gran[gr].block_type,
+@@ -545,12 +554,12 @@ ERROR_CODE pvmp3_framedecoder(tPVMP3DecoderExternal *pExt,
+                 pvmp3_poly_phase_synthesis(pChVars[ch],
+                                            pVars->num_channels,
+                                            pExt->equalizerType,
+-                                           &ptrOutBuffer[ch]);
++                                           &ptrOutBuffer[ch], halfRate);
+ 
+ 
+             }/* end ch loop */
+ 
+-            ptrOutBuffer += pVars->num_channels * SUBBANDS_NUMBER * FILTERBANK_BANDS;
++            ptrOutBuffer += (pVars->num_channels * SUBBANDS_NUMBER * FILTERBANK_BANDS) >> halfRate;
+         }  /*   for (gr=0;gr<Max_gr;gr++)  */
+ 
+         /* skip ancillary data */
+@@ -588,6 +597,7 @@ ERROR_CODE pvmp3_framedecoder(tPVMP3DecoderExternal *pExt,
+     pExt->totalNumberOfBitsUsed += pVars->inputStream.usedBits;
+     pExt->version = info->version_x;
+     pExt->samplingRate = mp3_s_freq[info->version_x][info->sampling_frequency];
++    pExt->samplingRate >>= halfRate;
+     pExt->bitRate = mp3_bitrate[pExt->version][info->bitrate_index];
+ 
+ 
+@@ -732,6 +742,7 @@ void pvmp3_InitDecoder(tPVMP3DecoderExternal *pExt,
+     pVars->num_channels = 0;
+ 
+     pExt->totalNumberOfBitsUsed = 0;
++    pExt->halfRate = 0;
+     pExt->inputBufferCurrentLength = 0;
+     pExt->inputBufferUsedLength    = 0;
+ 
+diff --git a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.h b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.h
+index e7a06958d..7554e2484 100644
+--- a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.h
++++ b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.h
+@@ -90,7 +90,7 @@ extern "C"
+     void pvmp3_poly_phase_synthesis(tmp3dec_chan   *pChVars,
+     int32          numChannels,
+     e_equalization equalizerType,
+-    int16          *outPcm);
++    int16          *outPcm, int32 halfRate);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.inc b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.inc
+index 64a5f50aa..bd2ca4044 100644
+--- a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.inc
++++ b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_poly_phase_synthesis.inc
+@@ -121,20 +121,23 @@
+ ----------------------------------------------------------------------------*/
+ 
+ #ifdef MP3_386_DSP
+-void _pascal Mp3Synthesis386(int32 *bufferP, int16 *pcmP, uint16 channels);
++void _pascal Mp3Synthesis386(int32 *bufferP, int16 *pcmP, uint16 channels,
++                           uint16 halfRate);
+ 
+ void pvmp3_poly_phase_synthesis(tmp3dec_chan *pChVars, int32 numChannels,
+-                                e_equalization equalizerType, int16 *outPcm)
++                                e_equalization equalizerType, int16 *outPcm,
++                                int32 halfRate)
+ {
+     pvmp3_equalizer(pChVars->circ_buffer, equalizerType,
+                    pChVars->work_buf_int32);
+-    Mp3Synthesis386(pChVars->circ_buffer, outPcm, (uint16)numChannels);
++    Mp3Synthesis386(pChVars->circ_buffer, outPcm, (uint16)numChannels,
++                   (uint16)halfRate);
+ }
+ #else
+ void pvmp3_poly_phase_synthesis(tmp3dec_chan   *pChVars,
+                                 int32          numChannels,
+                                 e_equalization equalizerType,
+-                                int16          *outPcm)
++                                int16          *outPcm, int32 halfRate)
+ {
+     int16 *ptr_out;
+     int32 band;
+@@ -167,7 +170,7 @@ void pvmp3_poly_phase_synthesis(tmp3dec_chan   *pChVars,
+ 
+         pvmp3_polyphase_filter_window(inData,
+                                       ptr_out,
+-                                      numChannels);
++                                      numChannels, halfRate);
+ 
+         inData  -= SUBBANDS_NUMBER;
+ 
+@@ -183,10 +186,10 @@ void pvmp3_poly_phase_synthesis(tmp3dec_chan   *pChVars,
+         pvmp3_merge_in_place_N32(inData);
+ 
+         pvmp3_polyphase_filter_window(inData,
+-                                      ptr_out + (numChannels << 5),
+-                                      numChannels);
++                                      ptr_out + ((numChannels << 5) >> halfRate),
++                                      numChannels, halfRate);
+ 
+-        ptr_out += (numChannels << 6);
++        ptr_out += (numChannels << 6) >> halfRate;
+ 
+         inData  -= SUBBANDS_NUMBER;
+ 
+diff --git a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.h b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.h
+index 689fef19a..1a4caba50 100644
+--- a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.h
++++ b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.h
+@@ -107,7 +107,7 @@ extern "C"
+ 
+     void pvmp3_polyphase_filter_window(int32 *synth_buffer,
+                                        int16 *outPcm,
+-                                       int32 numChannels);
++                                       int32 numChannels, int32 halfRate);
+ 
+ 
+ #ifdef __cplusplus
+diff --git a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.inc b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.inc
+index 7f62b57ba..bb36bc21b 100644
+--- a/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.inc
++++ b/Library/Audio/BSNWav/MP3Dec/core/pvmp3_polyphase_filter_window.inc
+@@ -114,7 +114,7 @@ Input
+ 
+ void pvmp3_polyphase_filter_window(int32 *synth_buffer,
+                                    int16 *outPcm,
+-                                   int32 numChannels)
++                                   int32 numChannels, int32 halfRate)
+ {
+     int16 j;
+     int32 k;
+@@ -125,8 +125,12 @@ void pvmp3_polyphase_filter_window(int32 *synth_buffer,
+     int32 i;
+ 
+ 
+-    for (j = 1; j < SUBBANDS_NUMBER / 2; j++)
++    /* Half rate computes only even PCM positions. Keep all time slots
++     * and the full synthesis history; skipping slots changes the pitch.
++     */
++    for (j = 1 + halfRate; j < SUBBANDS_NUMBER / 2; j += 1 + halfRate)
+     {
++        winPtr = pqmfSynthWin + (j - 1) * 16;
+         sum1 = 0x00000020;
+         sum2 = 0x00000020;
+ 
+@@ -198,13 +202,14 @@ void pvmp3_polyphase_filter_window(int32 *synth_buffer,
+ 
+ 
+ 
+-        k = j << (numChannels - 1);
++        k = (j >> halfRate) << (numChannels - 1);
+         outPcm[k] = saturate16(sum1 >> 6);
+-        outPcm[(numChannels<<5) - k] = saturate16(sum2 >> 6);
++        outPcm[((numChannels<<5) >> halfRate) - k] = saturate16(sum2 >> 6);
+     }
+ 
+ 
+ 
++    winPtr = pqmfSynthWin + 15 * 16;
+     sum1 = 0x00000020;
+     sum2 = 0x00000020;
+ 
+@@ -233,7 +238,7 @@ void pvmp3_polyphase_filter_window(int32 *synth_buffer,
+ 
+ 
+     outPcm[0] = saturate16(sum1 >> 6);
+-    outPcm[(SUBBANDS_NUMBER/2)<<(numChannels-1)] = saturate16(sum2 >> 6);
++    outPcm[((SUBBANDS_NUMBER/2) >> halfRate)<<(numChannels-1)] = saturate16(sum2 >> 6);
+ 
+ 
+ }
+diff --git a/Library/Audio/BSNWav/MP3Dec/core/pvmp3decoder_api.h b/Library/Audio/BSNWav/MP3Dec/core/pvmp3decoder_api.h
+index 84f21bf00..4d35602ac 100644
+--- a/Library/Audio/BSNWav/MP3Dec/core/pvmp3decoder_api.h
++++ b/Library/Audio/BSNWav/MP3Dec/core/pvmp3decoder_api.h
+@@ -226,6 +226,11 @@ extern "C"
+ 
+         int16       *pOutputBuffer;
+ 
++        /* PC/GEOS: request half-rate output for MPEG-1 (32/44.1/48 kHz).
++         * Set before the first frame and keep it fixed for this stream.
++         */
++        int16       halfRate;
++
+     } tPVMP3DecoderExternal;
+ 
+ 
+diff --git a/Library/Audio/BSNWav/MP3Dec/mp3api.c b/Library/Audio/BSNWav/MP3Dec/mp3api.c
+index 544333ccb..67da0e2bb 100644
+--- a/Library/Audio/BSNWav/MP3Dec/mp3api.c
++++ b/Library/Audio/BSNWav/MP3Dec/mp3api.c
+@@ -9,6 +9,7 @@ Mp3InitCore(Mp3Decoder *decoderP)
+     memset(&decoderP->core, 0, sizeof(decoderP->core));
+     memset(&decoderP->ext, 0, sizeof(decoderP->ext));
+     pvmp3_InitDecoder(&decoderP->ext, &decoderP->core);
++    decoderP->ext.halfRate = decoderP->halfRate;
+     decoderP->core.mainDataStream.pBuffer = (void *)0;
+ }
+ 
+@@ -58,14 +59,17 @@ Mp3DecReset(Mp3DecHandle decoderH)
+ {
+     Mp3Decoder *decoderP;
+     MemHandle inputH, pcmH;
++    word halfRate;
+ 
+     if (decoderH == NullHandle) return MP3DEC_BAD_ARGUMENT;
+     decoderP = MemLock(decoderH);
+     inputH = decoderP->inputH;
+     pcmH = decoderP->pcmH;
++    halfRate = decoderP->halfRate;
+     memset(decoderP, 0, sizeof(*decoderP));
+     decoderP->inputH = inputH;
+     decoderP->pcmH = pcmH;
++    decoderP->halfRate = halfRate;
+     Mp3InitCore(decoderP);
+     MemUnlock(decoderH);
+     return MP3DEC_PCM;
+@@ -147,6 +151,7 @@ Mp3DecodeFrame(Mp3Decoder *decoderP, byte *inputP, sword *pcmP)
+     static const word br2[16] = {0,8,16,24,32,40,48,56,64,80,
+                                  96,112,128,144,160,0};
+     word version, index, frequency, rate, size, channels, count, changed;
++    word outputRate;
+     dword tagSize, apeVersion;
+     ERROR_CODE error;
+ 
+@@ -218,9 +223,11 @@ Mp3DecodeFrame(Mp3Decoder *decoderP, byte *inputP, sword *pcmP)
+                   ((inputP[2] >> 1) & 1);
+     if (decoderP->used < size) return Mp3Missing(decoderP);
+     channels = (inputP[3] >> 6) == 3 ? 1 : 2;
++    /* Only MPEG-1 has the 32/44.1/48 kHz rates supported by this mode. */
++    outputRate = decoderP->halfRate && version == 3 ? rate >> 1 : rate;
+     changed = decoderP->format.channels &&
+               (decoderP->format.channels != channels ||
+-               decoderP->format.sampleRate != rate);
++               decoderP->sourceRate != rate);
+     decoderP->core.mainDataStream.pBuffer = decoderP->core.mainDataBuffer;
+     decoderP->ext.pInputBuffer = inputP;
+     decoderP->ext.inputBufferCurrentLength = size;
+@@ -245,7 +252,8 @@ Mp3DecodeFrame(Mp3Decoder *decoderP, byte *inputP, sword *pcmP)
+         (error == NO_DECODING_ERROR || error == NO_ENOUGH_MAIN_DATA_ERROR)) {
+         decoderP->pending = (word)decoderP->ext.outputFrameSize / channels;
+         decoderP->pcmOffset = 0;
+-        decoderP->format.sampleRate = rate;
++        decoderP->sourceRate = rate;
++        decoderP->format.sampleRate = outputRate;
+         decoderP->format.channels = channels;
+         decoderP->damaged = error != NO_DECODING_ERROR;
+         return changed ? MP3DEC_FORMAT_CHANGED : MP3DEC_PCM;
+diff --git a/Library/Audio/BSNWav/MP3Dec/mp3decManager.asm b/Library/Audio/BSNWav/MP3Dec/mp3decManager.asm
+index fecd82e52..47419d2b7 100644
+--- a/Library/Audio/BSNWav/MP3Dec/mp3decManager.asm
++++ b/Library/Audio/BSNWav/MP3Dec/mp3decManager.asm
+@@ -152,13 +152,15 @@ PVMP3_MDCT_6 endp
+ 
+ 	; Pascal far-pointer entry; the private kernel never calls GEOS.
+ global PVMP3_POLYPHASE_FILTER_WINDOW:far
+-PVMP3_POLYPHASE_FILTER_WINDOW proc far vecP:fptr, pcmP:fptr, channels:dword
++PVMP3_POLYPHASE_FILTER_WINDOW proc far vecP:fptr, pcmP:fptr, channels:dword,
++                                      halfRate:dword
+ 	uses ebx, ecx, edx, si, di, ds, es, fs
+ 	.enter
+ 		lds	si, vecP
+ 		les	di, pcmP
+ 		mov	bx, word ptr channels
+ 		shl	bx, 1
++		push	word ptr halfRate
+ 		call	Mp3Window
+ 	.leave
+ 		ret
+@@ -170,7 +172,7 @@ PVMP3_POLYPHASE_FILTER_WINDOW endp
+ 	; BX is the PCM stride in bytes (2 mono, 4 stereo).
+ 	;
+ global MP3SYNTHESIS386:far
+-MP3SYNTHESIS386 proc far bufferP:fptr, pcmP:fptr, channels:word
++MP3SYNTHESIS386 proc far bufferP:fptr, pcmP:fptr, channels:word, halfRate:word
+ slots	local	word
+ 	uses ebx, ecx, edx, si, di, ds, es
+ 	.enter
+@@ -189,9 +191,14 @@ nextSlot:
+ 		push	1
+ 		call	Mp3Dct16
+ 		call	Mp3Merge32
++		push	halfRate
+ 		call	Mp3Window
+ 		mov	ax, bx
+ 		shl	ax, 5
++		cmp	halfRate, 0
++		je	fullStride
++		shr	ax, 1		; Half rate writes 16 samples, not 32.
++fullStride:
+ 		add	di, ax
+ 		sub	si, 32*4
+ 		dec	slots
+@@ -323,7 +330,7 @@ Mp3Split endp
+ 	; which has no frame references; restore it before output and keep sum2
+ 	; in EDX across clipping sum1. Each sum starts with the 0x20 rounding bias.
+ 	;
+-Mp3Window proc near
++Mp3Window proc near halfRate:word
+ pcmOff	local	word
+ baseOff	local	word
+ stride	local	word
+@@ -333,8 +340,13 @@ sample	local	word
+ 		mov	pcmOff, di
+ 		mov	baseOff, si
+ 		mov	stride, bx
+-		mov	sample, 1
++		mov	ax, halfRate
++		inc	ax
++		mov	sample, ax		; Half rate starts at even sample 2.
+ 		mov	bx, offset Mp3SynthWin
++		cmp	halfRate, 0
++		je	nextSample
++		add	bx, 16*4		; Skip coefficients for sample 1.
+ nextSample:
+ 		mov	si, baseOff
+ 		add	si, 16*4
+@@ -445,10 +457,18 @@ nextSample:
+ 		mov	edx, ebp
+ 		pop	ebp
+ 		add	bx, 16*4
++		cmp	halfRate, 0
++		je	windowStep
++		add	bx, 16*4		; Skip the next odd output sample.
++windowStep:
+ 		mov	eax, ecx
+ 		call	Mp3ClipPCM
+ 		mov	di, sample
+ 		shl	di, 1
++		cmp	halfRate, 0
++		je	firstRate
++		shr	di, 1			; Pack the even samples contiguously.
++firstRate:
+ 		cmp	stride, 2
+ 		je	monoFirst
+ 		shl	di, 1
+@@ -460,6 +480,10 @@ monoFirst:
+ 		mov	di, 32
+ 		sub	di, sample
+ 		shl	di, 1
++		cmp	halfRate, 0
++		je	secondRate
++		shr	di, 1
++secondRate:
+ 		cmp	stride, 2
+ 		je	monoSecond
+ 		shl	di, 1
+@@ -467,6 +491,8 @@ monoSecond:
+ 		add	di, pcmOff
+ 		mov	es:[di], ax
+ 		inc	sample
++		mov	ax, halfRate
++		add	sample, ax		; Step by two in half-rate mode.
+ 		cmp	sample, 16
+ 		LONG jne nextSample
+ 	; DC and the center sample use the final 24 coefficients.
+@@ -553,6 +579,10 @@ monoSecond:
+ 		call	Mp3ClipPCM
+ 		mov	di, stride
+ 		shl	di, 4
++		cmp	halfRate, 0
++		je	centerRate
++		shr	di, 1
++centerRate:
+ 		add	di, pcmOff
+ 		mov	es:[di], ax
+ 	.leave
+diff --git a/Library/Audio/BSNWav/MP3Dec/mp3int.h b/Library/Audio/BSNWav/MP3Dec/mp3int.h
+index a2ce7499c..48338a961 100644
+--- a/Library/Audio/BSNWav/MP3Dec/mp3int.h
++++ b/Library/Audio/BSNWav/MP3Dec/mp3int.h
+@@ -33,6 +33,8 @@ typedef struct {
+     word started;
+     word terminal;
+     word damaged;
++    word halfRate;
++    word sourceRate;
+     dword skip;
+     Mp3DecFormat format;
+     tPVMP3DecoderExternal ext;
+diff --git a/Library/Audio/BSNWav/MP3Dec/mp3reader.goc b/Library/Audio/BSNWav/MP3Dec/mp3reader.goc
+index dee3b204e..24df97879 100644
+--- a/Library/Audio/BSNWav/MP3Dec/mp3reader.goc
++++ b/Library/Audio/BSNWav/MP3Dec/mp3reader.goc
+@@ -79,19 +79,42 @@ static word _pascal BSNMP3Read(BSNMP3Dec *mp3P, void *destP, word maxBytes,
+ }
+ 
+ int _pascal _export BSNMP3DecOpen(BSNMP3Dec *mp3P, FileHandle file)
++{
++    return BSNMP3DecOpenEx(mp3P, file, 0);
++}
++
++/***********************************************************************
++ * ROUTINE:     BSNMP3DecOpenEx
++ * DESCRIPTION: Open an MP3 with a fixed output-quality option.
++ * PARAMETERS:  Caller context, borrowed file, and BSN_MP3_HALF_RATE or zero.
++ * STRATEGY:    Set the option before the probe retains the first PCM frame.
++ * KNOWN BUGS/SIDE EFFECTS/CAVEATS/IDEAS:
++ *              Half rate reduces high-frequency detail. It does not change
++ *              duration, pitch, channel count, or the caller context layout.
++ * REVISION HISTORY:
++ *      Codex/MeyerK  11/04/26  Initial version
++ ***********************************************************************/
++int _pascal _export BSNMP3DecOpenEx(BSNMP3Dec *mp3P, FileHandle file,
++                                   word options)
+ {
+     Mp3DecResult result;
++    Mp3Decoder *decoderP;
+     word count;
+     int status;
+ 
+     if (!mp3P)
+         return BSNW_SOURCE_ERROR;
+     memset(mp3P, 0, sizeof(*mp3P));
+-    if (!file || FilePos(file, 0, FILE_POS_START) != 0)
++    if ((options & ~BSN_MP3_HALF_RATE) ||
++        !file || FilePos(file, 0, FILE_POS_START) != 0)
+         return BSNW_SOURCE_ERROR;
+     result = Mp3DecCreate(&mp3P->decoderH);
+     if (result != MP3DEC_PCM)
+         return result == MP3DEC_NO_MEMORY ? BSNW_MEMORY_ERROR : BSNW_SOURCE_ERROR;
++    decoderP = MemLock(mp3P->decoderH);
++    decoderP->halfRate = (options & BSN_MP3_HALF_RATE) != 0;
++    decoderP->ext.halfRate = decoderP->halfRate;
++    MemUnlock(mp3P->decoderH);
+     mp3P->file = file;
+     count = BSNMP3Read(mp3P, (void *)0, 0, TRUE);
+     if (count == BSN_PCM_READ_ERROR) {
+diff --git a/Library/Audio/BSNWav/PCM/pcm.goc b/Library/Audio/BSNWav/PCM/pcm.goc
+index 61f5e89b0..a059e08d5 100644
+--- a/Library/Audio/BSNWav/PCM/pcm.goc
++++ b/Library/Audio/BSNWav/PCM/pcm.goc
+@@ -192,13 +192,26 @@ static word BSNWDetermineSecondaryBufferLength(const BSNPcmFormat *fmt,
+ int _pascal BSNWLoadData(void *cachePtr, void *secPtr)
+ {
+     int respond = BSNW_STATUS_OK;
++    dword wanted;
++    word quantum;
++
++    quantum = pcmBlockAlign * konvRateRed;
+ 
+     // read from source until buffer is filled
+     // or the source go out of data
+     while ( (secondFree) && (respond == BSNW_STATUS_OK) )
+     {
+-        // Fill Cache
+-        while (cacheFree >= pcmBlockAlign && bytesToPlay)
++        /* Decode only enough source data for this output refill. Filling
++         * all free cache space first can decode extra MP3 frames while DMA
++         * waits. Keep whole rate-reduction groups so short reads cannot
++         * lose samples at a cache boundary.
++         */
++        wanted = (dword)secondFree * konvRateRed * konvBitsRed * konvChanRed;
++        wanted += quantum - 1;
++        wanted -= wanted % quantum;
++        if (wanted > playCacheLen)
++            wanted = playCacheLen;
++        while (cacheFull < wanted && cacheFree >= pcmBlockAlign && bytesToPlay)
+         {
+             respond = BSNWLoadCache(cachePtr);
+             if (respond != BSNW_STATUS_OK)
+diff --git a/Library/Audio/BSNWav/Tests/check.pl b/Library/Audio/BSNWav/Tests/check.pl
+index bee03fb34..22b95f407 100644
+--- a/Library/Audio/BSNWav/Tests/check.pl
++++ b/Library/Audio/BSNWav/Tests/check.pl
+@@ -97,8 +97,8 @@ if (@ARGV) {
+         '-DBSN_INTEGRATION_TEST', '-x', 'c', "$lib/Tests/pcm.c",
+         "$mp3/Tests/stream.c", "$mp3/mp3api.c", "$mp3/mp3reader.goc",
+         "$lib/WAV/wav.goc", @core, '-o', "$tmp/play") == 0 or die 'integration compile failed';
+-    if (!defined $reference_dir) {
+-        # Decode without playback to get reference bytes for the DMA check.
++    {
++        # Decode without playback to get reference bytes for both modes.
+         system('gcc', @flags, '-fwrapv', '-I', $tmp, '-I', $mp3,
+             '-I', "$lib/../../../CInclude", '-DMP3_HOST_TEST', '-x', 'c',
+             "$mp3/Tests/pull.c", "$mp3/mp3api.c", "$mp3/mp3reader.goc",
+@@ -110,17 +110,21 @@ if (@ARGV) {
+         if (!defined $reference_dir) {
+             system("$tmp/pull", $input, $reference, '1536') == 0 or die 'reader failed';
+         }
+-        for my $mode ('mp3', 'mp3-toggle') {
+-            system("$tmp/play", $mode, $input, "$tmp/play.pcm") == 0 or die 'playback failed';
++        system("$tmp/pull", $input, "$tmp/half-reference.pcm", '1536', 'half') == 0
++            or die 'half-rate reader failed';
++        for my $mode ('mp3', 'mp3-toggle', 'mp3half', 'mp3half-toggle') {
++            my $status = system("$tmp/play", $mode, $input, "$tmp/play.pcm");
++            next if $status == (2 << 8); # The C check verified rate rejection.
++            $status == 0 or die "playback failed: $input ($mode)";
+             {
+-                open my $ref, '<:raw', $reference or die $!;
++                open my $ref, '<:raw', $mode =~ /half/ ? "$tmp/half-reference.pcm" : $reference or die $!;
+                 open my $played, '<:raw', "$tmp/play.pcm" or die $!;
+                 my $expected = do { local $/; <$ref> };
+                 my $actual = do { local $/; <$played> };
+                 # Skip the optional 16-bit toggle sample. Allow final silence
+                 # after EOF, but compare every source byte in the DMA output.
+-                my $skip = $mode eq 'mp3-toggle' ? 2 : 0;
+-                die 'playback PCM differs' unless substr($actual, $skip, length($expected)) eq $expected;
++                my $skip = $mode =~ /-toggle$/ ? 2 : 0;
++                die "playback PCM differs: $input ($mode)" unless substr($actual, $skip, length($expected)) eq $expected;
+             }
+         }
+     }
+diff --git a/Library/Audio/BSNWav/Tests/pcm.c b/Library/Audio/BSNWav/Tests/pcm.c
+index a0668d4d9..9657ad1fa 100644
+--- a/Library/Audio/BSNWav/Tests/pcm.c
++++ b/Library/Audio/BSNWav/Tests/pcm.c
+@@ -218,6 +218,22 @@ int main(void)
+     source.format.blockAlign = 1;
+     source.readP = ReadPCM;
+     source.contextP = &input;
++    /* A ready refill must not wait for another source read. */
++    input.length = 100; input.offset = 16; input.chunk = 8;
++    input.failAt = 16; input.invalid = 0;
++    source.pcmBytes = 100;
++    Reset(&source);
++    cacheFull = cacheFree = cacheOffset = 16;
++    bytesToPlay = 84; secondFree = secBufL2;
++    for (i=0; i<16; i++) cache[i] = (byte)i;
++    assert(BSNWLoadData(cache, dma) == BSNW_STATUS_OK);
++    assert(input.offset == 16 && cacheFull == 12);
++    for (i=0; i<4; i++) assert(dma[i] == i);
++    /* One source chunk already covers this half. Do not fill the cache. */
++    input.offset = 0; input.failAt = 0xffff;
++    Reset(&source); secondFree = secBufL2;
++    assert(BSNWLoadData(cache, dma) == BSNW_STATUS_OK);
++    assert(input.offset == 8 && cacheFull == 4);
+     for (length=0; length<100; length++) {
+         for (chunk=1; chunk<=13; chunk++) {
+             for (unknown=0; unknown<2; unknown++) {
+@@ -421,8 +437,8 @@ int main(void)
+     assert(BSNWPlay(&source.format, 0, 0) == BSNW_STATUS_OK && stopped == 1);
+     /* Error after playback starts must not turn into successful EOF. */
+     input.length = 100; input.offset = 0; input.chunk = 8;
+-    /* Initial fills read 32 + 4 bytes. Fail the first read after start. */
+-    input.failAt = 36; input.invalid = 0;
++    /* Initial halves use eight bytes. Fail the first read after start. */
++    input.failAt = 8; input.invalid = 0;
+     source.pcmBytes = BSN_PCM_LENGTH_UNKNOWN;
+     Reset(&source);
+     assert(BSNWPlay(&source.format, 0, 0) == BSNW_SOURCE_ERROR);
+@@ -474,7 +490,8 @@ int main(int argc, char **argv)
+     inputP = fopen(argv[2], "rb"); assert(inputP);
+     playOutputP = fopen(argv[3], "wb"); assert(playOutputP);
+     if (argv[1][0] == 'm') {
+-        assert(BSNMP3DecOpen(&mp3, 1) == BSNW_STATUS_OK);
++        assert(BSNMP3DecOpenEx(&mp3, 1,
++               strstr(argv[1], "half") ? BSN_MP3_HALF_RATE : 0) == BSNW_STATUS_OK);
+         sourceP = &mp3.source;
+     } else {
+         assert(BSNWavOpen(&wav, 1) == BSNW_STATUS_OK);
+@@ -503,7 +520,8 @@ int main(int argc, char **argv)
+     else BSNWavClose(&wav);
+     assert(!fseek(inputP, 0, SEEK_SET));
+     assert(!fclose(inputP) && !fclose(playOutputP));
+-    puts("Public decoder -> BSNPcmPlay -> common DMA buffer path: PASS");
+-    return 0;
++    puts(result == BSNW_UNKNOWN_WAVE_FORMAT ? "Unsupported PCM output rate rejected: PASS" :
++         "Public decoder -> BSNPcmPlay -> common DMA buffer path: PASS");
++    return result == BSNW_UNKNOWN_WAVE_FORMAT ? 2 : 0;
+ }
+ #endif
+diff --git a/Library/Audio/BSNWav/bsnwav.gp b/Library/Audio/BSNWav/bsnwav.gp
+index 89ab6406a..a0271b823 100644
+--- a/Library/Audio/BSNWav/bsnwav.gp
++++ b/Library/Audio/BSNWav/bsnwav.gp
+@@ -105,3 +105,7 @@ resource AudioMainCode code read-only shared
+ resource PCMCode code read-only shared
+ resource WAVCode code read-only shared
+ resource ASMTOOLS_TEXT code read-only shared
++
++# Optional MP3 output quality; retain all existing export ordinals.
++incminor
++export BSNMP3DECOPENEX
+diff --git a/TechDocs/Markdown/Libraries/BSNWav.md b/TechDocs/Markdown/Libraries/BSNWav.md
+index 8e7afbd6d..2ce66a678 100644
+--- a/TechDocs/Markdown/Libraries/BSNWav.md
++++ b/TechDocs/Markdown/Libraries/BSNWav.md
+@@ -1,5 +1,64 @@
+ # Unified BSNWav implementation
+ 
++## Optional reduced-rate MP3 output
++
++Bsqp has an Options checkbox, Reduce MP3 Quality (Lower CPU Use). It is off
++by default. Save Options stores bit 0x0008 in the existing QuickPlayer/options
++integer. The setting applies when playback starts again. WAV files are not
++affected.
++
++BSNMP3DecOpenEx takes the existing context and borrowed file handle, plus
++an options word. BSN_MP3_HALF_RATE selects reduced-rate output. Zero selects
++normal output. Unknown option bits return BSNW_SOURCE_ERROR. The existing
++BSNMP3DecOpen calls OpenEx with zero, so existing callers retain normal
++output. The new export is appended under a new minor protocol; existing
++export ordinals and the public BSNMP3Dec layout are unchanged.
++
++The option is set before the first decoded frame is retained by the open
++probe. It belongs to the decoder context and survives decoder reset and
++error recovery. It cannot change during playback. Separate contexts can
++use different modes. A change in the encoded source rate is still reported
++as a format change, even if the two effective output rates would be equal.
++
++The mode applies to MPEG-1 input rates:
++
++- 32,000 Hz becomes 16,000 Hz.
++- 44,100 Hz becomes 22,050 Hz.
++- 48,000 Hz becomes 24,000 Hz.
++
++Lower-rate MPEG-2 and MPEG-2.5 files retain their original output rate.
++Channel count and signed 16-bit PCM remain unchanged. Each affected MPEG
++frame returns half as many PCM frames at half the rate, preserving duration
++and pitch. The source format and playback counters describe these actual
++PCM bytes. Existing encoder-delay and padding behavior is unchanged.
++
++The decoder retains the lowest 15 of 32 synthesis subbands. The next band
++is a guard below the new Nyquist limit. Upper IMDCT bands keep zero overlap
++from stream initialization. The synthesis window calculates only even
++output positions, but all time slots and the circular history still advance.
++This is filtering and reduced synthesis, not removal of alternate samples
++after a full PCM decode. Huffman decoding and dequantization remain intact.
++The option adds no memory handles or large tables.
++
++High-frequency detail is reduced. The guard band makes the transition
++start below 11 kHz for 44.1 kHz input. This option does not guarantee that
++decoding will meet every playback deadline.
++
++MP3Dec/Tests/half.pl compares reduced-rate output with every second PCM frame of
++a filtered full-rate reference, checks partial reads, EOF, reset, independent
++contexts, invalid options, and source-rate changes, and tests tone level,
++pitch, stereo order, and suppression of frequencies above Nyquist. It takes
++the micro-mp3 corpus path and optional extra MP3 files. FFmpeg is used only
++to generate and inspect test inputs.
++
++MP3Dec/Tests/watcom.pl accepts HALF_RATE=1 and MP3_ASM=1 to compare actual
++ESP DSP output with the C reference in standalone DOS. Tests/profile.pl
++also accepts HALF_RATE=1. With TOTAL_ONLY=1 and the extracted production
++DSP object, dudu.mp3 took 89.803 seconds of measured decoder time instead
++of 103.590 seconds in normal mode at the same controlled 15,000-cycle
++Basebox setting. This is about 13% less decoder time, not a GEOS playback
++latency measurement. These tests do not run PC/GEOS.
++
+ ## Baseline (2026-10-29)
+ 
+ Implementation branch BSNAudio-unified starts at PCM-source-v2 commit

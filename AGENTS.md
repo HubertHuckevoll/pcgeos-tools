@@ -1,8 +1,7 @@
 ## Meta
 
-For conversation, use Simplified Technical English (STE).
+For the conversation, use Simplified Technical English (STE).
 Don't use any skills, except if the prompt explicitely tells you to do so.
-When adding author information somewhere (usually in comments, frontmatter, etc), use "Codex/MeyerK".
 
 
 ## Scope
@@ -91,6 +90,8 @@ Use pure ASCII only in code and comments.
 For new system apps or APIs, propose docs only in TechDocs/Markdown.
 
 Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, lists. No tables, images, decorative markdown, or backtick-heavy formatting.
+
+When adding author information (usually in comments, frontmatter, etc), use "Codex/MeyerK".
 
 
 ## GOC/C rules
@@ -181,8 +182,7 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 
 If ESP warns about double or triple jumps, fix with LONG.
 
-When writing ESP code, use GeoWorks-style comments before the implementations of bigger
-coordinator functions or methods (not helpers), like this:
+When writing ESP code, use GeoWorks-style comments before the implementations of bigger coordinator functions or methods (not helpers), like this:
 `COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 		DeskDisplayRelocate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -250,13 +250,10 @@ When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in S
 
 ## GEOS knowledge base
 
-Persistent knowledge about PC/GEOS that you discover while woking on / with it
-is stored in `~/pcgeos-tools/wiki/`.
+When you discover a non-obvious, reusable fact about PC/GEOS while working on
+a task, add or update the appropriate document in `~/pcgeos-tools/wiki/`.
 
 Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
-
-When you discover a non-obvious, reusable fact about GEOS while working on
-a task, update the appropriate document in `~/pcgeos-tools/wiki/`.
 
 Only record facts that are supported by the source tree or authoritative
 documentation. Include enough information to find the evidence again:
@@ -270,4 +267,6 @@ Do not record:
 - facts obvious from a single local function
 
 Prefer correcting an existing entry over adding a contradictory one.
-Keep entries concise. After changing code, re-evaluate corresponding entries.
+Keep entries concise.
+
+After changing code, re-evaluate corresponding entries.

@@ -74,6 +74,36 @@ is separate from output rate so format changes remain visible. The public
 BSNMP3Dec layout and old export ordinals stay unchanged. Tests/half.pl
 checks filtering, duration, pitch, stereo order, reset, and partial reads.
 
+Decoder support and playback support are separate. PCM/pcm.goc:BSNPcmPlay
+rejects sample rates <= 5000 or >= 44200 with BSNW_UNKNOWN_WAVE_FORMAT,
+before the driver check. Thus a valid 48 kHz MP3 can open in the reader but
+fail playback validation; BSN_MP3_HALF_RATE gives MPEG-1 48 kHz input a
+24 kHz output. This result alone does not establish that a file is damaged.
+
+Main/subcode.goc:BSNWPrepKS uses an integer sample reduction rounded up
+to fit the driver's maximum rate, then programs sourceRate/reduction.
+Programming the maximum rate instead would change pitch and duration when
+the rates are not an integer multiple. Driver/Sound/BSD16/bsrecord.asm
+defines BSD_MAX_RATE as 44100; BSD8ST/bsrecord.asm defines it as 22050.
+
+MP3Dec/mp3reader.goc:BSNMP3Read preserves BSNW_FORMAT_CHANGED,
+BSNW_TRUNCATED, BSNW_INVALID_DATA, and BSNW_READ_ERROR. An MP3DEC_TRUNCATED
+result can also mean an invalid short suffix or non-audio input, so it does
+not prove that the input is an incomplete valid MP3. BSNMP3DecOpenEx
+separately preserves allocation failure as BSNW_MEMORY_ERROR. During
+playback, PCM/pcm.goc:BSNWLoadCache maps the reader's BSN_PCM_READ_ERROR to
+BSNW_SOURCE_ERROR; the caller must inspect BSNMP3Dec.status before closing
+to retain the specific diagnosis. CInclude/bsnwav.h defines the result codes.
+
+For application error text, UserStandardDialog builds, runs, and destroys
+a standard dialog; CDT_ERROR with GIT_NOTIFICATION supplies an error icon
+and an OK response. UserStandardDialogOptr accepts resource-chunk strings.
+No custom dialog object is required. See CInclude/uDialog.h,
+TechDocs/Markdown/Objects/ogenint.md section 7.4.5.2, and
+Library/User/User/userDialog.asm:USERSTANDARDDIALOG. UserDoDialog supports
+threads without an event queue through a semaphore, but the caller waits
+for the response; application cleanup must account for that wait.
+
 MP3Dec/Tests/profile.pl measures decoder stages in standalone DOS and writes
 per-frame timing/work counts to frames.csv. Use MP3_ASM_OBJECT with the
 production DSP object extracted by MP3Dec/Tests/watcom.pl (MP3_ASM=1) to

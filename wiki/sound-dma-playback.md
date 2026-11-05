@@ -62,6 +62,18 @@ Library/Audio/BSNWav/Tests/isr.pl tests the actual ISR instruction bodies in
 standalone DOS, including odd lengths, guard bytes, clear options, and
 counter wrap. It does not start PC/GEOS or measure audio latency.
 
+BSNMP3DecOpenEx in Library/Audio/BSNWav/MP3Dec/mp3reader.goc sets the
+optional BSN_MP3_HALF_RATE flag before probing the first frame. Existing
+BSNMP3DecOpen selects normal output. The option belongs to the private
+decoder context and survives Mp3DecReset. MPEG-1 output uses half the PCM
+rate and sample count; MPEG-2/2.5 output stays unchanged. The core limits
+IMDCT bands and computes only even synthesis-window positions while keeping
+all time slots and history (pvmp3_framedecoder.inc,
+pvmp3_poly_phase_synthesis.inc, and mp3decManager.asm). Source-rate tracking
+is separate from output rate so format changes remain visible. The public
+BSNMP3Dec layout and old export ordinals stay unchanged. Tests/half.pl
+checks filtering, duration, pitch, stereo order, reset, and partial reads.
+
 MP3Dec/Tests/profile.pl measures decoder stages in standalone DOS and writes
 per-frame timing/work counts to frames.csv. Use MP3_ASM_OBJECT with the
 production DSP object extracted by MP3Dec/Tests/watcom.pl (MP3_ASM=1) to

@@ -35,3 +35,34 @@
   not a GenValue. Children must accept expansion, for example through
   HINT_EXPAND_WIDTH_TO_FIT_PARENT on their interaction wrappers.
   Evidence: TechDocs/Markdown/Concepts/cgeom.md, section 12.2.4.2.
+- A GenView with both GVDA_NO_LARGER_THAN_CONTENT and
+  GVDA_NO_SMALLER_THAN_CONTENT stays at its document-bounds size. Expanding
+  its containing interaction does not remove that limit. To fill a wider
+  parent, remove GVDA_NO_LARGER_THAN_CONTENT in that dimension and give the
+  view HINT_EXPAND_WIDTH_TO_FIT_PARENT. Evidence:
+  TechDocs/Markdown/Objects/ogenvew.md, dimension attributes and size hints.
+- GenGlyph's fixed-size hint does not by itself allow a long moniker to
+  shrink. HINT_CAN_CLIP_MONIKER_WIDTH enables width clipping in
+  CGadget/copenGlyphDisplay.asm:OpenChooseNewGadgetSize and OLGlyphDisplayDraw.
+  The resulting DMF_CLIP_TO_MAX_WIDTH only sets a clip rectangle; it does
+  not add an ellipsis (Library/User/Vis/visUtilsResident.asm:VisDrawMoniker).
+- A glyph's MSG_VIS_VUP_CREATE_GSTATE uses VupCreateGState/ViewCreateGState
+  in CUtils/copenUtils.asm to set its specific UI font through
+  SpecGetDisplayScheme. Use that state for matching moniker text measurements.
+- Scrolling list size hints are forwarded to its generated GenView
+  (CItem/citemScrollList.asm:CopySizeToViewIfSpecified). Without a fixed
+  width, HINT_EXPAND_WIDTH_TO_FIT_PARENT lets the pane use its parent's
+  suggestion, reserving scroll areas before calculating viewport width
+  (CView/cviewPaneGeometry.asm:CalcWinSize and CalcTotalSize).
+- A GenInteraction's pixel size hint is not an outer-size cap.
+  CComp/copenCtrlGeometry.asm:CalcDesiredCtrlSize adds control margins to
+  nonzero dimensions, including SST_PIXELS. CalcExtraSize also accounts for
+  child extras when a child count is supplied. Avoid a redundant fixed-width
+  wrapper when its children already supply the required width; it introduces
+  another converted minimum. These paths are in Library/SpecUI/CommonUI.
+- MSG_GEN_RESET_TO_INITIAL_SIZE requests fresh window geometry rather than
+  retaining cached dimensions. For a non-maximized window,
+  CWin/cwinGeometry.asm:OLWinResetToInitialSize sets both dimensions to
+  RSA_CHOOSE_OWN_SIZE, marks size/position invalid, and calls UpdateWinPosSize.
+  The existing content and sizing hints then determine the size; no fixed
+  outer width is required. Evidence: Library/SpecUI/CommonUI/CWin/cwinGeometry.asm.

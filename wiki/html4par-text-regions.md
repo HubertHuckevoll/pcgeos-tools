@@ -28,6 +28,22 @@ an empty region; it does not itself identify a corrupt region. Evidence:
 `ECValidateRegionAndLineHeights`, `ECValidatePreviousRegion`,
 `FigureNextRegionChangeAndComputeRippleHeight`).
 
+`WARNING_TEXT_REGION_HEIGHT_REPAIRED` reports a detected height mismatch;
+`RepairRegionHeight` recomputes the line-height sum, adjusts the stored
+region height and `LICL_totalChange`, and requests drawing. The repair runs
+in both EC and NC; only its warning is EC-only. It runs for the previous
+region as calculation advances and for the final region at `CR_quit`.
+Evidence: `Library/Text/Text/textCalcObject.asm` (`CalculateRegions`,
+`RepairPreviousRegionHeight`, `RepairRegionHeight`). The large-delete
+warning instead tests negative ripple height and equal current/next top-line
+indexes; it neither requires an actual text deletion nor proves a loop.
+
+Swat normally prints warnings and resumes: `Tools/swat/lib.new/swat.tcl`
+(`_check_fatal_error`) installs `why-warning` as the `WarningNotice`
+breakpoint handler, and `fatalerr.tcl:why-warning` returns zero by default.
+A warning-specific Tcl procedure can override that result. A stop at
+`WarningNotice` alone therefore does not establish a fatal text error.
+
 An EC-only check after `RippleToNextRegion()` warns with
 `WARNING_RIPPLED_REGION_HEIGHT_MISMATCH` when the just-completed region's
 stored height differs from its line-height sum. At

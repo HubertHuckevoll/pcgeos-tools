@@ -80,6 +80,13 @@ before the driver check. Thus a valid 48 kHz MP3 can open in the reader but
 fail playback validation; BSN_MP3_HALF_RATE gives MPEG-1 48 kHz input a
 24 kHz output. This result alone does not establish that a file is damaged.
 
+MP3 tag skipping is not tag extraction. MP3Dec/mp3api.c:Mp3DecodeFrame
+validates the leading ID3v2 header and skips its declared payload; it does
+not return title or artist fields. The public BSNMP3Dec structure and
+Open/Read/Close API in CInclude/bsnwav.h expose PCM source state and playback
+diagnostics, not display metadata. Applications that need tag labels need
+a separate reader.
+
 Main/subcode.goc:BSNWPrepKS uses an integer sample reduction rounded up
 to fit the driver's maximum rate, then programs sourceRate/reduction.
 Programming the maximum rate instead would change pitch and duration when

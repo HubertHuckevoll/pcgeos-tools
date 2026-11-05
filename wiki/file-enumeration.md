@@ -33,3 +33,11 @@
 - VMO_TEMP_FILE takes a directory string with 13 additional zero bytes after
   its terminating null. VMOpen appends a generated filename to that string.
   Evidence: Library/Kernel/VMem/vmemHigh.asm:VMOpen interface comment.
+- VMClose's C parameter is declared Boolean, but VMCLOSE passes its low
+  byte directly to the assembler routine. Only 0 or FILE_NO_ERRORS (0x80)
+  is valid; TRUE (~0) causes VM_CLOSE_BAD_PARAMETER_IN_AL in EC builds.
+  FILE_NO_ERRORS permits closing even if the implicit VMUpdate fails;
+  use it only when discarding the file is intended. Evidence:
+  CInclude/vm.h:VMClose, CInclude/file.h:FILE_NO_ERRORS,
+  Library/Kernel/VMem/vmemC.asm:VMCLOSE, and
+  Library/Kernel/VMem/vmemHigh.asm:VMClose.

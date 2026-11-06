@@ -3,6 +3,63 @@
 For the conversation, use Simplified Technical English (STE).
 Don't use any skills, except if the prompt explicitely tells you to do so.
 
+## PC/GEOS Repository and Build Architecture
+
+PC/GEOS is a 16-bit operating system built using Open Watcom and a custom build system based on `pmake`. The repository contains both the operating system sources and its development tools.
+
+### Repository Layout
+
+- `Appl/` — Applications.
+- `Library/` — System and application libraries, including the kernel.
+- `Driver/` — Hardware and system drivers.
+- `Loader/` — System loader.
+- `Include/` — Assembly interfaces and definitions.
+- `CInclude/` — C and GOC headers.
+- `Tools/` — SDK and build tool sources, including `pmake`, `goc`, `uic`, `glue`, and `swat`.
+- `Installed/` — Build-side directory tree mirroring the source components.
+- `bin/` — Build/development scripts and emulator configuration.
+- `TechDocs/` — Technical documentation and programming references.
+
+### How the Build System Works
+
+The original source files reside in `Appl/`, `Library/`, `Driver/`, etc. The corresponding directories under `Installed/` contain generated Makefiles and dependency information.
+
+**Important:** `Installed/` is primarily a build tree, not the authoritative source tree. When investigating or modifying code, start in the original source directories.
+
+A typical component contains:
+
+- `.asm`, `.c`, `.goc`, `.ui` — Implementation and UI sources.
+- `.def`, `.h`, `.goh` — Definitions and interfaces.
+- `.gp` — Geode configuration, including resources, imports, and exports.
+- `local.mk` — Component-specific build configuration.
+- `Installed/<component>/Makefile` — Generated build rules.
+- `Installed/<component>/dependencies.mk` — Generated dependencies.
+
+A **geode** is the basic loadable unit in GEOS: an application, library, or driver. Builds produce `.geo` files.
+
+The build tools process the sources, compile and assemble modules, and link them into geodes. `pmake` orchestrates these operations using the generated Makefiles and shared build rules.
+
+### Development Environment
+
+- `ROOT_DIR` points to the repository checkout.
+- `LOCAL_ROOT` points to the local development workspace.
+- The build system supports EC (error-checking/debug) and NC (normal/release) variants.
+- `gbuild` / `gbuild.ec` are assembled runtime environments, separate from the source and build trees.
+- `bin/target` launches the GEOS environment using DOSBox or Basebox.
+- `swat` is the native GEOS debugger.
+
+### Guidance for Code Navigation
+
+1. Find the relevant component under `Appl/`, `Library/`, or `Driver/`.
+2. Inspect its `.gp`, `local.mk`, and source modules to understand its structure.
+3. Consult the corresponding `Installed/` Makefile when investigating build dependencies or module composition.
+4. Treat generated Makefiles and dependency files as build metadata, not primary sources to edit.
+5. Consult `TechDocs/` for GEOS architecture, APIs, and development conventions.
+
+For complete environment setup and build instructions, consult the repository's `README.md`.
+
+
+
 
 ## Scope
 

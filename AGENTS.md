@@ -6,9 +6,9 @@ Don't use any skills, except if the prompt explicitely tells you to do so.
 
 ## Scope
 
-We are working on "PC/GEOS Ensemble", a resource-constrained, 16-bit DOS environment, formerly known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office. ~/pcgeos/ contains the source, tools and docs for the system. This is where we work.
+We are working on "PC/GEOS Ensemble", a resource-constrained, 16-bit DOS environment, formerly known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office. `~/pcgeos/` contains the source, tools and docs for the system. This is where we work.
 
-Main folders in ~/pcgeos:
+Main folders in `~/pcgeos`:
 
 * Appl/ - GEOS applications
 * Library/ - GEOS libraries, UI, graphics, VM/DB, Kernel/geos.geo
@@ -26,7 +26,7 @@ Builds happen in Installed/. Source truth is outside Installed/ unless explicitl
 
 Additional tools and files may be found in ~/pcgeos-tools. These are not part of the official repo. Scratch files and additional worktrees may go there as well.
 
-The "PC/GEOS Ensemble" product installation itself (the so called `target`) can be found at ~/gbuild/localpc/ensemble.
+The "PC/GEOS Ensemble" product installation itself (the so called "target") can be found at `~/gbuild/localpc/ensemble`.
 
 
 ## Role
@@ -100,9 +100,9 @@ Use C89.
 
 Declare variables at the top of functions, not inside blocks.
 
-Declare functions as _pascal by default.
+Declare functions as `_pascal` by default.
 
-Use (void*)0 for null pointer constants.
+Use `(void*)0` for null pointer constants.
 
 Indent with 4 spaces.
 
@@ -132,7 +132,7 @@ Use typedefs for callback functions instead of the PCM macro.
 
 When writing methods and bigger coordinator functions (not helpers),
 use GeoWorks-style comments before the implementation, like this:
-`
+```
 /***********************************************************************
  *
  * MESSAGE:     MSG_GEN_DOCUMENT_INITIALIZE_DOCUMENT_FILE
@@ -156,7 +156,7 @@ use GeoWorks-style comments before the implementation, like this:
  *      AMS     9/8/92          Removed VMA_PRESERVE_HANDLES
  *
  ***********************************************************************
-`
+```
 
 
 ## ESP/ASM rules
@@ -170,10 +170,11 @@ Indent ASM/ESP like this:
 * 1 tab between instruction and first parameter
 
 Introduce ASM blocks with:
-
+```
 ;
 ; Description
 ;
+```
 
 Procedure names and labels are never indented.
 
@@ -186,9 +187,9 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 If ESP warns about double or triple jumps, fix with LONG.
 
 When writing ESP code, use GeoWorks-style comments before the implementations of bigger coordinator functions or methods (not helpers), like this:
-`
+```
 COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		DeskDisplayRelocate\
+		DeskDisplayRelocate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 SYNOPSIS:	synopsis
@@ -219,7 +220,7 @@ REVISION HISTORY:
 	brianc	01/02/90	Initial version
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@
-`
+```
 
 
 ## Implementation
@@ -228,7 +229,7 @@ For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad sou
 
 Always try to compile the geodes you changed through aihelp.py:
 
-    ~/pcgeos-tools/aihelp.py build [source-or-module-path]
+    `~/pcgeos-tools/aihelp.py build [source-or-module-path]`
 
 aihelp.py maps source paths to the matching Installed/ directory, runs pmake as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log.
 
@@ -238,7 +239,7 @@ For a new geode, or when build files are missing, create the geode folder manual
 
 End each implementation round with a concise, commit-message-style summary that can be copy/pasted, like this: `feat(prefsndn): combine system sound toggles and follow master sound state`.
 
-Finally, for each geode that was re-compiled in the process, make sure it has a "send `appname`" entry in ~/swat.rc. swat.rc must end with the letter "c" in the last line (for "continue").
+Finally, for each geode that was re-compiled in the process, make sure it has a `send <appname>` entry in `~/swat.rc`. swat.rc must end with the letter "c" in the last line (for "continue").
 
 
 ## Testing
@@ -250,7 +251,7 @@ Non-trivial logic leaves one small runnable check in a project-local "Tests" fol
 
 ## Debugging
 
-When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use ~/swat.rc to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in ~/pcgeos-tools/wiki/swat-source-breakpoints.md.
+When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use `~/swat.rc` to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in `~/pcgeos-tools/wiki/swat-source-breakpoints.md`.
 
 
 ## GEOS knowledge base

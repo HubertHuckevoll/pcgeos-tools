@@ -5,7 +5,7 @@ Don't use any skills, except if the prompt explicitely tells you to do so.
 
 ## PC/GEOS Repository and Build Architecture
 
-PC/GEOS is a 16-bit operating system built using Open Watcom and a custom build system based on `pmake`. The repository contains both the operating system sources and its development tools.
+We are working on "PC/GEOS Ensemble", a resource-constrained, 16-bit DOS environment, formerly known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office. `~/pcgeos/` contains the source, development tools and docs for the system. This is where we work. PC/GEOS is built using Open Watcom and a custom build system based on `pmake`.
 
 ### Repository Layout
 
@@ -58,30 +58,7 @@ The build tools process the sources, compile and assemble modules, and link them
 
 For complete environment setup and build instructions, consult the repository's `README.md`.
 
-
-
-
-## Scope
-
-We are working on "PC/GEOS Ensemble", a resource-constrained, 16-bit DOS environment, formerly known as GeoWorks Ensemble, Breadbox Ensemble, and NewDeal Office. `~/pcgeos/` contains the source, tools and docs for the system. This is where we work.
-
-Main folders in `~/pcgeos`:
-
-* Appl/ - GEOS applications
-* Library/ - GEOS libraries, UI, graphics, VM/DB, Kernel/geos.geo
-* Driver/ - DOS, video, mouse, printer, and other drivers
-* Include/ - ESP assembler headers
-* CInclude/ - GOC/C headers
-* Tools/ - build/debug tools, pmake, Swat, TCL scripts
-* Tools/build/product/bbxensem/ - PC/GEOS Ensemble product build files
-* Loader/ - boot and loader code
-* TechDocs/ - SDK docs; prefer TechDocs/Markdown
-* Installed/ - build tree and build artifacts
-* bin/ - built tools
-
-Builds happen in Installed/. Source truth is outside Installed/ unless explicitly stated.
-
-Additional tools and files may be found in ~/pcgeos-tools. These are not part of the official repo. Scratch files and additional worktrees may go there as well.
+Additional tools and files may be found in `~/pcgeos-tools`. These are not part of the official repo. Scratch files and additional worktrees may go there as well.
 
 The "PC/GEOS Ensemble" product installation itself (the so called "target") can be found at `~/gbuild/localpc/ensemble`.
 

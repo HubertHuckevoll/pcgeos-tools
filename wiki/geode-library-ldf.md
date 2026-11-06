@@ -108,3 +108,25 @@ makeImages=false makeFloppyImages=false deleteDestTree=false` with explicit
 Set `shipFiles=true` explicitly: without site defaults the tool can report
 no errors while skipping the filetree entirely. Inspect its final error list;
 its exit status alone does not establish that all artifacts were found.
+
+## Assembly routines need code resources in protected mode
+
+Do not put executable assembly routines in idata. Include/resource.def
+defines idata with class DATA and groups it into dgroup. Tools/glue/geo.c
+(GeoPrepare) gives dgroup RESF_FIXED without RESF_CODE. In protected mode,
+Library/Kernel/Geodes/geodesLoad.asm converts loaded selectors to code only
+when HAF_CODE is set; Loader32/gpmi.asm:GPMIConvertToCodeBlock sets the
+executable descriptor type. A far call to a routine in ordinary dgroup
+therefore faults at the call instruction before the routine runs.
+
+Use a separate fixed, read-only, shared code resource for a nonlocal error
+unwinder: a movable unwinder must not release its own active resource while
+removing resource-call frames. Library/Breadbox/ImpGraph/impgraph.gp and
+ASMIMP/asmimpManager.asm show the fixed ASM_FIXED code-resource pattern.
+
+Glue GP files support ifdef, but the linker must receive the symbol through
+-D; assembly definitions do not carry into the GP parser. The shared
+Include/sun.geos.mk rules call Tools/scripts/perl/product_flags separately
+for ESP and Glue. Both calls must return -DPROTECTED_MODE for matching
+protected-mode guards. Evidence: Tools/glue/parse.y:HandleIFDEF and
+Library/Breadbox/Ijgjpeg/ASMTOOLS/asmtoolsManager.asm / ijgjpeg.gp.

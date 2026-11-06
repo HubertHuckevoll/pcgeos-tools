@@ -107,3 +107,15 @@ Driver/Sound/BSD16/bsdac.asm and BSD8ST implement that private interface;
 Driver/Sound/SoundBlaster/soundblasterDAC.asm does not list BSW formats.
 Selecting the ordinary sblaster driver therefore causes BSNW_WRONG_DRIVER
 for valid PCM sources. Decoder-only operations do not require this handshake.
+
+JPEG error recovery must execute from a code resource in protected mode.
+`Ijgjpeg/ASMTOOLS/asmtoolsManager.asm:_jmp_to_error_handler` performs a
+nonlocal return after unlocking movable resource-call frames. It must not
+execute in idata/dgroup or in a movable resource it can unlock itself.
+`Include/resource.def` groups idata into dgroup; `Tools/glue/geo.c:GeoPrepare`
+sets dgroup to `RESF_FIXED` without `RESF_CODE`. The PM resource loader in
+`Library/Kernel/Geodes/geodesLoad.asm:LoadResource` converts selectors to code
+only for `HAF_CODE`. Use a separate fixed code resource, and check the linked
+resource flags. The context saver in
+`Library/Breadbox/ImpGraph/ASMIMP/asmimpManager.asm:_set_error_handler` already
+uses the fixed ASM_FIXED code resource.

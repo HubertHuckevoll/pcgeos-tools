@@ -669,3 +669,13 @@ memory-bitmap window, its different window origin must be accounted for.
 Evidence: `Library/Kernel/Graphics/graphicsTransformSimple.asm:WinGetTransform`
 and `graphicsTransform.asm:GrComposeMatrix`; window screen bounds are
 available through `WinGetWinScreenBounds` in `CInclude/win.h`.
+
+IJGJPEG's source manager can suspend even for file input when
+PROGRESS_DISPLAY is enabled: `Ijgjpeg/DECOMP/JDATASRC.c:fill_input_buffer`
+returns FALSE at physical EOF, after setting `src->eoi`. For a truncated
+progressive JPEG, `API/JDAPISTD.c:jpeg_start_decompress` can therefore return
+FALSE in DSTATE_PRELOAD before `output_pass_setup`. Callers must check this
+return before reading output rows. `DECOMP/JDMAINCT.c:jinit_d_main_controller`
+sets only dmc_start_pass; dmc_process_data is assigned by start_pass_main
+during output-pass setup. `jpeg_read_scanlines` checks DSTATE_SCANNING only
+in EC builds before dispatching through dmc_process_data.

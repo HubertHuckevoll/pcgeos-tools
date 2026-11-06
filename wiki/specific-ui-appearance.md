@@ -293,3 +293,13 @@
   calls GrFindNearestPointsize. The original ISUI2000 font has only a
   10 pt bitmap strike; FontData/DejaVuSC/dejavusc.asm now also provides
   9, 12, 14 and 18 pt, allowing saved preferences to select those sizes.
+
+- When copying text or a moniker within one movable object block, pass a chunk
+  reference rather than a dereferenced far pointer. Kernel object copying can
+  allocate/move that same LMem heap and rejects same-segment fixed offsets with
+  CANT_COPY_CHUNK_FROM_FIXED_OFFSET_IN_SAME_SEGMENT
+  (Library/Kernel/Object/objectProcess.asm:farptr and offsetcommon).
+  MSG_GEN_REPLACE_VIS_MONIKER_OPTR expects a complete VisMoniker chunk, not a
+  plain text chunk (Include/Objects/genC.def). For a plain string, use
+  MSG_VIS_TEXT_REPLACE_ALL_OPTR with the block handle and string chunk
+  (Include/Objects/vTextC.def).

@@ -73,3 +73,35 @@ For example:
 Unload/reload the module after replacement. Check for unintended duplicate
 geodes left by earlier sends; do not treat ignoring the symbol prompt as
 confirmation that the new binary was loaded.
+
+## Swat send and imported libraries
+
+GP-imported libraries must be in SYSTEM. Kernel library loading uses SP_SYSTEM
+(Library/Kernel/Geodes/geodesLibrary.asm:ProcessLibraryTable, PLT_loop).
+Swat send selects the first matching rule in Tools/swat/lib.new/pcs.pat
+(filexfer.tcl:get-send-dest). A library under Library/Trans that is imported
+normally, rather than loaded as a translator, needs an exception before the
+SYSTEM/IMPEX rule. The PDF backend is such a library; compare
+Driver/Printer/PDF/pdf.gp and the SYSTEM entry in
+Tools/build/product/bbxensem/bbxensem.filetree.
+
+A missing imported library can prevent a printer driver from loading.
+Library/Spool/UI/uiSpoolSummonsPrint.asm:SpoolLoadDriverLow maps load failures
+to PCERR_PRINTER_NOT_KNOWN; GrabPrinterInfo leaves SSPI_VALID clear.
+uiSpoolSummons.asm:SpoolSummonsInitialize reports SL-40
+(PCERR_ALL_BAD_PRINTERS) when no installed printer remains valid. Check library
+placement before deleting printer settings.
+
+## Named C warnings and automatic diagnostics
+
+CWarningNotice codes are resolved through the calling patient's Warnings type
+(Tools/swat/lib.new/fatalerr.tcl:why-warning). A C enum with another type name
+will not supply that mapping. A mixed C/ESP geode can declare the matching
+numeric code with `enum Warnings` in an ESP module that includes ec.def.
+
+why-warning selects the caller's frame and invokes a Tcl procedure named
+`patient::WARNING_NAME` if it exists. That procedure can print locals and
+return 1 to stop; the default warning handler prints the warning and returns 0,
+so an ordinary warning does not itself stop execution. Evidence:
+Include/ec.def:Warnings, Library/Kernel/Boot/bootBoot.asm:CWARNINGNOTICE,
+Tools/swat/lib.new/fatalerr.tcl:why-warning.

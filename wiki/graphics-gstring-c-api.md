@@ -18,6 +18,41 @@ resets the current position to the beginning. Other stopping conditions can
 leave a different current position; use `GrSetGStringPos` when a full replay
 must be guaranteed.
 
+## Text-field record padding
+
+The SBCS GString layout is a 14-byte GDF_saved header followed by counted
+TFStyleRun records. Each native TFStyleRun has a two-byte count and a 24-byte
+TextAttr, including its final word-alignment byte. The packed C TextAttr in
+CInclude/graphics.h is only 23 bytes. Skip all 26 native run-header bytes before
+reading characters; the alignment byte need not be zero. Using the packed C
+size reads padding as text and shifts later run headers.
+
+Evidence: Include/text.def:GDF_saved, Include/graphics.def:TextAttr (align word),
+Include/gstring.def:TFStyleRun, and
+Library/Kernel/Graphics/graphicsStringStore.asm:StoreTextField (writes size
+TFStyleRun before each run's characters).
+
+## Solid pattern attributes
+
+GR_SET_AREA_PATTERN (0x7b) and GR_SET_TEXT_PATTERN (0x8c) are three-byte
+attribute records: opcode, PatternType, data byte. PT_SOLID is zero and ignores
+the data byte; a pattern command therefore does not by itself mean a hatch or
+bitmap fill. Evidence: Include/gstring.def:OpSetAreaPattern/OpSetTextPattern,
+Include/graphics.def:GraphicPattern/PatternType, and
+Library/Kernel/Graphics/graphicsPattern.asm:ECCheckPatternInfo.
+
+## Empty drawing masks
+
+SDM_0 means an invisible operation, not an unsupported partial screen.
+The EPS exporter handles zero line/area masks with EmitNothing
+(Library/Trans/Graphics/Vector/EPS/Export/exportGString.asm:
+CheckZeroLineMask, CheckZeroAreaMask). GrObj can still send a foreground draw
+message for a zero mask when GOMOF_DRAW_FG_LINE or GOMOF_DRAW_FG_AREA is set
+(Library/GrObj/GrObj/grobjDraw.asm:GrObjDrawDrawForegroundLine/Area).
+Text has its own mask in GS_textAttr, separate from GS_lineAttr and GS_areaAttr
+(Include/Internal/gstate.def); text-field runs carry their own TextAttr,
+including the text mask (Include/gstring.def:TFStyleRun).
+
 ## Icon and text button monikers
 
 A GenTrigger moniker list with a text moniker and an icon GString can use

@@ -132,29 +132,30 @@ Use typedefs for callback functions instead of the PCM macro.
 
 When writing methods and bigger coordinator functions (not helpers),
 use GeoWorks-style comments before the implementation, like this:
-`/***********************************************************************
- *
- * MESSAGE:     MSG_GEN_DOCUMENT_INITIALIZE_DOCUMENT_FILE
- *
- * DESCRIPTION: Initialize new database document file.
- *              Set up map block for GeoFile, containing map blocks
- *              for both the spreadsheet data and the GrObj body.
- *
- * PARAMETERS:
- *              Boolean (void)
- *
- * STRATEGY:
- *
- * KNOWN BUGS/SIDE EFFECTS/CAVEATS/IDEAS:
- *
- * REVISION HISTORY:
- *      Name    Date            Description
- *      ----    ----            -----------
- *      anna    1/92            Initial Revision
- *      anna    4/29/92         Added code for GrObj inclusion
- *      AMS     9/8/92          Removed VMA_PRESERVE_HANDLES
- *
- ***********************************************************************/`
+`/***********************************************************************\
+ *\
+ * MESSAGE:     MSG_GEN_DOCUMENT_INITIALIZE_DOCUMENT_FILE\
+ *\
+ * DESCRIPTION: Initialize new database document file.\
+ *              Set up map block for GeoFile, containing map blocks\
+ *              for both the spreadsheet data and the GrObj body.\
+ *\
+ * PARAMETERS:\
+ *              Boolean (void)\
+ *\
+ * STRATEGY:\
+ *\
+ * KNOWN BUGS/SIDE EFFECTS/CAVEATS/IDEAS:\
+ *\
+ * REVISION HISTORY:\
+ *      Name    Date            Description\
+ *      ----    ----            -----------\
+ *      anna    1/92            Initial Revision\
+ *      anna    4/29/92         Added code for GrObj inclusion\
+ *      AMS     9/8/92          Removed VMA_PRESERVE_HANDLES\
+ *\
+ ***********************************************************************/`\
+\
 
 ## ESP/ASM rules
 
@@ -183,38 +184,39 @@ Do not put semicolon comments inside macros like < EC >. Put comments behind the
 If ESP warns about double or triple jumps, fix with LONG.
 
 When writing ESP code, use GeoWorks-style comments before the implementations of bigger coordinator functions or methods (not helpers), like this:
-`COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		DeskDisplayRelocate
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-SYNOPSIS:	synopsis
-
-CALLED BY:	MSG_META_RELOCATE
-
-PASS:		*ds:si	= object
-		ax - MSG_META_RELOCATE/MSG_META_UNRELOCATE
-		cx - handle of block containing relocation
-		dx - VMRelocType:
-			VMRT_UNRELOCATE_BEFORE_WRITE
-			VMRT_RELOCATE_AFTER_READ
-			VMRT_RELOCATE_AFTER_WRITE
-		bp - data to pass to ObjRelocOrUnRelocSuper
-RETURN:		carry - set if error
-		bp - unchanged
-
-DESTROYED:
-
-PSEUDO CODE/STRATEGY:
-
-KNOWN BUGS/SIDE EFFECTS/IDEAS:
-		none
-
-REVISION HISTORY:
-	Name	Date		Description
-	----	----		-----------
-	brianc	01/02/90	Initial version
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@`
+`COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+		DeskDisplayRelocate\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\
+SYNOPSIS:	synopsis\
+\
+CALLED BY:	MSG_META_RELOCATE\
+\
+PASS:		*ds:si	= object\
+		ax - MSG_META_RELOCATE/MSG_META_UNRELOCATE\
+		cx - handle of block containing relocation\
+		dx - VMRelocType:\
+			VMRT_UNRELOCATE_BEFORE_WRITE\
+			VMRT_RELOCATE_AFTER_READ\
+			VMRT_RELOCATE_AFTER_WRITE\
+		bp - data to pass to ObjRelocOrUnRelocSuper\
+RETURN:		carry - set if error\
+		bp - unchanged\
+\
+DESTROYED:\
+\
+PSEUDO CODE/STRATEGY:\
+\
+KNOWN BUGS/SIDE EFFECTS/IDEAS:\
+		none\
+\
+REVISION HISTORY:\
+	Name	Date		Description\
+	----	----		-----------\
+	brianc	01/02/90	Initial version\
+\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@`\
+\
 
 
 ## Implementation

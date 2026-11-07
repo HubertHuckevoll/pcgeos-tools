@@ -402,3 +402,64 @@ its owning LMem block. With GSKT_LEAVE_DATA, both chunk and block survive.
 The owner must release the LMem block after all recording/reading GString
 states are destroyed. Evidence: Library/Kernel/Graphics/graphicsStringUtils.asm:
 GrDestroyGString (LMemFree, freeGStringBlock, GrDestroyState).
+
+## Native regions, conversion bounds and C wrapper arguments
+
+GrGetPathRegion and GrGetClipRegion return an owned memory block: four signed
+bounds words, then Region scanline records. Each record contains its inclusive
+bottom Y, zero or more inclusive left/right pairs, then EOREGREC (0x8000).
+The initial record is an empty band ending at top-1; another EOREGREC in the
+Y position terminates the region. A zero returned handle can mean an empty
+intersection. Evidence: CInclude/graphics.h:RectRegion/MakeRectRegion;
+graphicsRegionPath.asm:GrRegionPathClean; graphicsPathLow.asm:
+ConvertRegionPathToRegion. Region allocation/merging uses HAF_NO_ERR.
+
+GetWinTopBottom uses -1024 and +1024 when the GState has no window, regardless
+of the output page size. GrRegionPathInit adds safety scanlines and allocates
+for that Y range; RasterLine rejects lines outside it. A high-resolution
+exporter must convert in translated strips (discard safety rows at shared
+boundaries), or supply a suitable real window. Increasing the null-window
+bounds without considering per-row region storage can exceed the 64 KB block
+limit. Evidence: graphicsPathLow.asm:GetWinTopBottom;
+graphicsRegionPath.asm:GrRegionPathInit;
+graphicsRegionRaster.asm:RasterLine, SetPointCommon.
+
+The CInclude GrGetClipRegion declaration takes two arguments. Its native
+entry requires CL = RegionFillRule, even when each saved clip section supplies
+its own rule. GRGETCLIPREGION must use C_GetTwoWordArgs, as GrGetPathRegion
+does. The former one-word decoder read the wrong stack argument for GState,
+did not initialize the fill-rule register and left one argument on the caller's
+stack. Evidence: CInclude/graphics.h; Library/Kernel/Graphics/graphicsC.asm:
+GRGETCLIPREGION and C_GetTwoWordArgs; graphicsPath.asm:GrGetClipRegion.
+
+CopyRegionPath must restore all saved Path fields through the dereferenced
+chunk pointer after PathBuildRegionSlow, which can move the chunk. SI remains
+a chunk handle; BP = DS:[SI] is the updated address. Restoring P_top/P_bottom
+through DS:[SI] corrupts unrelated GState data. The cleanup now uses DS:[BP]
+for those fields, matching P_flags and P_slowRegion. Evidence:
+graphicsPathLow.asm:CopyRegionPath.
+
+## Control bytes, formatting marks and text advances
+
+The public TM_DRAW_CONTROL_CHARS contract maps SPACE/NONBRKSPACE to CNTR_DOT,
+CR to PARAGRAPH and TAB to LOGICAL_NOT. VidCom also maps section break (0x0b)
+to SECTION and page/column break (0x0c) to DBLDAGGER. These bytes do not execute
+paragraph or page layout inside a drawing call. Text layout supplies positioned
+fields separately. C_NULL_WIDTH (0x19), C_THINSPACE (0x1b), C_ENSPACE (0x1c)
+and C_EMSPACE (0x1d) are GEOS layout characters, not ordinary printable C0
+characters. C_GRAPHIC (0x1a) identifies an embedded graphic and requires its
+callback/data; it must not be discarded as whitespace.
+
+Keep native width queries on the original bytes. GrTextWidthWBFixed handles
+optional hyphens, kerning and space padding, but does not map formatting marks.
+VidCom's PSL_doCtrlCharAdjustment adjusts the pen after painting a mapped mark
+by original-width minus mapped-width. Thus a wider marker must not be shifted
+right to consume the original character's entire advance. EPS also omits a
+null-width character's ink and skips leading tabs in saved text fields.
+
+Evidence: CInclude/graphics.h:TM_DRAW_CONTROL_CHARS;
+Include/char.def; Driver/Video/VidCom/vidcomChars.asm:PSL_doCtrlCharMap,
+PSL_doCtrlCharAdjustment; Library/Kernel/Graphics/graphicsTextMetrics.asm:
+GrTextWidthWBFixed; graphicsTextObject.asm:GraphicInLineWidth;
+Library/Trans/Graphics/Vector/EPS/Export/exportText.asm:HandleStyleRun,
+CheckSpecialChars.

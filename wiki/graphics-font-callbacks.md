@@ -120,3 +120,32 @@ make_DejaVuSC.py generator (fntpatch revision 3943247357cdfdf8aadf0da968f486e965
 Use DejaVu Sans Condensed 2.37, Pillow 12.3.0 / FreeType 2.14.3 and 80 dpi
 for identical hinting and advances. FontData/tests/bitmap-fonts.pl protects
 the original 10 pt strike separately from the complete font hash.
+
+## Script text metrics and outlines
+
+Superscript/subscript widths are already scaled by the font drivers. Do not
+halve a native GrTextWidthWBFixed or GrCharWidth result again. Current Nimbus,
+Bitstream and TrueType drivers use half-size glyphs. Their script offset uses
+FontBuf height + heightAdjust: multiply by 0x1a00/65536 for subscript, or by
+0x6000/65536 then subtract baselinePos and baseAdjust for superscript. Subscript
+wins when both bits are set. Nimbus rounds with rnduwbf (negative ties upward),
+Bitstream with rndwbf (ties away from zero), and TrueType truncates with >>16.
+Evidence: Nimbus/nimbusWidths.asm:AddStyleTransforms,
+Bitstream/Main/mainWidths.asm:AddStyleTransforms and
+TrueType/Adapter/ttwidths.c:CalcTransform under Driver/Font/.
+
+FontBuf header metrics stay in document coordinates even when the generated
+character transform is complex. GrFontMetrics exposes heightAdjust only as
+part of GFMI_MAX_ADJUSTED_HEIGHT (also including aboveBox and belowBox), and
+has no baseAdjust selector. Evidence: the same drivers' ConvertHeader and
+transform code; Library/Kernel/Graphics/graphicsTextMetrics.asm:GFM_table.
+
+Outline generation does not necessarily use the rasterizer's script offset.
+For example, TrueType/Adapter/ttpath.c:CalcTransformMatrix writes a grid-space
+translation, while ttwidths.c:CalcTransform uses the FontBuf metrics above.
+A caller that needs rasterizer placement can clear script bits on its temporary
+outline GState and apply the half scale and metric displacement itself.
+Kernel text decorations use the original font top after draw-mode adjustment;
+script displacement belongs to glyphs, not bars. Evidence:
+Library/Kernel/Graphics/graphicsText.asm:TextCallDriver and the saved pre-style
+position before KERNEL_STYLES processing.

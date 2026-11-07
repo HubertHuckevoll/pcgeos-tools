@@ -285,7 +285,22 @@ Non-trivial logic leaves one small runnable check in a project-local "Tests" fol
 
 ## Debugging
 
-When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat. Use `~/swat.rc` to configure breakpoints for Swat and give instructions for Swat commands to enter once the breakpoint fires. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in `~/pcgeos-tools/wiki/swat-source-breakpoints.md`.
+When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat.
+
+Swat can execute instructions at those custom warnings. Add something like this to `~/swat.rc` to show variable values etc:
+
+```
+[defsubr pdf::PDF_TRANSLATION_FAILED {} {
+    echo {PDF translator failure:}
+    locals
+    print p->error
+    print op
+    bt
+    return 1
+}]
+```
+
+You can also use `~/swat.rc` to configure breakpoints. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in `~/pcgeos-tools/wiki/swat-source-breakpoints.md`.
 
 
 ## GEOS knowledge base

@@ -215,3 +215,128 @@ avoids duplicating dash-command state in an exporter. Despite the public
 DashPairArray word declaration, only two bytes per pair are stored and used.
 Evidence: Include/Internal/gstate.def; graphicsState.asm:SetLineStyle;
 graphicsGetState.asm:GrGetLineStyle; graphicsLineStyles.asm:CreateDashArrayOfByteOffsets.
+
+## Indexed bitmap slices and PDF lookup tables
+
+A custom bitmap palette is a word count followed by packed RGB triples at
+CB_palette. HugeBitmapToString writes the palette with a zero-row introductory
+slice, then clears BMT_PALETTE on later slices. Preserve its color interpretation
+across those slices. Evidence: Include/graphics.def:CBitmap;
+Library/Kernel/Graphics/graphicsBitmapString.asm:HugeBitmapToString (writeHeader,
+unlockHADir) and SliceToString (storePalette).
+
+GrMapColorIndex(0,index) selects the kernel defaultPalette without allocating
+a palette block. Its C scalar result packs red, green and blue in the low three
+bytes. GrGetPalette instead allocates with HAF_NO_ERR, even for a default
+palette request. Evidence: graphicsColor.asm:GrMapColorIndex, GrGetPalette;
+graphicsC.asm:GRMAPCOLORINDEX.
+
+The native PDF viewer precomputes all 2^bits image color lookups and calls
+GfxColorSpaceGetColor for indices above indexHigh without clamping. Emit a full
+16-/256-entry PDF Indexed lookup table, padding unused entries, even if the
+source bitmap palette is shorter. Evidence: Appl/PDFViewer/main/gfxState.goc:
+GfxImageColorMapInit and GfxColorSpaceGetColor. Indexed PDF 1.1 images also use
+the ImageI ProcSet in their page resources.
+
+## Compressed bitmap scanlines
+
+BMC_PACKBITS uses unsigned controls 0..127 for 1..128 literals and 128..255
+for 129..2 repetitions. Control 128 is a 129-byte run, not a TIFF NOP. Packets
+must fit the current decoded row; native UncompactPackBits consumes a row by
+its known byte count. Evidence: graphicsRasterDraw.asm:UncompactPackBits;
+Tools/misc/cvtpcx/cvtpcx.c:CompactBytes.
+
+Bitmap LZG streams are per scanline. Flags are MSB-first: one selects a single
+literal; zero selects a token. Tokens support 3-byte short matches (bit 7,
+7-bit distance), ordinary/extended matches (10-bit distance), short/extended
+literal blocks (bit 6), and zero runs (bits 6 and 5). Token 0x60 ends the stream.
+Matches can overlap, and distance is at most 1023. Decoder history resets for
+each row. Evidence: Library/Kernel/Heap/heapCompress.asm:LZGUncompressLow,
+LZGSourceSize and LZG_* constants; graphicsBitmapString.asm:SliceToString
+(STS_lzged counts one LZGSourceSize per scanline).
+
+## Stored bitmap masks
+
+BMT_MASK prefixes each scanline with ceil(width/8) packed mask bytes, before
+the pixel data. A clear mask bit skips the destination write. Mono pixels
+remain a stencil: effective coverage is source AND stored mask. Compression
+therefore includes the mask prefix in the decoded scanline length. Evidence:
+Library/Kernel/Graphics/graphicsRaster.asm:CalcLineSize;
+Library/Trans/Graphics/Vector/EPS/Export/exportBitmap.asm:withMask;
+Driver/Video/Dumb/VidMem/Clr8/clr8Raster.asm:PutColor8ScanMask;
+Driver/Video/Dumb/VidMem/Clr8/clr8Raster.asm:WriteMonoByte.
+
+## Bounded arc angles and point attributes
+
+GrDrawArc/GrFillArc use radial angles: the ray from the ellipse center has
+that angle. This is not the ellipse parameter angle except on circles and
+axes. Angles increase counterclockwise with document Y downward; normalization
+is modulo 360. Open arcs leave the pen at angle2; chord/pie arcs leave it at
+angle1. Evidence: Library/Kernel/Graphics/graphicsArcLow.asm:
+CalcEllipsePointWithAng (ellipse/ray equation), NormalizeAngle, ArcSetCurPos.
+Open retained arcs establish a subpath start at angle1. Evidence:
+Library/Kernel/Graphics/graphicsPathLow.asm:StrokePathArc and
+AddArcEllipsePointsLow (ACT_OPEN).
+
+GrDrawPoint uses GS_areaAttr, not GS_lineAttr, after transforming the point.
+It draws one device pixel. The EPS exporter represents it as a one-document-
+unit filled rectangle, so that exporter convention differs under scaling.
+Evidence: graphicsOutput.asm:GrDrawPoint; Library/Trans/Graphics/Vector/EPS/
+Export/exportGString.asm:EmitFillRect (doPointCommon).
+
+## Three-point arc pen state and null-window playback
+
+Arc3PointSetCurPos selects point1 for ACT_OPEN and point3 for a closed arc.
+Arc3PointToSetCurPos leaves ACT_OPEN unchanged and selects point3 for a closed
+arc. GrDrawArc3PointToReal/GrFillArc3PointToReal call TrivialRejectFar before
+SetupArc3PointToLow; a null-window drawing state therefore bypasses their pen
+setter. An exporter using null-window playback must account for this state
+change explicitly. Evidence: Library/Kernel/Graphics/graphicsArc.asm, named
+procedures and arc3PointToToGSCommon.
+
+The relative recording branch calls RelArc3PointToSetCurPos, then jumps to
+arc3PointToToGSCommon, which calls the absolute Arc3PointToSetCurPos. Thus a
+closed recorded relative arc leaves the raw delta3 values as the final pen,
+not the summed relative endpoint. This is existing kernel behavior; it differs
+from SetupRelArc3PointToLow's drawing path. Evidence: graphicsArc.asm:
+drawRelArc3PointToGS and the two setters; graphicsArcLow.asm:
+SetupRelArc3PointToLow. Do not assume that the geometric curve endpoint and
+native recorded pen are identical.
+
+## Rectangular brush polyline behavior
+
+GrBrushPolyline takes byte brush width/height in device pixels. The video
+implementation uses GS_lineAttr and a rectangular brush extending right/down
+from each line pixel; line width, dash arrays and end-cap style do not define
+that brush. VidPolyline subtracts packed 0x0101 from the brush word, then clamps
+negative signed byte increments to zero. Evidence: graphicsPolyline.asm:
+GrBrushPolylineReal; Driver/Video/VidCom/vidcomLine.asm:VidPolyline,
+PolyRectDDA. DDA_X/DDA_Y coalesce horizontal/vertical runs. At an exact
+half-way decision, they change the minor coordinate for a positive dominant
+axis, but keep it for a negative dominant axis; reversed segments therefore
+cover the same pixels. FillPathPolyline treats a captured brush as its centerline and
+skips the two brush bytes (graphicsPathLow.asm).
+
+The native PDF printer advertises 300x300 dpi in
+Driver/Printer/PDF/pdfDriverInfo.asm:pdfGraphics. One physical device pixel is
+therefore 0.24 PDF points. Apply the GString and page transformations to the
+position before mapping to this grid; the rectangular brush dimensions are
+already device pixels. PDL page transforms are supplied by
+Library/Spool/Process/processPDL.asm:PrintPDLPage and CalcDocOrientation in
+processThread.asm. One document unit per pixel is the EPS convention, not
+device-exact sizing.
+
+## Transforming copied paths for export
+
+GrTransformDWFixed and GrUntransformDWFixed transform PointDWFixed in place,
+retaining a signed 32-bit integer and 16-bit fraction for each coordinate.
+Use a separate null-window GState for a page transform; do not overwrite a
+playback state's path or matrix. For a captured path, transform the explicit
+vertices/control points into the coordinate system used when painting. A
+fill/clip can use physical page coordinates. A stroke can use the inverse
+final painting transform, then apply that transform with its stroke attributes.
+This retains affine line widths and changing definition matrices. Evidence:
+CInclude/graphics.h:PointDWFixed and transform declarations;
+Library/Kernel/Graphics/graphicsC.asm:GRTRANSFORMDWFIXED/CTransDWCommon;
+graphicsUtils.asm:GrTransformDWFixed, GrUntransformDWFixed;
+Appl/PDFViewer/main/gfx.goc:opMoveTo/opLineTo/opCurveTo/opConcat.

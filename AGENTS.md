@@ -88,13 +88,26 @@ Mark intentional shortcuts with an ATTENTION: comment. Name the known ceiling an
 Do not be lazy about trust-boundary input validation, data-loss prevention, security, accessibility, or explicit user requirements.
 
 
-## General GEOS coding rules
+## General GEOS code style rules
 
 Do not normalize or change line endings. Before editing a file, preserve its existing line ending style exactly:
 - LF files must stay LF.
 - CRLF files must stay CRLF.
 - Mixed or legacy files must not be mass-rewritten.
 Never make line-ending-only changes. Never run formatters on unrelated files. After editing, check `git diff --ignore-space-at-eol` and ensure the diff contains only intentional code changes. If a file shows as fully rewritten because of line endings, revert that file and redo the edit without changing line endings.
+
+Functions / method handlers should be separated by at least one empty line. Code blocks within functions / method handlers should be visually separated as well. In the end, the code must still be human-readable.
+
+Use pure ASCII only in code and comments.
+
+For new system apps or APIs, propose docs only in TechDocs/Markdown.
+
+Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, lists. No tables, images, decorative markdown, or backtick-heavy formatting.
+
+When adding author information (usually in comments, frontmatter, etc), use "Codex/MeyerK".
+
+
+## General GEOS coding rules
 
 Use GOC by default for new applications and libraries. GOC transpiles to Watcom C 16-bit.
 
@@ -111,7 +124,7 @@ Use GEOS memory management, which basically follows the pattern of:
 * MemAlloc (create a handle for a memory block)
 * MemLock (lock the memory block and get a pointer to the locked block)
 * MemUnlock (allow the system to move the memory block around)
-* MemFree (free the memory block)
+* MemFree (free the memory block; blocks may be locked when doing so)
 
 Do not use malloc or free.
 
@@ -119,24 +132,18 @@ Use HAF_ZERO_INIT as the last MemAlloc parameter unless there is a specific reas
 
 Handles are scarce. Do not waste memory handles or file handles.
 
-Use pure ASCII only in code and comments.
-
-For new system apps or APIs, propose docs only in TechDocs/Markdown.
-
-Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, lists. No tables, images, decorative markdown, or backtick-heavy formatting.
-
-When adding author information (usually in comments, frontmatter, etc), use "Codex/MeyerK".
-
 
 ## GOC/C rules
 
 Use C89.
 
-Declare variables at the top of functions, not inside blocks.
+Declare variables at the top of functions, never inside blocks.
 
 Declare functions as `_pascal` by default.
 
 Use `(void*)0` for null pointer constants.
+
+Use early returns instead of nested blocks when possible.
 
 Indent with 4 spaces.
 
@@ -144,9 +151,9 @@ Function braces go on new lines.
 
 Inside functions, block opening braces stay on the same line.
 
-Name handles with trailing H.
+Name handles with a trailing `H`.
 
-Name pointers with trailing P.
+Name pointers with a trailing `P`.
 
 Do not recreate HIGHC aliases.
 
@@ -156,13 +163,11 @@ For libraries, avoid globals. Pass a context structure instead.
 
 Use WWFixed instead of float whenever applicable.
 
-Prefer GOC objects, messages, and instance variables over standalone helpers.
+Prefer GOC objects, messages, and instance variables over standalone helpers. CAUTION: the process class has no instance variables. Its variables are globals.
 
-CAUTION: the process class has no instance variables. Its variables are globals.
+`goto` is allowed for cleanup paths at the end of a function / method handler.
 
-goto is allowed only for cleanup paths at the end of a function.
-
-Use typedefs for callback functions instead of the PCM macro.
+Use `typedef`s for callback functions instead of the PCM macro.
 
 When writing methods and bigger coordinator functions (not helpers),
 use GeoWorks-style comments before the implementation, like this:
@@ -212,46 +217,46 @@ Introduce ASM blocks with:
 
 Procedure names and labels are never indented.
 
-uses, .enter, and .leave are indented with 1 tab.
+`uses`, `.enter`, and `.leave` are indented with 1 tab.
 
 Comment every non-trivial or non-intuitive instruction.
 
-Do not put semicolon comments inside macros like < EC >. Put comments behind the macro instead.
+Do not put semicolon comments inside macros like `< EC >`. Put comments behind the macro instead.
 
-If ESP warns about double or triple jumps, fix with LONG.
+If ESP warns about double or triple jumps, fix with the `LONG` macro.
 
 When writing ESP code, use GeoWorks-style comments before the implementations of bigger coordinator functions or methods (not helpers), like this:
 ```
 COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		DeskDisplayRelocate
+                DeskDisplayRelocate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-SYNOPSIS:	synopsis
+SYNOPSIS:       synopsis
 
-CALLED BY:	MSG_META_RELOCATE
+CALLED BY:      MSG_META_RELOCATE
 
-PASS:		*ds:si	= object
-		ax - MSG_META_RELOCATE/MSG_META_UNRELOCATE
-		cx - handle of block containing relocation
-		dx - VMRelocType:
-			VMRT_UNRELOCATE_BEFORE_WRITE
-			VMRT_RELOCATE_AFTER_READ
-			VMRT_RELOCATE_AFTER_WRITE
-		bp - data to pass to ObjRelocOrUnRelocSuper
-RETURN:		carry - set if error
-		bp - unchanged
+PASS:           *ds:si  = object
+                ax - MSG_META_RELOCATE/MSG_META_UNRELOCATE
+                cx - handle of block containing relocation
+                dx - VMRelocType:
+                     VMRT_UNRELOCATE_BEFORE_WRITE
+                     VMRT_RELOCATE_AFTER_READ
+                     VMRT_RELOCATE_AFTER_WRITE
+                bp - data to pass to ObjRelocOrUnRelocSuper
+RETURN:         carry - set if error
+                bp - unchanged
 
 DESTROYED:
 
 PSEUDO CODE/STRATEGY:
 
 KNOWN BUGS/SIDE EFFECTS/IDEAS:
-		none
+                none
 
 REVISION HISTORY:
-	Name	Date		Description
-	----	----		-----------
-	brianc	01/02/90	Initial version
+        Name    Date            Description
+        ----    ----            -----------
+        brianc  01/02/90        Initial version
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@
 ```
@@ -261,31 +266,31 @@ REVISION HISTORY:
 
 For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
 
-Always try to compile the geodes you changed through aihelp.py:
+Always try to compile the geodes you changed through `aihelp.py`:
 
-    `~/pcgeos-tools/aihelp.py build [source-or-module-path]`
+        `~/pcgeos-tools/aihelp.py build [source-or-module-path]`
 
-aihelp.py maps source paths to the matching Installed/ directory, runs pmake as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log.
+`aihelp.py` maps source paths to the matching Installed/ directory, runs `pmake` as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log.
 
 Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created or updated, use `mkmf` and `pmake depend`.
 
-For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use aihelp.py build.
+For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use `aihelp.py` build.
 
 End each implementation round with a concise, commit-message-style summary that can be copy/pasted, like this: `feat(prefsndn): combine system sound toggles and follow master sound state`.
 
-Finally, for each geode that was re-compiled in the process, make sure it has a `send <appname>` entry in `~/swat.rc`. swat.rc must end with the letter "c" in the last line (for "continue").
+Finally, for each geode that was re-compiled in the process, make sure it has a `send <appname>` entry in `~/swat.rc`. `swat.rc` must end with the letter `c` in the last line (for "continue").
 
 
 ## Testing
 
 Do not try to run PC/GEOS to test stuff.
 
-Non-trivial logic leaves one small runnable check in a project-local "Tests" folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test.
+Non-trivial logic leaves one small runnable check in a project-local `Tests` folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test. Don't go overboard with testing.
 
 
 ## Debugging
 
-When asked (!) to debug, add (custom) EC_WARNINGs to the code that will show up in Swat. Swat can execute instructions when warnings hit. Add a function like the following to `~/swat.rc` to show variable values, backtrace, etc. Avoid giving instructions to execute by hand at the Swat prompt. Also, don't dump to much information at once.
+When asked (!) to debug, add (custom) `EC_WARNING`s to the code that will show up in Swat. Swat can execute instructions when warnings hit. Add a function like the following to `~/swat.rc` to show variable values, tigger a backtrace, etc. Avoid giving instructions to execute by hand at the Swat prompt. Also, don't dump to much information at once.
 
 ```
 [defsubr pdf::PDF_TRANSLATION_FAILED {} {

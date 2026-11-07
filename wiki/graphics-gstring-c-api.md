@@ -163,6 +163,15 @@ accumulating the copied ApplyTransform records changes the geometry. Evidence:
 graphicsPath.asm:GrBeginPath, GrGetPath; graphicsPathLow.asm:PathLoadGString;
 graphicsTransformUtils.asm:GrSetTransformReal.
 
+A retained path can contain recorded SaveState/RestoreState and attribute
+commands, not only geometry and transforms. Replay these on the temporary
+GState; GrRestoreState restores the pen as well as the matrix. Keep the
+recorded save depth separate from a synthetic BeginPath section save, so an
+unmatched restore cannot pop that section frame. GrDestroyState frees any
+remaining saved-state chain. Evidence: graphicsState.asm:GrSaveState,
+GrRestoreState, GrDestroyState (freeLoop); graphicsPath.asm:GrBeginPath and
+GrEndPath (the path's own state save/restore).
+
 An unfinished GrBeginPath owns a path GString through GS_gstring. GrDestroyState
 requires GS_gstring to be zero (EC fatal otherwise); GrEndPath releases that
 GString and restores the saved GState. Close the definition before destroying
@@ -354,3 +363,42 @@ PROCCALLFIXEDORMOVABLE_PASCAL, FOM_common and ProcCallFixedOrMovable.
 Check the generated rsc.rsc resource list and Watcom object disassembly when
 checking a callback boundary; source code pragmas alone do not prove that
 caller and callback share one code resource.
+
+## Temporary paths used for object bounds
+
+GrObjGetBoundingRectDWFixedFromPath draws MSG_GO_DRAW_FG_LINE into a path on
+the parent GState, then queries its bounds. A recorded path definition can
+therefore contain text even when it is never painted. Exporters should
+validate captured records separately from rendering support, and defer an
+unsupported glyph-outline error until the path is painted or used as a clip.
+Evidence: Library/GrObj/GrObj/grobjBounds.asm:
+GrObjGetBoundingRectDWFixedFromPath; Library/Kernel/Graphics/graphicsPathLow.asm:
+FillPathTextField and StrokePathTextField (native paths accept text fields).
+
+## Native font outlines for exported paths
+
+DR_FONT_GEN_PATH writes glyph geometry through a supplied GState, including a
+recording GST_CHUNK GString. Resolve the maker from FontInfo.FI_maker, not a
+cached FontBuf.FB_maker: an outline font can currently have a bitmap buffer.
+FontDrLockInfoBlock + FontDrFindFontInfo exposes FI_family/FA_OUTLINE and
+FI_maker; GrCallFontDriverID invokes the outline generator. Evidence:
+Library/Kernel/Graphics/graphicsPathLow.asm:PathOutputText;
+Include/Internal/fontDr.def:FontInfo, FontGenPathFlags;
+Library/Kernel/Graphics/graphicsFontDriver.asm:FontDrFindFontInfo.
+
+FGPF_POSTSCRIPT suppresses the driver prologue's font-top translation and Y
+flip. Supply baseline placement and Y inversion in the recording state's
+matrix; leave its integer pen at zero to retain fractional placement.
+Nimbus uses MoveTo, LineTo, HLineTo, VLineTo, relative lines and curves;
+TrueType/Bitstream use moves, lines and curves. Generators also write comments
+and transforms. DR_FONT_GEN_PATH defines no status result. Evidence:
+Driver/Font/Nimbus/nimbusPath.asm:PathEmitPrologue, pathRoutines;
+Driver/Font/TrueType/Adapter/ttpath.c:TrueType_Gen_Path;
+Driver/Font/Bitstream/Main/mainOutline.asm;
+Library/Trans/Graphics/Vector/EPS/Export/exportText.asm:EmitCharacter.
+
+GrDestroyGString with GSKT_KILL_DATA deletes a GST_CHUNK data chunk, but not
+its owning LMem block. With GSKT_LEAVE_DATA, both chunk and block survive.
+The owner must release the LMem block after all recording/reading GString
+states are destroyed. Evidence: Library/Kernel/Graphics/graphicsStringUtils.asm:
+GrDestroyGString (LMemFree, freeGStringBlock, GrDestroyState).

@@ -27,6 +27,15 @@ CInclude/graphics.h is only 23 bytes. Skip all 26 native run-header bytes before
 reading characters; the alignment byte need not be zero. Using the packed C
 size reads padding as text and shifts later run headers.
 
+GDFS_flags is a HyphenFlags byte whose only defined bit is HF_AUTO_HYPHEN
+(mask 0x01). Ignore the remaining bits. TextLine's SetAutoHyphenFlag clears
+only that bit in the no-hyphen case, so unused bits can reach saved text-field
+records. GrDrawTextField and the EPS exporter test the named bit, not the
+whole byte. Evidence: Include/text.def:HyphenFlags;
+Library/Text/TextLine/tlCommonDraw.asm:SetAutoHyphenFlag;
+Library/Kernel/Graphics/graphicsText.asm:GrDrawTextField (done);
+Library/Trans/Graphics/Vector/EPS/Export/exportText.asm:CheckAutoHyphen.
+
 Evidence: Include/text.def:GDF_saved, Include/graphics.def:TextAttr (align word),
 Include/gstring.def:TFStyleRun, and
 Library/Kernel/Graphics/graphicsStringStore.asm:StoreTextField (writes size
@@ -88,3 +97,91 @@ absolute shape coordinates. GSFillBitmapAtCP with BMF_MONO draws set bits
 in the current area color and leaves clear bits transparent.
 Evidence: Library/User/User/userUtils.asm:UserCreateIconTextMoniker
 (drawText), TechDocs/Markdown/Concepts/cshapes.md (bitmap drawing).
+
+## C text-mask getter dispatch
+
+The C mask wrappers share CGetMaskCommon and CallLineMaskRoutine.
+CX=0 selects line, CX=1 selects area, and CX=2 selects text. Keep
+GRGETTEXTMASK at CX=2; using the area selector makes independent text
+visibility follow unrelated area attributes. Null mask-buffer pointers are
+permitted by this wrapper; it still returns the mask enum.
+Evidence: Library/Kernel/Graphics/graphicsC.asm:GRGETTEXTMASK,
+CallLineMaskRoutine, CGetMaskCommon; graphicsGetState.asm:GrGetTextMask.
+
+GrGetTextPattern and GrGetAreaPattern differ: their C wrapper writes both
+customPattern and customSize unconditionally, even for PT_SOLID. Pass valid
+addresses for both outputs, rather than null pointers. Evidence:
+graphicsC.asm:GetPatternCommonC.
+
+## PDF MacRoman glyph coverage
+
+PDF MacRomanEncoding does not contain every mathematical character from
+the Macintosh Roman byte set. Do not pass through GEOS byte values solely
+because the Mac Roman character has the same numeric code. The native
+PDF viewer maps e.g. 0xad, 0xb0, 0xb2, 0xb3, 0xb9, 0xba, 0xbd, 0xc3,
+0xc5, 0xc6 and 0xd7 to zero. The EPS exporter has existing Symbol-font
+character mappings for these cases. Evidence: Appl/PDFViewer/gfxFont2.goh:
+macRomanToGeosMap and macRomanEncodingNames; Library/Trans/Graphics/Vector/
+EPS/Export/exportText.asm:greekCharTab, greekMapTab, ConquerTheGreeks.
+
+## Native path and text metric APIs
+
+GrGetPathPoints is exported but currently returns BX=0 without constructing
+any points. Use GrGetPath for a copied path GString; it supports GPT_CURRENT,
+GPT_CLIP and GPT_WIN_CLIP. The caller owns the returned memory block.
+Evidence: Library/Kernel/Graphics/graphicsPath.asm:GrGetPathPoints (1262),
+GrGetPath (793); CInclude/graphics.h:GetPathType.
+
+VidCom KernChar applies pair and track kerning before painting a glyph,
+including track kerning before the first glyph. GrTextWidthWBFixed includes
+those adjustments in the resulting advance; GrCharWidth returns the bare
+character width. Prefix width alone therefore does not locate a kerned glyph.
+The assembly fractional width result is DX:AH (16.8); clear AL to return a
+16.16 DX:AX value to C. Evidence: Driver/Video/VidCom/vidcomChars.asm:KernChar;
+Library/Kernel/Graphics/graphicsTextMetrics.asm:GrTextWidthWBFixed;
+graphicsFont.asm:GrCharWidth; graphicsC.asm:GRCHARWIDTH.
+
+## Retained-path playback and cleanup
+
+GrTestPath distinguishes an absent path from a GrGetPath allocation failure.
+GrGetPath alone returns zero for both; an exporter must not treat an allocation
+failure on an existing clip as unrestricted painting. Evidence:
+Library/Kernel/Graphics/graphicsPath.asm:GrTestPath and GrGetPath.
+
+GrGetPath rearranges each native section from BeginPath/SetTransform/MoveTo
+to ApplyTransform/MoveTo/BeginPath. Its BeginPath header now retains the original
+flags, including per-section fill rule and page/document coordinate information.
+BPF_COMBINE in those flags reflects later clip combinations; OBP_combine can
+still contain the original definition's combine argument. Evidence:
+graphicsPath.asm:GrGetPath; graphicsPathLow.asm:CombineGStringOrPathWithPath,
+SetClipPathCommon in graphicsPath.asm; Include/Internal/grWinInt.def:BeginPathFlags.
+
+An exporter that skips BeginPath/EndPath during snapshot playback must preserve
+and restore the playback state itself and reset each saved section's absolute
+matrix. The original retained stream contains SetTransform per section; simply
+accumulating the copied ApplyTransform records changes the geometry. Evidence:
+graphicsPath.asm:GrBeginPath, GrGetPath; graphicsPathLow.asm:PathLoadGString;
+graphicsTransformUtils.asm:GrSetTransformReal.
+
+An unfinished GrBeginPath owns a path GString through GS_gstring. GrDestroyState
+requires GS_gstring to be zero (EC fatal otherwise); GrEndPath releases that
+GString and restores the saved GState. Close the definition before destroying
+its state on an export error. Evidence: graphicsState.asm:GrDestroyState;
+graphicsPath.asm:GrBeginPath and GrEndPath.
+
+## Watcom pattern getter return ABI
+
+The kernel C entries GRGETTEXTPATTERN and GRGETAREAPATTERN return packed
+PatternInfo directly in AX. CInclude declares a two-byte GraphicPattern
+structure result, but Watcom's __pascal definition uses `value struct routine
+[ax]`: the caller treats AX as a pointer to the result and dereferences it.
+For these entries, use a word-return declaration for the uppercase kernel C
+symbol, or an assembly adapter with a scalar result. Do not change the global
+structure-return convention; other functions can depend on it.
+
+Custom hatch/bitmap patterns return an owned snapshot handle that must be
+freed. For predefined patterns, BX and CX do not describe such a snapshot;
+only free the handle for PT_CUSTOM_HATCH or PT_CUSTOM_BITMAP. Evidence:
+CInclude/geos.h (__WATCOMC__ __pascal pragma), CInclude/graphics.h
+(GraphicPattern and getter declarations), Library/Kernel/Graphics/graphicsC.asm:
+GetPatternCommonC, and graphicsPattern.asm:GetPatternCommon.

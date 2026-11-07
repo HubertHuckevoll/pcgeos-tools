@@ -105,3 +105,9 @@ return 1 to stop; the default warning handler prints the warning and returns 0,
 so an ordinary warning does not itself stop execution. Evidence:
 Include/ec.def:Warnings, Library/Kernel/Boot/bootBoot.asm:CWARNINGNOTICE,
 Tools/swat/lib.new/fatalerr.tcl:why-warning.
+
+Use `_print` inside Tcl helpers when an address contains command substitutions,
+for example `_print byte ^h[getvalue element]:0 #$dumpSize`. The interactive
+`print` command uses `noeval`; `_print` evaluates its arguments first. An
+explicit type and handle:offset also avoid an untyped address being displayed
+as a scalar. Evidence: Tools/swat/lib.new/print.tcl:print and _print.

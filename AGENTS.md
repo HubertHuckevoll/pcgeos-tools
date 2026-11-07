@@ -285,9 +285,7 @@ Non-trivial logic leaves one small runnable check in a project-local "Tests" fol
 
 ## Debugging
 
-When asked (!) to debug, prefer adding custom EC_WARNINGs that will show up in Swat.
-
-Swat can execute instructions at those custom warnings. Add something like this to `~/swat.rc` to show variable values etc:
+When asked (!) to debug, add (custom) EC_WARNINGs to the code that will show up in Swat. Swat can execute instructions when warnings hit. Add a function like the following to `~/swat.rc` to show variable values, backtrace, etc. Avoid giving instructions to execute by hand at the Swat prompt. Also, don't dump to much information at once.
 
 ```
 [defsubr pdf::PDF_TRANSLATION_FAILED {} {

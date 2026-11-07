@@ -185,3 +185,15 @@ only free the handle for PT_CUSTOM_HATCH or PT_CUSTOM_BITMAP. Evidence:
 CInclude/geos.h (__WATCOMC__ __pascal pragma), CInclude/graphics.h
 (GraphicPattern and getter declarations), Library/Kernel/Graphics/graphicsC.asm:
 GetPatternCommonC, and graphicsPattern.asm:GetPatternCommon.
+
+## Native text decoration metrics
+
+Underline and strike-through positions are relative to the font top;
+subtract GFMI_BASELINE when painting relative to a text baseline. Both use
+GFMI_UNDER_THICKNESS. GDFS_limit caps the right edge of decorations while the
+text pen retains the full run advance; 0xffff is the no-limit sentinel.
+Decorations use GS_textAttr, including its mask/color, rather than line or
+area attributes. Evidence: Library/Kernel/Graphics/graphicsText.asm:PreStyles,
+DrawStyles; graphicsTextObscure.asm:LibDrawKernelStyles and DrawOneBar;
+CInclude/font.h:GFM_info; graphicsFontC.asm:CMetricsCommon returns fractional
+font metrics as 16.16 to C.

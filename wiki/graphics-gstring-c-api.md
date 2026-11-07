@@ -197,3 +197,21 @@ area attributes. Evidence: Library/Kernel/Graphics/graphicsText.asm:PreStyles,
 DrawStyles; graphicsTextObscure.asm:LibDrawKernelStyles and DrawOneBar;
 CInclude/font.h:GFM_info; graphicsFontC.asm:CMetricsCommon returns fractional
 font metrics as 16.16 to C.
+
+## Hyphens and effective dash state
+
+SBCS C_OPTHYPHEN (0x1f) has zero advance when hidden. It becomes C_HYPHEN
+only if TM_DRAW_OPTIONAL_HYPHENS is set and it is the last counted character
+(or the next byte is NUL). One-character width queries therefore cannot
+establish visibility for internal optional hyphens. Automatic field hyphens
+are drawn separately with the final run's attributes. Evidence:
+graphicsTextMetrics.asm:optHyphen; graphicsText.asm:GrDrawTextField (done);
+Driver/Video/VidCom/vidcomChars.asm:PSL_startHyphen.
+
+GrGetLineStyle returns only the enum. Effective native dash state starts at
+GS_numOfDashPairs: one byte count, one byte skip, then byte factors at
+GS_dashPairArray. Native save/restore preserves it. A locked GState snapshot
+avoids duplicating dash-command state in an exporter. Despite the public
+DashPairArray word declaration, only two bytes per pair are stored and used.
+Evidence: Include/Internal/gstate.def; graphicsState.asm:SetLineStyle;
+graphicsGetState.asm:GrGetLineStyle; graphicsLineStyles.asm:CreateDashArrayOfByteOffsets.

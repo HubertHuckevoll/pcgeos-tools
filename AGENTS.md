@@ -303,10 +303,10 @@ You can also use `~/swat.rc` to configure breakpoints. When creating breakpoints
 
 ## GEOS knowledge base
 
+Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
+
 When you discover a non-obvious, reusable fact about PC/GEOS while working on
 a task, add or update the appropriate document in `~/pcgeos-tools/wiki/`.
-
-Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
 
 Only record facts that are supported by the source tree or authoritative
 documentation. Include enough information to find the evidence again:

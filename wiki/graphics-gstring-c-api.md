@@ -340,3 +340,17 @@ CInclude/graphics.h:PointDWFixed and transform declarations;
 Library/Kernel/Graphics/graphicsC.asm:GRTRANSFORMDWFIXED/CTransDWCommon;
 graphicsUtils.asm:GrTransformDWFixed, GrUntransformDWFixed;
 Appl/PDFViewer/main/gfx.goc:opMoveTo/opLineTo/opCurveTo/opConcat.
+
+## C callbacks in movable resources
+
+A C function pointer into movable code can contain a virtual segment. Do not
+invoke it with a raw indirect far call. For Pascal callbacks, cast
+ProcCallFixedOrMovable_pascal to a typed Pascal function pointer with the
+callback pointer as its final argument; the kernel removes that argument,
+locks the resource and calls the target. SvgLib already uses this pattern in
+Library/SvgLib/Export/svgExportWriter.goc:SvgExportInvokeSink. Evidence:
+CInclude/resource.h; Library/Kernel/Geodes/geodesResource.asm:
+PROCCALLFIXEDORMOVABLE_PASCAL, FOM_common and ProcCallFixedOrMovable.
+Check the generated rsc.rsc resource list and Watcom object disassembly when
+checking a callback boundary; source code pragmas alone do not prove that
+caller and callback share one code resource.

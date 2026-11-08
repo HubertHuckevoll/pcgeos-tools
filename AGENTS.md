@@ -58,7 +58,7 @@ The build tools process the sources, compile and assemble modules, and link them
 
 For complete environment setup and build instructions, consult the repository's `README.md`.
 
-Additional tools and files may be found in `~/pcgeos-tools`. These are not part of the official repo. Scratch files and additional worktrees may go there as well.
+Additional tools and files may be found in `~/pcgeos-tools`. These are not part of the official repo. Scratch files and additional worktrees may go into `~/pcgeos-tools/temp/`
 
 The "PC/GEOS Ensemble" product installation itself (the so called "target") can be found at `~/gbuild/localpc/ensemble`.
 

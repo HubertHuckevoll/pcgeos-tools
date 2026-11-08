@@ -20,7 +20,9 @@ INI lookup and live buffers:
   `Library/Kernel/Initfile/initfileLow.asm:EnterInitfile` reads those buffers,
   so host edits are not reflected by restarting an application.
 - `EnterInitfileAndFindKey` searches buffers in order and stops at the first
-  matching key. An invalid Boolean in that file does not fall through to
+  matching key. A bare `@deleted` value is an inheritance barrier: reads
+  report the key missing, while read-all retains earlier contributions.
+  An invalid Boolean in that file does not fall through to
   later files: `initfileHigh.asm:InitFileReadBoolean` returns an error.
   The C wrapper (`initfileC.asm:CInitFileGetCommon`) preserves the caller's
   default for a missing category/key. Malformed Boolean values may overwrite
@@ -71,3 +73,25 @@ Include/fontID.def (FID_BERKELEY, FID_ESQUIRE, FID_DEJAVUSC);
 Library/Text/UI/uiFont.asm (CreateCustomFontMenu, GetValueFromHexString).
 The published SDK documents the Roman/Berkeley example at
 https://bluewaysw.github.io/pcgeos/Tools/tini.html#fontmenu .
+
+Whole-key tombstones:
+
+- The exact lowercase value `@deleted` outside a blob makes a key missing.
+  Spaces and tabs can surround it. A semicolon can start a comment after it.
+  Reads stop at the marker. Read-all keeps results from higher files.
+- `initfileHigh.asm:InitFileDeleteEntry` writes a marker only if a lower value
+  is available. Zero, false and an empty string count as values. An existing
+  marker stays in place, even if the lower key is later removed. The lower check
+  and primary change use the same INI lock (`initfileLow.asm:InitFileFindLowerKey`).
+- `initfileLow.asm:FindKey` still finds physical entries, including markers.
+  Logical readers call `InitFileIsDeletedValue` before value conversion.
+  Internal raw deletion still removes entries without writing markers.
+- `initfileConstruct.asm:BuildEntryFromString` puts a literal marker string in
+  a blob. DBCS string writes use encoded data. `Loader/ini.asm:IsDeletedValue`
+  uses the same raw marker rules as `InitFileIsDeletedString` in the kernel.
+- List reads check the primary marker before a merge. Factory rewrite snapshots
+  use `InitFileReadLowerString`. List append clears the whole-key marker before
+  a match with a factory item can skip the local write. The `key.disabled` item format
+  is unchanged. Whole-key markers do not depend on INI_STRING_SECTION_TOMBSTONES.
+- See `TechDocs/Markdown/Tools/tini.md`, section 9.1.1, for INI examples, and
+  `TechDocs/Markdown/Routines/rrouth_l.md:InitFileDeleteEntry` for the API rules.

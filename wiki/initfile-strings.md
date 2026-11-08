@@ -95,3 +95,42 @@ Whole-key tombstones:
   is unchanged. Whole-key markers do not depend on INI_STRING_SECTION_TOMBSTONES.
 - See `TechDocs/Markdown/Tools/tini.md`, section 9.1.1, for INI examples, and
   `TechDocs/Markdown/Routines/rrouth_l.md:InitFileDeleteEntry` for the API rules.
+
+Layered INI operation boundaries:
+
+- Category deletion has two uses. `Library/User/Gen/genAppMisc.asm`,
+  `GenApplicationMetaSaveOptions`, deletes the category for
+  `MSG_META_RESET_OPTIONS`. `Appl/Preferences/PrefMgr/prefmgrModem.asm`,
+  `PrefMgrModemApply`, deletes modem categories when the user selects none.
+  Thus, a caller audit must distinguish reset from removal before changing
+  the meaning of `InitFileDeleteCategory`.
+- In `Library/Kernel/Initfile/initfileHigh.asm`, `InitFileDeleteEntry` captures
+  a lower-list rewrite snapshot. `InitFileMaybeSkipRewriteSnapshotEntry`
+  removes written factory items from it. `InitFileWriteStringSection` stores
+  the remaining snapshot in key.disabled before either return path, including
+  the factory-match path that skips a local write. It keeps the snapshot for
+  later items. `InitFileReadMergedStringSection` reads the stored sidecar, so
+  the new list is visible before commit.
+- `InitFileCommit`, `InitFileSave`, `InitFileDeleteEntry`,
+  `InitFileDeleteStringSection`, and `InitFileDeleteCategory` finish pending
+  list work with `InitFileFlushPendingRewrite`. The INI module lock covers the
+  flush and the following operation. Item indices are resolved after the flush.
+  Category deletion stays physical and runs after the flush, so a later commit
+  cannot recreate the category from an old snapshot. The INI module lock is
+  recursive; see `Library/Kernel/kernelMacro.def`, `LockModule`, TL_nesting.
+- `InitFileRevert` reads ini.bak into a separate block with recoverable read
+  and allocation errors. It checks the final DOS EOF byte and calls
+  `ValidateIniFile` before replacing the primary buffer. Failure preserves the
+  active buffer, pending rewrite and caches. Success discards old pending
+  state, clears parser and category positions, and rebuilds the optional hash
+  table. `InitFileInitHashTable` releases the old table and rebuilds all active
+  layers. Replacement buffers and tables have kernel ownership. Lower buffers
+  and the active primary file handle stay in place.
+- `InitFileGrab` replaces only the primary buffer, file handle and size.
+  Lower buffers in `KLV_initFileBufHan` stay active. `InitFileRelease` calls
+  `InitFileCommit` before it restores those three primary values. Neither
+  function saves separate list rewrite state for the temporary file.
+- `InitFilePushPrimaryFile` and `InitFilePopPrimaryFile` shift the active
+  buffer chain. `InitFileSwitchLanguages` replaces only the primary buffer.
+  Language switching is compiled for PRODUCT=MULTILANG; see
+  `Include/Internal/prodFeatures.def`, `MULTI_LANGUAGE`.

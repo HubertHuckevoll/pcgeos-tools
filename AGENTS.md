@@ -132,6 +132,8 @@ Use HAF_ZERO_INIT as the last MemAlloc parameter unless there is a specific reas
 
 Handles are scarce. Do not waste memory handles or file handles.
 
+When creating folders in a project directory, make sure they start with an uppercase letter.
+
 
 ## GOC/C rules
 
@@ -154,6 +156,8 @@ Inside functions, block opening braces stay on the same line.
 Name handles with a trailing `H`.
 
 Name pointers with a trailing `P`.
+
+Use CamelCase for function names.
 
 Do not recreate HIGHC aliases.
 

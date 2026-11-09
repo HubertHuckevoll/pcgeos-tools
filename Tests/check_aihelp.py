@@ -100,7 +100,7 @@ with tempfile.TemporaryDirectory(prefix="aihelp-check-") as temporary:
     assert "output 4\n" not in result.stdout and "output 5\n" in result.stdout
     assert "output 24\n" in result.stdout
 
-    result = build((0, "normal output\n"))
+    result = build((0, "normal output\ndemo.ec: 12 lines, included 345, 0 warnings, 0 errors\n"))
     assert result.returncode == 0
     assert result.stdout == "BUILD OK Installed/Appl/Demo\n", result.stdout
 

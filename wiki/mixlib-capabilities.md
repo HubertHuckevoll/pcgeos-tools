@@ -33,3 +33,9 @@
   MixLib STRINGRESOURCE labels therefore have @localize limits of 31
   characters, excluding the terminator. BSMixerGetTokenText has no buffer-size
   parameter; callers must provide enough space.
+
+- Use ESP typed data labels such as `label word` for tables in code
+  resources. A colon declares a code label and can cause inline-data or
+  unreachable-code warnings. See Driver/Sound/BSD16/bsmixer.asm and
+  BSD8ST/bsmixer.asm; Tools/esp/data.c:Data_Enter checks the code-label
+  state before emitting `Data declared in-line without .inst directive`.

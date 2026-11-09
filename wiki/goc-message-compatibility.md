@@ -168,9 +168,12 @@ are intentional even though the source filenames are now descriptive.
 There are two distinct causes of empty code segments. Watcom can emit an
 unused filename-derived default segment alongside an explicit source
 `#pragma code_seg` selection. Matching `-nt` to the source pragma prevents
-that extra default-segment diagnostic. It cannot remove an empty segment
-when the entire implementation is compiled out: the object remains in the
-build, but its selected/default segment contains no code.
+that extra default-segment diagnostic. If the entire implementation is
+compiled out, matching a distinct default to its pragma leaves that segment
+empty. A data-only module without a code-segment pragma can instead share
+a live module's default segment. Bsqp and SndChk use scoped -ntprocess_TEXT
+settings for their data-only modules (Appl/Audio/Bsqp/local.mk and
+Appl/Audio/SndChk/local.mk). Existing function placements remain unchanged.
 
 The bookmark sources select their segments before
 `@ifdef COMPILE_OPTION_BOOKMARKS`; the local-page source does so before

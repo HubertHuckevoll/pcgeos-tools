@@ -345,7 +345,9 @@ def diagnostic_lines(output):
     i = 0
     while i < len(lines):
         line = lines[i]
-        if DIAGNOSTIC_RE.search(line):
+        if DIAGNOSTIC_RE.search(line) and not re.search(
+            r": \d+ lines, included \d+, 0 warnings, 0 errors$", line
+        ):
             selected.append(line.rstrip())
             # Keep all indented source/detail lines below the diagnostic.
             while i + 1 < len(lines):

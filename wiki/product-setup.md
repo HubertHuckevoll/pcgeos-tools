@@ -28,3 +28,21 @@ launchers append their startup headers (`write_start_log` in
 keeps promotion messages and runtime output in one log for each normal
 launch. Direct calls to the internal run launchers append to the existing
 log.
+
+## Version metadata
+
+`Tools/build/product/bbxensem/bbxensem.filetree` places the
+`Images/VERSION.TXT` template in `SETUP/ACTIVATE` for FreeGEOS. Other
+targets keep the system-core destination (`GFS LOCALPC`). The template
+uses `VAR(buildnumber)`, set by `Tools/build/build/var.pl:SetVars` from
+`ResolveEnvar("versionTag")` with the leading `BLD` removed. No Git lookup
+or timestamp is generated for this file.
+`Scripts/buildbbx.pl:GenerateFreeGEOSSetupCopyScripts` generates `GACT.BAT`
+from the files under `SETUP/ACTIVATE`. A file added to that payload before
+script generation therefore gets an activation copy command automatically.
+
+`~/pcgeos-packaging/pack-ensemble.sh:add_basebox_version` appends
+`Basebox Build <number>` to the staged activation file. The number comes
+from the detected `BLD<number>` Basebox folder. Packaging requires exactly
+one activation version file; older GEOS archives must be rebuilt first.
+Plain DOS builds keep the PC/GEOS line without a Basebox line.

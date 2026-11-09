@@ -134,3 +134,16 @@ Layered INI operation boundaries:
   buffer chain. `InitFileSwitchLanguages` replaces only the primary buffer.
   Language switching is compiled for PRODUCT=MULTILANG; see
   `Include/Internal/prodFeatures.def`, `MULTI_LANGUAGE`.
+
+INI error cleanup:
+
+- `Library/Kernel/Initfile/initfileLow.asm:ExitInitfile` releases both the
+  buffer lock and initFileSem. `CorruptedIniFileError` also releases
+  initFileSem. A caller that transfers to that fatal handler must keep the
+  module lock held and release any buffer lock separately. Releasing the
+  module lock twice can hide the original failure behind
+  UNLOCK_MODULE_BY_WRONG_THREAD.
+- `initfileHigh.asm:INITFILECOMMIT` validates the buffer before writing it,
+  but can first extend the disk file to reserve space. That extension starts
+  with DOS EOF; bytes after that marker are not evidence of buffer corruption.
+  `initfileLow.asm:ValidateIniFile` stops at the first DOS EOF byte.

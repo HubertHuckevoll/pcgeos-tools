@@ -19,7 +19,7 @@ loop compares successive snapshots and records detected late refills in
 timeOutCounter (Library/Audio/BSNWav/PCM/pcm.goc:BSNWPlay). Counter differences
 must use byte arithmetic so that 255 -> 0 is an ordinary interrupt.
 
-BSDMAGrenzen in both drivers can shorten a DMA allocation to approximately
+BSDMACheckBoundaries in both drivers can shorten a DMA allocation to approximately
 half its requested length when it crosses a physical 64 KiB boundary.
 BSSecondAlloc passes the selected segment/length to ProgramDMADriver,
 which stores the actual length in bufferLen; bufferO2 and DSP block size

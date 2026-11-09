@@ -130,3 +130,18 @@ Include/sun.geos.mk rules call Tools/scripts/perl/product_flags separately
 for ESP and Glue. Both calls must return -DPROTECTED_MODE for matching
 protected-mode guards. Evidence: Tools/glue/parse.y:HandleIFDEF and
 Library/Breadbox/Ijgjpeg/ASMTOOLS/asmtoolsManager.asm / ijgjpeg.gp.
+
+## Resource order and localization
+
+Glue assigns resource IDs in Tools/glue/geo.c:GeoPrepare and normally sorts
+resources by fixed/preload attributes (GeoCompareResources). GP resource
+declaration order is used only with nosort; an appended declaration alone
+does not guarantee an appended resource ID. Check the built .sym module
+order with bin/printobj after adding resources.
+
+GOC localization instructions describe chunks, not ordinary C string
+literals. Place @localize after the chunk or inline UI field; @localize not
+protects technical strings. Length limits are translator metadata and do not
+resize a caller buffer. See TechDocs/Markdown/Concepts/clocal.md and
+Tools/goc/parse.y:LocalizationLine. Generate .rsc records with goc -l to
+check the target chunk, substitution instructions, and length limits.

@@ -27,3 +27,9 @@
 - For mono descriptors, use only the low raw byte. BSMixerGetValue in the
   drivers skips assembling the second channel when the descriptor's second
   register is zero. Do not average raw bytes without checking valStereoFlag.
+
+- MixerControlClass, MSG_MIXER_CONTROL_INITIALIZE in
+  Appl/Audio/Mixer/Main/mixer.goc copies token labels into a 32-byte buffer.
+  MixLib STRINGRESOURCE labels therefore have @localize limits of 31
+  characters, excluding the terminator. BSMixerGetTokenText has no buffer-size
+  parameter; callers must provide enough space.

@@ -46,3 +46,19 @@ script generation therefore gets an activation copy command automatically.
 from the detected `BLD<number>` Basebox folder. Packaging requires exactly
 one activation version file; older GEOS archives must be rebuilt first.
 Plain DOS builds keep the PC/GEOS line without a Basebox line.
+
+## Literal parentheses in INI templates
+
+The legacy template processor in `Tools/build/build/template.pl`,
+`ParseTemplateFileAndSend`, closes language macros at the first `)`.
+Backslash-parenthesis does not escape that delimiter. Use `\[` and `\]`
+for literal parentheses inside a macro. The processor converts these after
+it processes the macros. See the languageName entries in
+`Tools/build/product/bbxensem/Template/geos.ini` and the runnable check
+`Tools/build/Tests/ini-language.pl`.
+
+An inactive language entry with backslash-parentheses can leave a standalone
+`)` line in the generated INI. The kernel rejects such a line during any
+later commit, so Apply can fail in an unrelated preferences module.
+Evidence: `Library/Kernel/Initfile/initfileLow.asm:ValidateIniFile`,
+`VIF_LOOKING_FOR_EQUAL`, and `initfileHigh.asm:INITFILECOMMIT`.

@@ -47,32 +47,70 @@ Evidence: `Library/Kernel/Heap/heapLow.asm:FullLockNoReload`,
 
 ## Swat send and EC DOS filenames
 
-Swat's send destination can differ from the product builder's DOS filename
-for long EC geode basenames. In Tools/build/build/fileutil.pl:Dosify, a
-basename longer than nine characters ending in ec is shortened to its first
-seven characters plus e. Thus prefsndnec.geo ships as prefsnde.geo, while
-the NC prefsndn.geo remains prefsndn.geo.
+Tools/swat/lib.new/filexfer.tcl:get-send-dest now calls
+file-mangle-for-dos-target in file-err.tcl. The target helper implements the
+product EC naming rule, but its suffix match is case-sensitive (*EC).
+get-send-dest uppercases source paths only on non-Unix hosts. Thus lowercase
+Unix build names longer than nine characters ending in ec still get the wrong
+DOS filename: prefsndnec.geo becomes prefsndn.geo instead of PREFSNDE.GEO;
+html4parec.geo becomes html4par.geo instead of HTML4PAE.GEO.
 
-Tools/swat/lib.new/filexfer.tcl:get-send-dest instead uses file tail of
-file-mangle-for-dos. That helper (file-err.tcl) leaves Unix paths unchanged
-and only normalizes separators on Win32; it does not apply the product's EC
-naming rule. Sending prefsndnec.geo can therefore create PREFSNDN.GEO on
-DOS alongside an old prefsnde.geo, rather than replacing the installed EC
-module. pcs.pat maps preference modules to SYSTEM/PREF.
+Tools/build/build/fileutil.pl:Dosify uppercases the name first, then shortens
+a basename longer than nine characters ending in EC to its first seven
+characters plus E. An incorrect send destination can leave the old EC module
+in place and create another geode with the same permanent name. Symptoms can
+include a symbol version-mismatch prompt and old behavior after a rebuild.
 
-The resulting symptoms can be a symbol version-mismatch prompt and the old
-UI despite a successful rebuild. Compare the installed and built geodes,
-including duplicate files with the same permanent name, before investigating
-compiler output or adding runtime diagnostics.
-
-Workaround: use send-file with an explicit product-compatible destination.
-For example:
+Use send-file with an explicit product-compatible destination when needed:
 
     send-file /home/konstantinmeyer/pcgeos/Installed/Library/Pref/Prefsndn/prefsndnec.geo SYSTEM/PREF/PREFSNDE.GEO
 
-Unload/reload the module after replacement. Check for unintended duplicate
-geodes left by earlier sends; do not treat ignoring the symbol prompt as
-confirmation that the new binary was loaded.
+Reload the module after replacement. Check for duplicate geodes before
+assuming that accepting a symbol mismatch loaded the rebuilt file.
+
+## Swat send and the split FreeGEOS layout
+
+send resolves the host geode with find-geode, then selects the first matching
+source-path rule in Tools/swat/lib.new/pcs.pat (filexfer.tcl:get-send-dest).
+The send -p option selects a host source path, not a target destination.
+Neither get-send-dest nor pcs.pat checks the active target's split layout.
+
+Tools/swat/Stub/kernel.asm copies KLV_topLevelPath into topLevelPath.
+Stub/rpc.asm:RpcSendFile calls RpcSavePathAndSwitchToTopLevelPath, creates
+missing directories with RpcCreateDirectory, and creates/truncates the file
+with DOS INT 21h. Stub32 has the same mechanism. Normal relative destinations
+therefore go below the user's Ensemble root. This code does not modify the
+GFS image or route files to the versioned BOOT directory.
+
+This is suitable for local SYSTEM overrides with the correct DOS filename.
+Loader/load.asm:FindAndOpenKernel explicitly tries local SYSTEM before the
+configured paths, so a local SYSTEM/GEOSEC.GEO overrides the bootstrap kernel
+on the next start. Kernel/File/filePath.asm:FindNextPathEntry and
+BuildPathEntry implement local-first standard-path lookup for other modules.
+GFSForgetBootstrapDir (Driver/IFS/GEOS/Common/gfsInitExit.asm) removes the
+bootstrap directory from runtime SP_TOP after GFS initialization.
+
+Distribution applications differ. Tools/build/product/bbxensem/fg.build
+sets all layoutWorld variants to SYSTEM/DISTAPPL. FirstRunResolveDistApplLinkTarget
+and FirstRunEnsureWorldLink (Appl/FirstRun/firstrun.goc) create WORLD links to
+SP_SYSTEM plus DISTAPPL/<DOS filename>. pcs.pat still sends GeoWrite to
+WORLD/HOME_OFF.000 and BbxBrow to WORLD. These create separate copies;
+they do not replace the files selected by existing WORLD links. A local
+SYSTEM/DISTAPPL/<correct DOS filename> is the matching override location for
+these distribution applications. Keep separate rules for system applications.
+
+run has another limitation: call.tcl:run invokes rpc-find-geode and assumes a
+WORLD-relative result and SP_APPLICATION. Stub/rpc.asm:RpcFindGeode searches
+only the physical DOS WORLD tree for *.GEO headers. It does not follow GEOS
+links or search GFS/DISTAPPL. Correcting send destinations alone does not make
+run or send -r find split distribution applications.
+
+A newly created local standard directory can remain invisible in the current
+session. Kernel/File/filePath.asm:BuildPathEntry skips directories marked
+SPA_DOES_NOT_EXIST_LOCALLY. FileCreateLocalStdPath clears this flag for GEOS
+creation; Swat's DOS directory creation does not. filexfer.tcl's src flush only
+flushes Swat source information. A restart rebuilds the path state; reliable
+live deployment needs GEOS path/cache handling as well as correct placement.
 
 ## Swat send and imported libraries
 

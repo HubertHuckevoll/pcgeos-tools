@@ -197,7 +197,7 @@ Name pointers with a trailing `P`.
 Use CamelCase for function names.
 
 When writing methods and bigger coordinator functions (not helpers),
-use GeoWorks-style comments before the implementation.
+use GeoWorks-style comments before the implementation (see below).
 
 A typical method definition in a GOC file would look like this:
 
@@ -264,7 +264,7 @@ Procedure names and labels are never indented.
 
 `uses`, `.enter`, and `.leave` are indented with 1 tab.
 
-When writing ESP code, use GeoWorks-style comments before the implementations of bigger coordinator functions or methods (not helpers).
+When writing ESP code, use GeoWorks-style comments before the implementations of bigger coordinator functions or methods (not helpers). See below.
 
 A typical method definition in an `*.ASM` file should look like this (actual code should use tabs instead of spaces):
 

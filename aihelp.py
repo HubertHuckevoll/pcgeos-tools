@@ -2,7 +2,7 @@
 """Compact PC/GEOS helper for coding agents.
 
 aihelp get SYMBOL      Return a small, useful source slice.
-aihelp build [PATH]    Build EC+NC and return only failures.
+aihelp build [PATH]    Build EC+NC and return errors, warnings and notes.
 """
 
 import argparse
@@ -17,9 +17,8 @@ MAX_CALLERS = 3
 MAX_DECLARATIONS = 3
 MAX_REFERENCES = 12
 MAX_BLOCK_LINES = 220
-MAX_DIAGNOSTICS = 80
-ERROR_RE = re.compile(
-    r"(?:\b(?:fatal|error)\b|Error!\s*[A-Z]?\d+|\*\*\*|undefined|unresolved)",
+DIAGNOSTIC_RE = re.compile(
+    r"(?:\b(?:fatal|error|warn(?:ing)?s?|notes?)\b|Error!\s*[A-Z]?\d+|\*\*\*|undefined|unresolved)",
     re.IGNORECASE,
 )
 
@@ -346,17 +345,15 @@ def diagnostic_lines(output):
     i = 0
     while i < len(lines):
         line = lines[i]
-        if re.match(r"^\s*warn(?:ing)?\b", line, re.IGNORECASE):
-            i += 1
-            continue
-        if ERROR_RE.search(line):
-            # Keep a continuation line when the compiler prints source/detail below it.
+        if DIAGNOSTIC_RE.search(line):
             selected.append(line.rstrip())
-            if i + 1 < len(lines):
+            # Keep all indented source/detail lines below the diagnostic.
+            while i + 1 < len(lines):
                 nxt = lines[i + 1].rstrip()
-                if nxt and nxt.startswith((" ", "\t", "^")):
-                    selected.append(nxt)
-                    i += 1
+                if not nxt or not nxt.startswith((" ", "\t", "^")):
+                    break
+                selected.append(nxt)
+                i += 1
         i += 1
     return selected
 
@@ -364,26 +361,27 @@ def diagnostic_lines(output):
 def cmd_build(repo, value, full=False):
     build_dir = find_build_dir(repo, value)
     rel = build_dir.relative_to(repo)
+    had_diagnostics = False
 
     for nc in (False, True):
         result, variant = build_once(build_dir, nc)
         if full:
             print(f"=== {variant} ===")
             print(result.stdout.rstrip())
-        if result.returncode:
-            print(f"BUILD FAILED {variant} {rel}")
+        else:
             diagnostics = diagnostic_lines(result.stdout)
             if diagnostics:
-                print("\n".join(diagnostics[:MAX_DIAGNOSTICS]))
-                omitted = len(diagnostics) - MAX_DIAGNOSTICS
-                if omitted > 0:
-                    print(f"... {omitted} more diagnostics omitted")
-            else:
+                had_diagnostics = True
+                print(f"=== {variant} ===")
+                print("\n".join(diagnostics))
+        if result.returncode:
+            print(f"BUILD FAILED {variant} {rel}")
+            if not full and not diagnostics:
                 tail = result.stdout.splitlines()[-20:]
                 print("\n".join(tail))
             return result.returncode or 1
 
-    if not full:
+    if not full and not had_diagnostics:
         print(f"BUILD OK {rel}")
     return 0
 
@@ -399,7 +397,7 @@ def parser():
     get = sub.add_parser("get", help="return compact context for a symbol")
     get.add_argument("symbol")
 
-    build = sub.add_parser("build", help="build EC+NC and suppress normal build noise")
+    build = sub.add_parser("build", help="build EC+NC and show all errors, warnings and notes")
     build.add_argument("path", nargs="?", help="source/build path; default: current directory")
     build.add_argument("--full", action="store_true", help="show complete build output")
     return p

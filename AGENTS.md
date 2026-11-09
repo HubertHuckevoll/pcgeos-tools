@@ -423,7 +423,9 @@ Always try to compile the geodes you changed through `aihelp.py`:
 
         `~/pcgeos-tools/aihelp.py build [source-or-module-path]`
 
-`aihelp.py` maps source paths to the matching Installed/ directory, runs `pmake` as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log.
+`aihelp.py` maps source paths to the matching Installed/ directory, runs `pmake` as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log. All errors, warnings and notes are returned. `BUILD OK` is returned if both builds succeed and no errors, warnings or notes were registered.
+
+Review every diagnostic. Resolve its cause within the task scope. Report any diagnostic that remains and explain why it remains. A successful exit code does not mean a clean build.
 
 Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created or updated, use `mkmf` and `pmake depend`.
 

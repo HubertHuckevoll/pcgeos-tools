@@ -22,6 +22,9 @@ activation of an existing installation. A new Basebox build can run with
 the old GEOS build. Launcher promotion must preserve the marker until DOS
 setup has used it.
 
-The run launchers also truncate `ensemble.log` in `write_start_log`
-(`ensemble-run.sh`) or at startup (`ensemble-run.cmd`). This removes the
-promotion messages that the wrappers appended before launch.
+The host wrappers clear `ensemble.log` before launcher promotion. The run
+launchers append their startup headers (`write_start_log` in
+`ensemble-run.sh`, the startup redirection in `ensemble-run.cmd`). This
+keeps promotion messages and runtime output in one log for each normal
+launch. Direct calls to the internal run launchers append to the existing
+log.

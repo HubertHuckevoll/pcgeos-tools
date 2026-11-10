@@ -119,3 +119,13 @@ only for `HAF_CODE`. Use a separate fixed code resource, and check the linked
 resource flags. The context saver in
 `Library/Breadbox/ImpGraph/ASMIMP/asmimpManager.asm:_set_error_handler` already
 uses the fixed ASM_FIXED code resource.
+
+JPEG method slots use GEOS movable-code addresses stored as void pointers.
+`CInclude/jmorecfg.h` defines `MPTR`, `MASSIGN` through `MASSIGN5`, and
+`MCALL`: assignments store the function address, while calls go through
+`ProcCallFixedOrMovable_pascal`. Keep the assignment destination as an
+lvalue and put the void-pointer cast on the source. Watcom's segment and
+offset relocations are unchanged by this form; a cast on the destination
+instead produces W120. See `Ijgjpeg/DECOMP/JDATASRC.c:jpeg_stdio_src` for
+the source-manager method assignments. Inspect OMF code and relocations
+with `wdis -a -l=<listing> <object>`.

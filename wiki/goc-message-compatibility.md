@@ -25,6 +25,17 @@ dependency. The library's normal `LIBNAME` handling already supplies its
 `-L` option, so do not add a duplicate. Evidence: `CInclude/html4par.goh`
 and `Library/Breadbox/Html4Par/local.mk`.
 
+## Local message call formats
+
+GOC can warn that an `@alias` target is not a message for the current class
+when the alias is declared outside the target's class. The check is in
+`Tools/goc/parse.y:aliasLine`. A local alternate argument format can instead
+use `@prototype` and `@call object::{PROTOTYPE}MSG_ORIGINAL(...)`.
+The cast selects the argument format while the original message supplies the
+message number; retain its return type. See
+`TechDocs/html/Programming/GOCLanguage/GOCLanguage_14.htm` (`cast2`) and
+`Library/Breadbox/Html4Par/htmlclas/htmltcel.goc:EmptyTopRegion`.
+
 ## Methods across source files and code resources
 
 Glue warns for any linked resource above 10,000 bytes (`Tools/glue/geo.c`,

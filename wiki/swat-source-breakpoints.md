@@ -143,9 +143,24 @@ return 1 to stop; the default warning handler prints the warning and returns 0,
 so an ordinary warning does not itself stop execution. Evidence:
 Include/ec.def:Warnings, Library/Kernel/Boot/bootBoot.asm:CWARNINGNOTICE,
 Tools/swat/lib.new/fatalerr.tcl:why-warning.
+The handler maps through the selected Warnings type; it does not search
+standalone constants with the same value. Check that mapping when a geode
+has more than one Warnings definition.
 
 Use `_print` inside Tcl helpers when an address contains command substitutions,
 for example `_print byte ^h[getvalue element]:0 #$dumpSize`. The interactive
 `print` command uses `noeval`; `_print` evaluates its arguments first. An
 explicit type and handle:offset also avoid an untyped address being displayed
 as a scalar. Evidence: Tools/swat/lib.new/print.tcl:print and _print.
+
+## Warnings on normal targets
+
+CInclude/ec.h compiles EC_WARNING out when ERROR_CHECK is zero. Swat's
+send command chooses the NC binary when the target kernel has the normal
+permanent name (Tools/swat/lib.new/filexfer.tcl:send). A missing EC warning
+therefore does not prove that its failure branch was not taken.
+For a temporary report on both builds, pair EC_WARNING(code) with
+NEC(Warning(code)); Warning calls CWarningNotice in either build.
+Swat installs the CWARNINGNOTICE breakpoint for GEOS 2.x in
+Tools/swat/lib.new/swat.tcl:_check_fatal_error. NC compiler options can omit
+C locals, so automatic reports must also handle missing local symbols.

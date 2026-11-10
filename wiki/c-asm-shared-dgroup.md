@@ -108,6 +108,26 @@ Driver/Sound/SoundBlaster/soundblasterDAC.asm does not list BSW formats.
 Selecting the ordinary sblaster driver therefore causes BSNW_WRONG_DRIVER
 for valid PCM sources. Decoder-only operations do not require this handshake.
 
+C-callable wrappers must preserve the native driver's SI and BP outputs.
+BSD16/bsstrate.asm:SBDDeviceQuery and BSD8ST's equivalent return a stream
+strategy in BP:SI and clear both registers. BSNWav/Driver/driverManager.asm:
+BSNWASMQUERYDEVICECAPABILITY saves CX, SI and BP around that call. Otherwise,
+optimized NC code in Main/library.goc:BSNWaveCheckDriver can lose the test
+value 5 held in SI, send 0 to the rate check, and reject a working driver.
+EC code keeps that value on the stack and can hide the fault.
+Tests/driver.pl exercises the real wrapper against native query outputs and
+checks its DAC result and preserved registers in standalone DOS.
+
+The Audio Player's "A BestSound driver is required" dialog reports
+BSNW_WRONG_DRIVER, not specifically a missing driver file.
+BSNWav/Main/subcode.goc:BSNWPreCheck calls BSNWaveCheckDriver on each check;
+Main/library.goc:BSNWaveCheckDriver rejects a null sampleDriver handle, zero
+DAC count, or a failed sample-rate handshake. BSNWLibEntry sets compatFlag
+at library attach, but BSNWPreCheck does not use only that cached flag.
+Library/Wav/wav.asm:PlaySoundFromFileLow calls BSNWAVEPLAYFILE for system
+sounds and tries legacy playback after a BestSound error. Thus, silent system
+sounds alone do not identify the failure as a missing BestSound driver.
+
 JPEG error recovery must execute from a code resource in protected mode.
 `Ijgjpeg/ASMTOOLS/asmtoolsManager.asm:_jmp_to_error_handler` performs a
 nonlocal return after unlocking movable resource-call frames. It must not

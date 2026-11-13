@@ -21,37 +21,37 @@ Text EC checks each region's `VLTRAE_calcHeight` against the sum of its
 `LineInfo` heights. `CalculateRegions` invokes the full check on entry and
 exit and validates the previous region during its line loop. Thus a stop at
 `ECValidateSingleRegion` needs a backtrace to determine whether the bad height
-pre-existed this recalculation or was produced during it. The legacy
-`WARNING_SPECIAL_CASE_FOR_LARGE_DELETE_INVOKED` marks a backward ripple into
-an empty region; it does not itself identify a corrupt region. Evidence:
+pre-existed this recalculation or was produced during it.
+`RippleLinesToNextRegion` also validates the previous region immediately
+after `RippleToNextRegion`, before next-region height accounting is changed
+or reset. `ECValidateSingleRegion` uses `bp` for the line-height sum; obtain
+`ss:bp` from the `CalculateRegions` caller frame to inspect `LICL_vars`.
+Evidence:
 `Library/Text/Text/textCalcObject.asm` (`CalculateRegions`,
 `ECValidateRegionAndLineHeights`, `ECValidatePreviousRegion`,
 `FigureNextRegionChangeAndComputeRippleHeight`).
 
-`WARNING_TEXT_REGION_HEIGHT_REPAIRED` reports a detected height mismatch;
-`RepairRegionHeight` recomputes the line-height sum, adjusts the stored
-region height and `LICL_totalChange`, and requests drawing. The repair runs
-in both EC and NC; only its warning is EC-only. It runs for the previous
-region as calculation advances and for the final region at `CR_quit`.
-Evidence: `Library/Text/Text/textCalcObject.asm` (`CalculateRegions`,
-`RepairPreviousRegionHeight`, `RepairRegionHeight`). The large-delete
-warning instead tests negative ripple height and equal current/next top-line
-indexes; it neither requires an actual text deletion nor proves a loop.
+GeoWrite uses the printing draw path for on-screen master pages:
+`Appl/GeoWrite/Document/documentDraw.asm:DrawMasterCallback` sends
+`MSG_VIS_DRAW` to `MasterPageBody` with `DF_PRINT`. In
+`Library/Text/Text/textMethodDraw.asm:VisTextDraw`, small text objects with
+variable graphics call `TG_IfVariableGraphicsThenRecalc` before drawing and
+`TG_RecalcAfterPrint` afterwards. The former copies `VTI_lines` and
+recalculates the copy. `VisTextDraw` must save `VTI_height` before this
+calculation and pass it with the original line chunk to `TG_RecalcAfterPrint`.
+That routine restores both values and frees the temporary line array. Restoring
+only the line array leaves print-layout height data paired with the original
+line heights when temporary calculation changes the height. Evidence:
+`Library/Text/TextGraphic/tgGraphic.asm` (both routines) and
+`Library/Text/TextRegion/trSmallClear.asm:SmallRegionAdjustHeightFar`
+(the write to `VTI_height` during calculation). A redraw can therefore run
+this temporary-print layout path without an actual print job.
 
 Swat normally prints warnings and resumes: `Tools/swat/lib.new/swat.tcl`
 (`_check_fatal_error`) installs `why-warning` as the `WarningNotice`
 breakpoint handler, and `fatalerr.tcl:why-warning` returns zero by default.
 A warning-specific Tcl procedure can override that result. A stop at
 `WarningNotice` alone therefore does not establish a fatal text error.
-
-An EC-only check after `RippleToNextRegion()` warns with
-`WARNING_RIPPLED_REGION_HEIGHT_MISMATCH` when the just-completed region's
-stored height differs from its line-height sum. At
-`ECWarnCompletedRegionHeightMismatch`, `cx` is the completed region,
-`bp.bl` the line-height sum, and `dx.al` the stored height. The existing
-fatal validator still runs; this warning locates a divergence at the
-ripple boundary. Evidence: `Library/Text/Text/textCalcObject.asm`
-(`RippleLinesToNextRegion`, `ECWarnCompletedRegionHeight`).
 
 In large text, `TR_RegionSetTopLine` can redistribute line counts across
 multiple neighboring regions through `LargeRegionSetTopSomething`, while
@@ -60,7 +60,25 @@ Text's ripple code must keep those two updates paired. Evidence:
 `Library/Text/TextRegion/trLargeSet.asm` (`LargeRegionSetTopLine`,
 `LargeRegionSetTopSomething`), `trLargeClear.asm`
 (`LargeRegionAdjustHeight`), and `Library/Text/Text/textCalcObject.asm`
-(`RippleLinesToNextRegion`, `UpdateRegionHeight`).
+(`RippleLinesToNextRegion`, `UpdateRegionHeight`). The cached line range
+`LICL_regionTopLine` to `LICL_nextRegionTopLine` is half-open. For the last
+region, `GetNextTopLine` uses the total line count as its end;
+`LICL_lineCount` itself stores that count minus one. Both range bounds are
+32-bit values. Evidence: `GetCachedValues` and `GetNextTopLine` in
+`Library/Text/Text/textCalcObject.asm`.
+
+`LICL_insertedSpace` is the pending change in the current segment, while
+`LICL_totalChange` accumulates committed height changes in the current region.
+`UpdateSegment` captures their sum in `LICL_bltChange` before
+`UpdateRegionHeight` commits the new adjustment. A continuation through
+`clearInsDelAndCalc` clears inserted space but retains total change; entering
+another region resets total change. `CheckRecalcFromNextSegment` tests both
+values before its early exit and uses total change to select lines around
+segment boundaries. Equal final region heights alone do not establish equal
+intermediate line positions. Evidence: `Library/Text/texttext.def` (the four
+fields) and `Library/Text/Text/textCalcObject.asm` (`CR_almostPerfect`,
+`UpdateSegment`, `UpdateRegionHeight`, `CheckRecalcFromNextSegment`, and
+`ComputeLineRangeToCover`).
 
 `ILayoutCellRegions()` passes `IEdgeCreatePathInRegion()`'s `regionChanged`
 result as `forcedRecalc` to `IRegionRepositionResizeAndReflow()`. A changed
@@ -74,11 +92,7 @@ are both sufficient for `HCD_longestLine`. Evidence:
 Swat already provides `rwatch on|off` for ripple accounting: it traces
 line calculation, old/new heights, inserted/deleted space, and ripple
 height/count (`Tools/swat/lib.new/ptext.tcl`, `rwatch`, `rw-after-calc`,
-`rw-update-region-height`). Break at
-`text::ECWarnCompletedRegionHeightMismatch` to inspect the first detected
-completed-region divergence before the fatal validator. The warning uses
-`bp` for the line-height sum; select its caller frame before reading
-`ss:bp.text::LICL_vars`. `ptext -rE *ds:si` prints region geometry/counts
+`rw-update-region-height`). `ptext -rE *ds:si` prints region geometry/counts
 without text; `ptreg <region>` prints that region's lines.
 
 Html4Par queues `MSG_HTML_TEXT_INTERNAL_LAYOUT_UPDATE_EVENT` with

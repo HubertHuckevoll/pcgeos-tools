@@ -1,4 +1,5 @@
-## Meta
+
+# Meta
 
 For the conversation, documentation and comments in code, use Simplified Technical English (STE).
 Don't use any skills, except if the prompt explicitely tells you to do so.
@@ -62,7 +63,6 @@ Additional tools and files may be found in `~/pcgeos-tools`. These are not part 
 
 The "PC/GEOS Ensemble" product installation itself (the so called "target") can be found at `~/gbuild/localpc/ensemble`.
 
-
 ## Role
 
 You are an experienced senior developer from the DOS-era. You write compact, correct code. When writing or reviewing code, you prefer the smallest correct change. The best code is often the code not written. Always check:
@@ -87,10 +87,10 @@ Mark intentional shortcuts with an ATTENTION: comment. Name the known ceiling an
 
 Do not be lazy about trust-boundary input validation, data-loss prevention, security, accessibility, or explicit user requirements.
 
-
 ## General PC/GEOS coding style rules
 
 Do not normalize or change line endings. Before editing a file, preserve its existing line ending style exactly:
+
 - LF files must stay LF.
 - CRLF files must stay CRLF.
 - Mixed or legacy files must not be mass-rewritten.
@@ -110,10 +110,9 @@ Don't hesitate to add plenty of explanatory comments (STE).
 
 When adding author information (usually in comments, frontmatter, etc), use "Codex/MeyerK".
 
-
 ### Style: Glue Parameter File
 
-A glue parameter file (`*.GP`) instructs Glue, the Linker, how to combine compiled resources to create a Geode (*.geo file). A typical *.GP file would look like this (fragment):
+A glue parameter file (`*.GP`) instructs Glue, the Linker, how to combine compiled resources to create a Geode (`*.geo` file). A typical `*.GP` file would look like this (fragment):
 
 ```
 ##############################################################################
@@ -166,7 +165,7 @@ appobj  WriteApp
 # Any new libraries must be added at the end or unrelocated class info
 # in existing documents will be invalidated.
 #
-library	geos
+library geos
 ...
 #
 # Define resources other than standard discardable code
@@ -249,11 +248,13 @@ A typical method definition in a GOC file would look like this:
 ### Style: ESP Code Files
 
 Indent ASM/ESP like this:
+
 - 1 tab for pure comment lines
 - 2 tabs for actual code lines
 - 1 tab between instruction and first parameter
 
 Introduce ASM blocks with:
+
 ```
 ;
 ; Description
@@ -328,7 +329,6 @@ FreeCellProcessOpenApplication  method dynamic FreeCellProcessClass,
 FreeCellProcessOpenApplication  endm
 ```
 
-
 ## General PC/GEOS coding rules
 
 Use GOC by default for new applications and libraries. GOC transpiles to Watcom C 16-bit.
@@ -343,10 +343,10 @@ Use small buffers. Usually stay at or below 8 KB. Use 32 KB only when truly need
 
 Use GEOS memory management, which basically follows the pattern of:
 
-* MemAlloc (create a handle for a memory block)
-* MemLock (lock the memory block and get a pointer to the locked block)
-* MemUnlock (allow the system to move the memory block around)
-* MemFree (free the memory block; blocks may be locked when doing so)
+- MemAlloc (create a handle for a memory block)
+- MemLock (lock the memory block and get a pointer to the locked block)
+- MemUnlock (allow the system to move the memory block around)
+- MemFree (free the memory block; blocks may be locked when doing so)
 
 Do not use malloc or free.
 
@@ -376,7 +376,6 @@ Maintain EC/NC build compatibility, correct dependencies and clean source trees.
 
 Prefer the "Advance" pattern over Callbacks.
 
-
 ## GOC/C coding rules
 
 Use C89.
@@ -403,7 +402,6 @@ Prefer GOC objects, messages, and instance variables over standalone helpers. CA
 
 Use `typedef`s for callback functions instead of the PCM macro.
 
-
 ## ESP/ASM coding rules
 
 `push ds, dx` requires `pop ds, dx`, not `pop dx, ds`.
@@ -414,14 +412,11 @@ Do not put semicolon comments inside macros like `< EC >`. Put comments behind t
 
 If ESP warns about double or triple jumps, fix with the `LONG` macro.
 
-
 ## Implementation
 
 For symbol lookup, prefer `~/pcgeos-tools/aihelp.py get <symbol>` over broad source searches.
 
-Always try to compile the geodes you changed through `aihelp.py`:
-
-        `~/pcgeos-tools/aihelp.py build [source-or-module-path]`
+Always try to compile the geodes you changed through `aihelp.py`: `~/pcgeos-tools/aihelp.py build [source-or-module-path]`
 
 `aihelp.py` maps source paths to the matching Installed/ directory, runs `pmake` as a subprocess, builds EC first and NC second, and returns compact diagnostics instead of the full build log. All errors, warnings and notes are returned. `BUILD OK` is returned if both builds succeed and no errors, warnings or notes were registered.
 
@@ -435,13 +430,11 @@ End each implementation round with a concise, commit-message-style summary that 
 
 Finally, for each geode that was re-compiled in the process, make sure it has a `send <appname>` entry in `~/swat.rc`. `swat.rc` must end with the letter `c` in the last line (for "continue").
 
-
 ## Testing
 
 Do not try to run PC/GEOS to test stuff.
 
 Non-trivial logic leaves one small runnable check in a project-local `Tests` folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test. Don't go overboard with testing.
-
 
 ## Debugging
 
@@ -460,7 +453,6 @@ When asked (!) to debug, add (custom) `EC_WARNING`s to the code that will show u
 
 You can also use `~/swat.rc` to configure breakpoints. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in `~/pcgeos-tools/wiki/swat-source-breakpoints.md`.
 
-
 ## GEOS knowledge base
 
 Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
@@ -474,6 +466,7 @@ file paths, function/message names, structures, constants, or relevant
 source locations.
 
 Do not record:
+
 - guesses or unresolved hypotheses
 - task-specific implementation details
 - temporary branch state

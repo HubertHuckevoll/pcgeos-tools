@@ -20,3 +20,24 @@ GrObjRotateControlRotate; Library/GrObj/GrObj/grobjGeometry.asm:
 GrObjScaleObject, GrObjScale, GrObjRotate; Library/GrObj/GrObj/
 grobjTransformUtils.asm:GrObjOTApplyScaleRelativeOBJECT,
 GrObjOTApplyScaleRelative, GrObjOTApplyRotateRelative.
+
+## View zoom limits
+
+GeoWrite uses the GenViewControl default range of 25 to 200 percent.
+GeoDraw sets its range to 12 to 400 percent. These are controller limits:
+GenViewControlSetScale clamps nonzero requests to GVCI_minZoom and
+GVCI_maxZoom. They do not establish the safe drawing limit of an application.
+Evidence: Include/Objects/gViewCC.def:DEFAULT_ZOOM_MINIMUM,
+DEFAULT_ZOOM_MAXIMUM; Appl/GeoWrite/UI/uiView.ui:WriteViewControl;
+Appl/GeoDraw/UI/uiMain.ui:DrawViewControl;
+Library/User/UI/uiView.asm:GenViewControlSetScale.
+
+The preset menu and the permitted zoom range are separate. GVCF_ENLARGE
+includes the 125, 150, 175 and 200 percent entries. GVCF_BIG_ENLARGE
+includes the 300 and 400 percent entries through ATTR_GEN_FEATURE_LINK.
+GVC_DEFAULT_FEATURES omits GVCF_BIG_ENLARGE; GeoDraw adds it at the
+intermediate user level. Raising maxZoom alone does not add menu entries.
+Evidence: Include/Objects/gViewCC.def:GVC_DEFAULT_FEATURES;
+Library/User/UI/uiView.asm:GVC_featuresList;
+Library/User/UI/uiView.ui:Zoom125Entry, Zoom300Entry;
+Appl/GeoDraw/UI/uiMain.ui:DrawViewControl.

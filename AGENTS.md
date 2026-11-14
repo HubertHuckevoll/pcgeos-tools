@@ -434,7 +434,7 @@ Finally, for each geode that was re-compiled in the process, make sure it has a 
 
 Do not try to run PC/GEOS to test stuff.
 
-Non-trivial logic leaves one small runnable check in a project-local `Tests` folder behind. Use an assert demo, self-check, or tiny test file. Remember that GEOS natively only uses C, ASM and Perl. No frameworks. Trivial one-liners need no test. Don't go overboard with testing.
+Non-trivial logic should be tested in a project-local `Tests` folder. These can be left in the folder if they are re-usable. Trivial one-line changes need no test. Use the Watcom C compiler (as installed for compiling the pcgeos geodes) and check the `~/pcgeos/Tools` folder first to find include files that can be used to simulate the GEOS API. Don't go overboard with testing.
 
 ## Debugging
 

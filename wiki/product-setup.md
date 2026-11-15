@@ -56,6 +56,12 @@ mapping. DOSEMU's removal form is `emudrv -d X:`
 (`dosemu2/dosemu2`, `src/dosext/builtins/lredir.c:emudrv_main`);
 SUBST and SWSUBST use `X: /D`.
 
+A DOS batch `>NUL` redirect covers standard output only. FreeCOM reports
+missing commands through `error_bad_command` and `displayError`, which
+writes to standard error. See `FDOS/freecom`, `shell/command.c`,
+`lib/err_fcts.src` and `lib/msg_dps.c:displayError`. Suppression for both
+DOSBox and FreeCOM must cover both output handles.
+
 ## GFS bootstrap path handling
 
 `Tools/gsetup/gsetup.c:WriteGfsIni` generates `GFS.INI` during install and

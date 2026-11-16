@@ -1,14 +1,20 @@
 # PC/GEOS 6: Important Changes for Release Review
 
-Working draft, 14 November 2026. Author: Codex/MeyerK.
+Working draft, 16 November 2026. Author: Codex/MeyerK.
 
 ## Review scope and use
 
-This document covers all 3,602 commits reachable from local master at
-[beb7e2c77](https://github.com/bluewaysw/pcgeos/commit/beb7e2c770262a3f20ba5a889801cce32ac23379), dated 12 November 2026. The history starts with the source
+This document covers all 3,609 commits reachable from upstream master at
+[01c7a0172](https://github.com/bluewaysw/pcgeos/commit/01c7a0172688aa72cc29898eb832dd5915d49cf7), dated 15 November 2026. The history starts with the source
 publication on 17 November 2018. It includes commits on merged branches,
 not just the first-parent history. Unmerged branches and other repositories
-are outside this review. No fetch was done.
+are outside this review. Upstream master was fetched on 16 November 2026.
+The local split-setup branch is outside this review.
+
+This update screens the seven commits after the previous endpoint,
+[beb7e2c77](https://github.com/bluewaysw/pcgeos/commit/beb7e2c770262a3f20ba5a889801cce32ac23379). Their surviving changes are included under D01, D05, A06,
+and L01. Icon Editor documentation formatting is routine maintenance and
+adds no separate release claim.
 
 The provisional baseline is the source used for Breadbox Ensemble 4.13,
 as stated in [README.md](../pcgeos/README.md). The initial import and repository moves are not
@@ -153,7 +159,17 @@ application/window switching, taskbar position options, and related Express
 menu and window-placement changes. The existing UI choices remain available.
 The current product template enables the taskbar.
 
-Evidence: [46693bf56](https://github.com/bluewaysw/pcgeos/commit/46693bf56c6a63964cf4bf15bc77cd5131dbd0e9), [f10ce6e4e](https://github.com/bluewaysw/pcgeos/commit/f10ce6e4e5edb3e898e8a30d82b04ffbcfbd37a4), [543fdcd3f](https://github.com/bluewaysw/pcgeos/commit/543fdcd3fd9b5d8233d21334a0e3c770bcc820d5).
+Taskbar entries gain a context menu, opened with a right-click or Shift-F10,
+with Restore, Move, Size, Minimize, Maximize, and Close commands. Available
+commands follow the selected window's state and UI policy. The menu can open
+for a minimized window without first activating it.
+
+Preferences also expose an option to put menus in the title bar of maximized
+windows. Geometry and redraw repairs keep those menus and window controls
+aligned and visible in Motif and ISUI.
+
+Evidence: [46693bf56](https://github.com/bluewaysw/pcgeos/commit/46693bf56c6a63964cf4bf15bc77cd5131dbd0e9), [f10ce6e4e](https://github.com/bluewaysw/pcgeos/commit/f10ce6e4e5edb3e898e8a30d82b04ffbcfbd37a4), [543fdcd3f](https://github.com/bluewaysw/pcgeos/commit/543fdcd3fd9b5d8233d21334a0e3c770bcc820d5),
+[460ff5afb](https://github.com/bluewaysw/pcgeos/commit/460ff5afbc1086f0d08f1bf37897c076737abbfc), [01c7a0172](https://github.com/bluewaysw/pcgeos/commit/01c7a0172688aa72cc29898eb832dd5915d49cf7).
 Current source: [Library/SpecUI/CommonUI](../pcgeos/Library/SpecUI/CommonUI), [Library/Pref/ConfigUI](../pcgeos/Library/Pref/ConfigUI),
 [Tools/build/product/bbxensem/Template/geos.ini](../pcgeos/Tools/build/product/bbxensem/Template/geos.ini).
 
@@ -209,11 +225,15 @@ and copy names with a suffix. Holding Ctrl while opening a folder temporarily
 changes the single-window/multiple-window behavior. Opening a folder that is
 already open can bring its window forward. Desktop windows follow available
 space more closely, and standard folders receive friendly titles. Missing
-folder tokens now fall back to a folder icon.
+folder tokens now fall back to a folder icon. Later fixes restore the Attr
+column in Names and Details views for GPC builds and correct the Sort/View
+popup visibility test.
 
 Evidence: [9c91d1024](https://github.com/bluewaysw/pcgeos/commit/9c91d10243090a34652612d04cf30d1aaefd3f70), [3da48011b](https://github.com/bluewaysw/pcgeos/commit/3da48011b175066b31ebb4b0c361566e1ab26f5a), [c820b09c7](https://github.com/bluewaysw/pcgeos/commit/c820b09c718e8298e9df744520abb8af0881202f),
-[9202f41c5](https://github.com/bluewaysw/pcgeos/commit/9202f41c55f2e75bf6a763c96929f33252ef5b21), [ae0ef3dae](https://github.com/bluewaysw/pcgeos/commit/ae0ef3dae90c5e2fa321b5626cde49e35c4aa1e2), [537f0436e](https://github.com/bluewaysw/pcgeos/commit/537f0436eb7b4592f5117fbfa17dfe1ccfaae41f).
-Current source: [Appl/FileMgrs2/CommonDesktop](../pcgeos/Appl/FileMgrs2/CommonDesktop).
+[9202f41c5](https://github.com/bluewaysw/pcgeos/commit/9202f41c55f2e75bf6a763c96929f33252ef5b21), [ae0ef3dae](https://github.com/bluewaysw/pcgeos/commit/ae0ef3dae90c5e2fa321b5626cde49e35c4aa1e2), [537f0436e](https://github.com/bluewaysw/pcgeos/commit/537f0436eb7b4592f5117fbfa17dfe1ccfaae41f),
+[e9e103a0c](https://github.com/bluewaysw/pcgeos/commit/e9e103a0c37936478a2c60cb1b4f018bacb6080a).
+Current source: [Appl/FileMgrs2/CommonDesktop](../pcgeos/Appl/FileMgrs2/CommonDesktop),
+[Appl/FileMgrs2/CommonIS](../pcgeos/Appl/FileMgrs2/CommonIS).
 
 Limit: keep the ISDesk-specific behavior distinct from GeoManager behavior
 when preparing help text.
@@ -507,11 +527,15 @@ The Watcom migration repairs database and spreadsheet object references,
 structure returns, and allocation handling. GeoPoint gains a fix for saving
 a newly created presentation before it has a name. Smaller final UI changes
 adjust GeoCalc's header layout and restore GeoWrite's toolbar defaults.
+GeoWrite and GeoCalc now allow zoom up to 400%, with 300% and 400% menu
+presets at the intermediate user level.
 
 Evidence: [f81257082](https://github.com/bluewaysw/pcgeos/commit/f81257082f6f19869cf8a6f37962e6f8e41bc102), [60104d4e1](https://github.com/bluewaysw/pcgeos/commit/60104d4e13e209ea5e339255cdeeda574de0c43f), [eb6846ed2](https://github.com/bluewaysw/pcgeos/commit/eb6846ed20da33f0395cce6e66f9d4949befed99),
-[b6f0ea007](https://github.com/bluewaysw/pcgeos/commit/b6f0ea007a9ba5d0c12971ee6be707bf17d343c8), [cd6087f26](https://github.com/bluewaysw/pcgeos/commit/cd6087f268474da827940066ec57a3ae4013104a), [e7353cc0d](https://github.com/bluewaysw/pcgeos/commit/e7353cc0d61088ccb9003727d145f810ca5ddaef), [7ba327389](https://github.com/bluewaysw/pcgeos/commit/7ba32738998fd3ac2ff56a7d383bca57fe3923b8).
+[b6f0ea007](https://github.com/bluewaysw/pcgeos/commit/b6f0ea007a9ba5d0c12971ee6be707bf17d343c8), [cd6087f26](https://github.com/bluewaysw/pcgeos/commit/cd6087f268474da827940066ec57a3ae4013104a), [e7353cc0d](https://github.com/bluewaysw/pcgeos/commit/e7353cc0d61088ccb9003727d145f810ca5ddaef), [7ba327389](https://github.com/bluewaysw/pcgeos/commit/7ba32738998fd3ac2ff56a7d383bca57fe3923b8),
+[a06c1537f](https://github.com/bluewaysw/pcgeos/commit/a06c1537f0a330a92c1812a0936bd43fa4a7cdac), [4e84026bf](https://github.com/bluewaysw/pcgeos/commit/4e84026bf398760fb57bff683ef05f56259938db).
 Current source: [Appl/GeoFile](../pcgeos/Appl/GeoFile), [Library/FlatFile](../pcgeos/Library/FlatFile),
-[Library/Spreadsheet](../pcgeos/Library/Spreadsheet), [Appl/GeoPoint](../pcgeos/Appl/GeoPoint).
+[Library/Spreadsheet](../pcgeos/Library/Spreadsheet), [Appl/GeoPoint](../pcgeos/Appl/GeoPoint),
+[Appl/GeoWrite/UI/uiView.ui](../pcgeos/Appl/GeoWrite/UI/uiView.ui), [Appl/GeoCalc/UI/uiZoom.ui](../pcgeos/Appl/GeoCalc/UI/uiZoom.ui).
 
 Priority: keep the first-save fix and compatibility result. The layout and
 toolbar changes can be omitted from short public notes.
@@ -684,11 +708,14 @@ The history adds and revises German application, library, driver, Preferences,
 folder, and browser-error translations. It adds help and editable help sources,
 localized templates and sample content, and consistent application names.
 Later help work centralizes common Exit Application instructions. English help
-also receives repairs and updates.
+also receives repairs and updates. The latest update revises ISDesk and
+Preferences help and German GeoWrite help, refreshes Preferences translations,
+and changes the operating-system Preferences caption to System.
 
 Evidence: [b3aef34f2](https://github.com/bluewaysw/pcgeos/commit/b3aef34f284a18ebb214d2a951a867872e393b1f), [ca073dfa1](https://github.com/bluewaysw/pcgeos/commit/ca073dfa11747beaf16ff977b17bc772e3a2015b), [0b41a277c](https://github.com/bluewaysw/pcgeos/commit/0b41a277c9a50cbb818357260586f10147ab9ba8),
 [2a888b51c](https://github.com/bluewaysw/pcgeos/commit/2a888b51ccaecde503e4cf84cb680bcd7aeef487), [28817d256](https://github.com/bluewaysw/pcgeos/commit/28817d25624aca6a4edf40faa95d2a39ef51a122), [e4d9c5ae2](https://github.com/bluewaysw/pcgeos/commit/e4d9c5ae21ac66d64827e75bc28a5b9baa0c86c6),
-[3a5dfa379](https://github.com/bluewaysw/pcgeos/commit/3a5dfa379a8e5a48d366eed7233c0135be684c91), [d88eab6ef](https://github.com/bluewaysw/pcgeos/commit/d88eab6ef4c74614c9a4018681dd485327b85cb3), [61fa86a53](https://github.com/bluewaysw/pcgeos/commit/61fa86a53b5a2a34c214a6d4d69f4df4aa993ef8), [8f06794f4](https://github.com/bluewaysw/pcgeos/commit/8f06794f4fe98bce2915a661b441c8d08d37b656).
+[3a5dfa379](https://github.com/bluewaysw/pcgeos/commit/3a5dfa379a8e5a48d366eed7233c0135be684c91), [d88eab6ef](https://github.com/bluewaysw/pcgeos/commit/d88eab6ef4c74614c9a4018681dd485327b85cb3), [61fa86a53](https://github.com/bluewaysw/pcgeos/commit/61fa86a53b5a2a34c214a6d4d69f4df4aa993ef8), [8f06794f4](https://github.com/bluewaysw/pcgeos/commit/8f06794f4fe98bce2915a661b441c8d08d37b656),
+[260b33dcf](https://github.com/bluewaysw/pcgeos/commit/260b33dcfcac15b7ecfdf04242cb0abf029ec269).
 Current source: [Tools/build/product/bbxensem/Trans](../pcgeos/Tools/build/product/bbxensem/Trans),
 [Tools/build/product/bbxensem/Help](../pcgeos/Tools/build/product/bbxensem/Help), [Tools/build/product/bbxensem/HelpSource](../pcgeos/Tools/build/product/bbxensem/HelpSource).
 
@@ -944,11 +971,11 @@ dictionary license lists should also be checked against the selected package.
 
 ## Review coverage and accounting
 
-- Total screened: 3,602 commit records.
+- Total screened: 3,609 commit records.
 - Baseline import and repository moves: 3.
 - Merge/integration records: 802, including 56 with combined changed paths.
-- Directly cited non-merge supporting commits: 227.
-- Other screened commits, excluded as separate release claims: 2,570.
+- Directly cited non-merge supporting commits: 233.
+- Other screened commits, excluded as separate release claims: 2,571.
 - Unscreened commit records: 0.
 - Catalog: 52 grouped topics, including 5 optional/source-only topics.
 
@@ -962,7 +989,7 @@ Commit counts by recorded author year:
 - 2023: 534.
 - 2024: 1,620.
 - 2025: 195.
-- 2026: 149.
+- 2026: 156.
 
 Every commit is accounted for by the following exclusive rules, applied in
 order: baseline import/move; merge/integration; directly cited non-merge
@@ -979,7 +1006,7 @@ and the stated optional-component questions remain open.
 
 To reproduce the ordered history, run this command in the pcgeos checkout:
 
-    git log --reverse --topo-order --format='%H %ad %s' --date=short beb7e2c770262a3f20ba5a889801cce32ac23379
+    git log --reverse --topo-order --format='%H %ad %s' --date=short 01c7a0172688aa72cc29898eb832dd5915d49cf7
 
 The review endpoint stays fixed even if master later advances. Update this
 document with a new endpoint and review only the additional range before

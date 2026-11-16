@@ -629,8 +629,9 @@ inspection.
 
 ### S03. Mouse wheel, natural scrolling, and keyboard support - I
 
-Wheel support is restored through IntelliMouse, CuteMouse, and Basebox-compatible
-mouse drivers, with native wheel events and alternative key-emulation modes.
+Mouse-wheel support is introduced system-wide through IntelliMouse, CuteMouse,
+and Basebox-compatible mouse drivers, with native wheel events and alternative
+key-emulation modes. Breadbox Ensemble 4 did not have this capability.
 A later Preferences option reverses wheel direction. Keyboard work adds Euro,
 Windows, and menu-key mappings in the affected layouts. Code page 858 support
 helps FreeDOS and Euro-character use.

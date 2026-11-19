@@ -45,7 +45,6 @@ The build tools process the sources, compile and assemble modules, and link them
 - `ROOT_DIR` points to the repository checkout.
 - `LOCAL_ROOT` points to the local development workspace.
 - The build system supports EC (error-checking/debug) and NC (normal/release) variants.
-- `gbuild` / `gbuild.ec` are assembled runtime environments, separate from the source and build trees.
 - `bin/target` launches the GEOS environment using DOSBox or Basebox.
 - `swat` is the native GEOS debugger.
 
@@ -61,7 +60,7 @@ For complete environment setup and build instructions, consult the repository's 
 
 Additional tools and files may be found in `~/pcgeos-tools`. These are not part of the official repo. Scratch files and additional worktrees may go into `~/pcgeos-tools/temp/`. Make sure to clean up this folder after every turn.
 
-The "PC/GEOS Ensemble" product installation itself (the so called "target") can be found at `~/gbuild/localpc/ensemble`.
+The "PC/GEOS Ensemble" product installation itself (the so called "target") can be found at `~/gbuild/localpc/ensemble`. `gbuild` / `gbuild.ec` are assembled runtime environments for EC/NC.
 
 ## Role
 
@@ -106,7 +105,7 @@ Feature plans should be plain, spec'ed-down markdown: headings, paragraphs, list
 
 When creating folders in a project directory, make sure they start with an uppercase letter.
 
-Don't hesitate to add plenty of explanatory comments (STE).
+Don't hesitate to add plenty of explanatory comments (ASD-STE100).
 
 When adding author information (usually in comments, frontmatter, etc), use "Codex/MeyerK".
 
@@ -131,53 +130,45 @@ A glue parameter file (`*.GP`) instructs Glue, the Linker, how to combine compil
 #       RainerB 12/2023         Renamed to GeoWrite
 #
 ##############################################################################
-#
+
 # Permanent name
-#
 name write.app
-#
+
 # Long name
-#
 longname "GeoWrite"
-#
+
 # DB Token
-#
 tokenchars "WP00"
 tokenid 0
+
+# Usernotes
 usernotes ""
-#
+
+# Heapspace
 heapspace 30807
-#
+
 # Specify geode type
-#
 type    appl, process
-#
+
 # Specify class name for process
-#
 class   WriteProcessClass
-#
+
 # Specify application object
-#
 appobj  WriteApp
-#
+
 # Import library routine definitions
-#
 # Any new libraries must be added at the end or unrelocated class info
 # in existing documents will be invalidated.
-#
 library geos
 ...
-#
+
 # Define resources other than standard discardable code
-#
 # Icons
 resource AppLCMonikerResource lmem read-only shared
 ...
-#
+
 # Our classes
-#
 # Classes stored in a document
-#
 export FlowRegionClass
 ```
 
@@ -197,6 +188,8 @@ Use CamelCase for function names.
 
 When writing methods and bigger coordinator functions (not helpers),
 use GeoWorks-style comments before the implementation (see below).
+
+Use only `/**/` for comments, never `//`.
 
 A typical method definition in a GOC file would look like this:
 
@@ -255,7 +248,7 @@ Indent ASM/ESP like this:
 
 Introduce ASM blocks with:
 
-```
+```asm
 ;
 ; Description
 ;
@@ -269,7 +262,7 @@ When writing ESP code, use GeoWorks-style comments before the implementations of
 
 A typical method definition in an `*.ASM` file should look like this (actual code should use tabs instead of spaces):
 
-```
+```asm
 COMMENT @%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 FreeCellProcessOpenApplication
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -309,6 +302,7 @@ FreeCellProcessOpenApplication  method dynamic FreeCellProcessClass,
         ;
                 mov     di, offset es:FreeCellProcessClass
                 call    ObjCallSuperNoLock
+
         ;
         ; Send SETUP_GAME_SETUP_STUFF message to FreeCell object
         ;
@@ -317,6 +311,7 @@ FreeCellProcessOpenApplication  method dynamic FreeCellProcessClass,
                 mov     di, mask MF_CALL or mask MF_FIXUP_DS
                 mov     ax, MSG_GAME_SETUP_STUFF
                 call    ObjMessage
+
         ;
         ; Send NEW_GAME message to FreeCell object.
         ;
@@ -331,26 +326,22 @@ FreeCellProcessOpenApplication  endm
 
 ## General PC/GEOS coding rules
 
-Use GOC by default for new applications and libraries. GOC transpiles to Watcom C 16-bit.
+Use GOC by default for new applications and libraries, unless asked to do otherwise. GOC transpiles to Watcom C 16-bit.
 
 Use ESP for drivers.
 
 Keep changes minimal and surgical.
 
-Keep stacks small. No big local variables. Use MemHandles or LMemHeaps.
+Keep stacks small. No big local variables.
 
-Use small buffers. Usually stay at or below 8 KB. Use 32 KB only when truly needed.
+Use GEOS memory management, which basically always follows the pattern of:
 
-Use GEOS memory management, which basically follows the pattern of:
-
-- MemAlloc (create a handle for a memory block)
+- MemAlloc (create a handle for a memory block; use HAF_ZERO_INIT as the last MemAlloc parameter unless there is a specific reason not to)
 - MemLock (lock the memory block and get a pointer to the locked block)
 - MemUnlock (allow the system to move the memory block around)
 - MemFree (free the memory block; blocks may be locked when doing so)
 
-Do not use malloc or free.
-
-Use HAF_ZERO_INIT as the last MemAlloc parameter unless there is a specific reason not to.
+Use small buffers. Usually stay at or below 8 KB. Use bigger buffers only when truly needed.
 
 Handles are scarce. Do not waste memory handles or file handles.
 
@@ -380,6 +371,8 @@ Prefer the "Advance" pattern over Callbacks.
 
 Use C89.
 
+Do not use malloc or free, use PC/GEOS' native memory management (MemAlloc, MemLock, etc.) instead.
+
 Declare variables at the top of functions, never inside blocks.
 
 Declare functions as `_pascal` by default.
@@ -390,13 +383,11 @@ Use early returns instead of nested blocks when possible.
 
 Do not recreate HIGHC aliases.
 
-Do not manually edit Makefile or dependencies.mk. They are generated by mkmf in Installed/ subdirectories.
-
 For libraries, avoid globals. Pass a context structure instead.
 
 Use `WWFixed` instead of `float` whenever applicable.
 
-Prefer GOC objects, messages, and instance variables over standalone helpers. CAUTION: the process class has no instance variables. Its variables are globals.
+Prefer GOC objects, messages, and instance variables over procedural standalone helpers. CAUTION: the process class has no instance variables. Its "member variables" are globals.
 
 `goto` is allowed for cleanup paths at the end of a function / method handler.
 
@@ -406,7 +397,7 @@ Use `typedef`s for callback functions instead of the PCM macro.
 
 `push ds, dx` requires `pop ds, dx`, not `pop dx, ds`.
 
-Comment every non-trivial or non-intuitive instruction.
+Comment every non-trivial or non-intuitive instruction (ASD-STE100).
 
 Do not put semicolon comments inside macros like `< EC >`. Put comments behind the macro instead.
 
@@ -422,7 +413,7 @@ Always try to compile the geodes you changed through `aihelp.py`: `~/pcgeos-tool
 
 Review every diagnostic. Resolve its cause within the task scope. Report any diagnostic that remains and explain why it remains. A successful exit code does not mean a clean build.
 
-Don't edit `Makefile` and `dependencies.mk` manually. If they need to be created or updated, use `mkmf` and `pmake depend`.
+Don't edit `Makefile` and `dependencies.mk` manually. If these files need to be created or updated, use `mkmf` and `pmake depend`.
 
 For a new geode, or when build files are missing, create the geode folder manually first in the matching Installed/ directory, then use `aihelp.py` build.
 
@@ -434,13 +425,13 @@ Finally, for each geode that was re-compiled in the process, make sure it has a 
 
 Do not try to run PC/GEOS to test stuff.
 
-Non-trivial logic should be tested in a project-local `Tests` folder. These can be left in the folder if they are re-usable. Trivial one-line changes need no test. Use the Watcom C compiler (as installed for compiling the pcgeos geodes) and check the `~/pcgeos/Tools` folder first to find include files that can be used to simulate the GEOS API. Don't go overboard with testing.
+Non-trivial logic should be tested in a project-local `Tests` folder on the host system but tests should be deleted when done. Trivial one-line changes need no test. Use the Watcom C compiler (as installed for compiling the pcgeos geodes) and check the `~/pcgeos/Tools` folder first to find include files that can be used to simulate the GEOS API. Don't go overboard with testing.
 
 ## Debugging
 
 When asked (!) to debug, add (custom) `EC_WARNING`s to the code that will show up in Swat. Swat can execute instructions when warnings hit. Add a function like the following to `~/swat.rc` to show variable values, trigger a backtrace, etc. Avoid giving instructions to execute by hand at the Swat prompt. Also, don't dump to much information at once.
 
-```
+```rc
 [defsubr pdf::PDF_TRANSLATION_FAILED {} {
     echo {PDF translator failure:}
     locals
@@ -457,13 +448,10 @@ You can also use `~/swat.rc` to configure breakpoints. When creating breakpoints
 
 Before doing substantial repository research, check `~/pcgeos-tools/wiki/`.
 
-When you discover a non-obvious, reusable fact about PC/GEOS while working on
-a task, add or update the appropriate document in `~/pcgeos-tools/wiki/`.
+When you discover a non-obvious, reusable fact about PC/GEOS while working on a task, add or update the appropriate document in `~/pcgeos-tools/wiki/`.
 
-Only record facts that are supported by the source tree or authoritative
-documentation. Include enough information to find the evidence again:
-file paths, function/message names, structures, constants, or relevant
-source locations.
+Only record facts that are supported by the source tree or authoritative documentation. Include enough information to find the evidence again:
+file paths, function/message names, structures, constants, or relevant source locations.
 
 Do not record:
 
@@ -472,7 +460,6 @@ Do not record:
 - temporary branch state
 - facts obvious from a single local function
 
-Prefer correcting an existing entry over adding a contradictory one.
-Keep entries concise.
+Prefer correcting an existing entry over adding a contradictory one. Keep entries concise.
 
 After changing code, re-evaluate corresponding entries.

@@ -1,7 +1,7 @@
 
 # Meta
 
-For the conversation, documentation and comments in code, use Simplified Technical English (STE).
+For the conversation, documentation and comments in code, use Simplified Technical English (ASD-STE100).
 Don't use any skills, except if the prompt explicitely tells you to do so.
 
 ## PC/GEOS Repository and Build Architecture

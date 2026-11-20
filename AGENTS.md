@@ -427,11 +427,9 @@ Trivial one-line changes need no test.
 
 Use [the Swat test workflow](prompts/swat/test.md) for GEOS development and regression tests. These tests can run PC/GEOS through Swat. For other tests, keep PC/GEOS stopped.
 
-Keep reusable Swat regression tests as `.tcl` files in a project local `Tests` folder.
+Keep reusable Swat regression tests as `.tcl` files in a project-local (relative to the geodes being worked on) `Test` folder.
 
-For host tests, test non-trivial logic in the project-local `Tests` folder. Use the installed Watcom C compiler and check `~/pcgeos/Tools` first for GEOS API simulation headers.
-
-Delete temporary diagnostic scripts and test output after use.
+For host tests, test non-trivial logic in this project-local `Test` folder. Use the installed Watcom C compiler and check `~/pcgeos/Tools` first for GEOS API simulation headers. Delete temporary diagnostic scripts and test output after use.
 
 ## Debugging
 

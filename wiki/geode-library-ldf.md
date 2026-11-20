@@ -1,6 +1,11 @@
 # GEOS library definition files during builds
 
-A new library geode's normal build creates its `.ldf` in its own `Installed/` build directory. Dependent geodes look for library definitions in `Installed/Include/`. After building the library, run `pmake lib` in its Installed build directory to copy the `.ldf` there before building dependents. `CInclude/geode.mk` defines `LIBOBJ`, `LIB_DEST`, and the `lib` target that performs the copy (around lines 176-221). `pcgeos-tools/aihelp.py` builds EC and NC with plain `pmake` (functions `build_once` and `cmd_build`), so its successful build alone does not run that copy target.
+A new library geode's normal build creates its `.ldf` in its own `Installed/` build directory. Dependent geodes look for library definitions in `Installed/Include/`. After building the library, run `pmake lib` in its Installed build directory to copy the `.ldf` there before building dependents. See `CInclude/geode.mk` and `Include/sun.geode.mk`, the `LIBOBJ` and `lib` rules.
+
+On Linux, `pmake -n` previews commands. `pcgeos-tools/aihelp.py:build_once`
+uses `-n` for its NC pass. To build both variants, specify both targets,
+for example `pmake bitmapec.geo bitmap.geo`. See the `case 'n'` branches
+in `Tools/pmake/pmake/main.c:MainParseArgs`.
 
 For a new message or vardata in an existing exported class, use a named
 `incminor` in the library's `.gp` file. Use the same name with `protominor`

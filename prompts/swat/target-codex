@@ -1,0 +1,312 @@
+#!/bin/sh
+##############################################################################
+#
+# PROJECT:	PC GEOS
+# MODULE:	target-codex
+# FILE: 	target-codex
+#
+# DESCRIPTION:
+#	Start the normal target launcher in a shared tmux session with a Swat
+#	setup suitable for Codex-driven debugging.
+#
+#	Use tmux for interactive sessions and a private session for batch tests.
+#
+###############################################################################
+
+usage()
+{
+    printf '%s\n' 'Usage: target-codex [--watch] [--no-window] [--session NAME] [--log FILE] [-n]' \
+        '       target-codex --batch FILE [--timeout SECONDS] [--log FILE] [--no-window] [-n]' >&2
+    exit 2
+}
+
+fail()
+{
+    printf 'target-codex: %s\n' "$*" >&2
+    if [ -n "$BATCH_FILE" ]; then
+        printf 'Swat batch result: ERROR\n'
+        exit 2
+    fi
+    exit 1
+}
+
+NORMAL=0
+WATCH=0
+DIRECT=0
+OPEN_WINDOW=1
+SESSION=swat-codex
+LOGFILE=
+BATCH_FILE=
+BATCH_TIMEOUT=
+BATCH_VIEWER=
+INTERACTIVE_OPTION=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -n)
+      NORMAL=1
+      ;;
+    --watch)
+      WATCH=1
+      INTERACTIVE_OPTION=1
+      ;;
+    --direct)
+      DIRECT=1
+      INTERACTIVE_OPTION=1
+      ;;
+    --no-window)
+      OPEN_WINDOW=0
+      ;;
+    --session)
+      [ -n "${2-}" ] || usage
+      SESSION=$2
+      INTERACTIVE_OPTION=1
+      shift
+      ;;
+    --log)
+      [ -n "${2-}" ] || usage
+      LOGFILE=$2
+      shift
+      ;;
+    --batch)
+      [ -n "${2-}" ] || usage
+      BATCH_FILE=$2
+      shift
+      ;;
+    --timeout)
+      [ -n "${2-}" ] || usage
+      BATCH_TIMEOUT=$2
+      shift
+      ;;
+    *)
+      usage
+      ;;
+  esac
+  shift
+done
+
+SELF=$(realpath -e -- "$0") || fail 'Cannot find target-codex.'
+SCRIPT_DIR=${SELF%/*}
+ROOT_DIR=$(realpath -e -- "${ROOT_DIR:-$SCRIPT_DIR/../../../pcgeos}") || fail 'Cannot find the PC/GEOS source directory.'
+LOCAL_ROOT=$(realpath -e -- "${LOCAL_ROOT:-$HOME}") || fail 'Cannot find the local PC/GEOS directory.'
+export ROOT_DIR LOCAL_ROOT
+export PATH="$PATH:$ROOT_DIR/bin"
+set --
+if [ "$NORMAL" = 1 ]; then
+    set -- -n
+fi
+
+lock_target()
+{
+    [ -d "$LOCAL_ROOT/.bbxxip" ] || fail 'No target configuration directory.'
+    command -v flock >/dev/null 2>&1 || fail 'Cannot find flock.'
+    exec 9<"$LOCAL_ROOT/.bbxxip"
+    flock -n 9 || fail 'The target is in use by target-codex.'
+}
+
+cleanup()
+{
+    if [ -n "$BATCH_VIEWER" ]; then
+        tmux kill-session -t "=$BATCH_VIEWER" 2>/dev/null 9<&-
+    fi
+    find "$CODEX_SWAT_HOME" -depth -delete
+}
+
+open_watch_window()
+{
+    [ "$OPEN_WINDOW" = 1 ] && [ -n "$DISPLAY$WAYLAND_DISPLAY" ] || return 1
+    socket=$(tmux display-message -p -t "=$SESSION:" '#{socket_path}') || return 1
+    set -- env -u TMUX tmux -S "$socket" attach -t "=$SESSION" "$@"
+
+    if command -v ptyxis >/dev/null 2>&1; then
+        set -- ptyxis --new-window --title "Swat Codex" -- "$@"
+    elif command -v x-terminal-emulator >/dev/null 2>&1; then
+        set -- x-terminal-emulator -T "Swat Codex" -e "$@"
+    elif command -v gnome-terminal >/dev/null 2>&1; then
+        set -- gnome-terminal --title "Swat Codex" -- "$@"
+    elif command -v konsole >/dev/null 2>&1; then
+        set -- konsole --new-tab -p tabtitle="Swat Codex" -e "$@"
+    elif command -v xfce4-terminal >/dev/null 2>&1; then
+        set -- xfce4-terminal --title "Swat Codex" -x "$@"
+    elif command -v xterm >/dev/null 2>&1; then
+        set -- xterm -T "Swat Codex" -e "$@"
+    else
+        return 1
+    fi
+
+    "$@" </dev/null >/dev/null 2>&1 9<&- &
+}
+
+prepare_swat()
+{
+    [ -x "$ROOT_DIR/bin/target" ] || fail 'Cannot find the standard target launcher.'
+    temp_root=$(realpath -e -- "${TMPDIR:-/tmp}") || fail 'Cannot find the temporary directory.'
+    CODEX_SWAT_HOME=$(mktemp -d "$temp_root/pcgeos-codex-swat.XXXXXX") ||
+        fail 'Cannot create a private Swat directory.'
+    trap cleanup EXIT
+    cat > "$CODEX_SWAT_HOME/swat.rc" <<'EOF' || fail 'Cannot write swat.rc.'
+source [getenv CODEX_SWAT_HELPER]
+if {![null [getenv CODEX_SWAT_TEST]]} {
+    codex-run-test [getenv CODEX_SWAT_TEST] [getenv CODEX_SWAT_RUN]
+    quit leave
+}
+EOF
+    export CODEX_SWAT=1
+    export CODEX_SWAT_HELPER="$SCRIPT_DIR/codex.tcl"
+    if [ -z "$XAUTHORITY" ] && [ -r "$HOME/.Xauthority" ]; then
+        export XAUTHORITY="$HOME/.Xauthority"
+    fi
+}
+
+if [ -n "$BATCH_FILE" ]; then
+    [ "$INTERACTIVE_OPTION" = 0 ] || usage
+    BATCH_TIMEOUT=${BATCH_TIMEOUT:-60}
+    case "$BATCH_TIMEOUT" in
+        *[!0-9]*) fail 'Use a positive whole number of seconds for --timeout.' ;;
+        *[1-9]*) ;;
+        *) fail 'Use a positive whole number of seconds for --timeout.' ;;
+    esac
+    script_path=$(realpath -e -- "$BATCH_FILE") || fail 'Cannot find the test file.'
+    BATCH_FILE=$script_path
+    [ -f "$BATCH_FILE" ] && [ -r "$BATCH_FILE" ] || fail 'Cannot read the test file.'
+    for command in setsid timeout pkill ss; do
+        command -v "$command" >/dev/null 2>&1 || fail "Cannot find $command."
+    done
+    lock_target
+    listeners=$(ss -H -lun 'sport = :8079') || fail 'Cannot check the target UDP port.'
+    [ -z "$listeners" ] || fail 'The target UDP port 8079 is in use.'
+    prepare_swat
+    export CODEX_SWAT_TEST="$BATCH_FILE"
+    export CODEX_SWAT_RUN="${CODEX_SWAT_HOME##*.}"
+    export CODEX_SWAT_OUTPUT="$CODEX_SWAT_HOME/output"
+    deadline_log="$CODEX_SWAT_HOME/deadline"
+    : > "$CODEX_SWAT_OUTPUT" || fail 'Cannot create the batch log.'
+
+    interrupted=0
+    trap 'interrupted=1' HUP INT TERM
+    if [ "$OPEN_WINDOW" = 1 ] && [ -n "$DISPLAY$WAYLAND_DISPLAY" ] && command -v tmux >/dev/null 2>&1; then
+        SESSION="swat-codex-batch-$CODEX_SWAT_RUN"
+        # The viewer reads the transcript. Keep its input and lock separate.
+        if tmux new-session -d -s "$SESSION" -- tail -n +1 -f -- "$CODEX_SWAT_OUTPUT" 9<&-; then
+            BATCH_VIEWER=$SESSION
+            open_watch_window -r
+        fi
+    fi
+    # With job control off, setsid uses this PID as the new session ID.
+    set +m
+    HOME="$CODEX_SWAT_HOME" TERM=dumb LC_ALL=C \
+        setsid timeout --foreground --verbose --kill-after=2s "${BATCH_TIMEOUT}s" \
+        sh -c 'cd "$HOME" && exec "$0" "$@" > "$CODEX_SWAT_OUTPUT" 2>&1' \
+        "$ROOT_DIR/bin/target" "$@" </dev/null 2>"$deadline_log" &
+    batch_sid=$!
+    target_status=2
+    if [ "$interrupted" = 0 ]; then
+        wait "$batch_sid"
+        target_status=$?
+    fi
+    if [ "$interrupted" = 1 ]; then
+        kill -TERM "$batch_sid" 2>/dev/null
+    fi
+    # The standard launcher starts Basebox in a separate process group.
+    if pkill -TERM -s "$batch_sid"; then
+        sleep 1
+        pkill -KILL -s "$batch_sid" 2>/dev/null
+    fi
+    if [ "$interrupted" = 1 ]; then
+        wait "$batch_sid" 2>/dev/null
+    fi
+    printf '\n' >> "$CODEX_SWAT_OUTPUT"
+
+    result=ERROR
+    # Use the timer's own report because the launcher can also exit with 124.
+    if [ "$interrupted" = 1 ]; then
+        printf '%s\n' 'Batch run interrupted.' >> "$CODEX_SWAT_OUTPUT"
+    elif grep -q '^timeout: sending signal TERM to command ' "$deadline_log"; then
+        result=TIMEOUT
+    elif [ "$target_status" = 0 ]; then
+        result=$(awk -v prefix="CODEX-SWAT-TEST:$CODEX_SWAT_RUN:" '
+            index($0, prefix) == 1 {
+                status = substr($0, length(prefix) + 1)
+                if (status == "START" && phase == 0) {
+                    phase = 1
+                } else if (phase == 1 && status ~ /^(PASS|FAIL|ERROR)$/) {
+                    result = status
+                    phase = 2
+                } else {
+                    phase = 3
+                }
+            }
+            END { if (phase != 2) exit 1; print result }
+        ' "$CODEX_SWAT_OUTPUT") || {
+            result=ERROR
+            printf '%s\n' 'Swat did not report a valid batch result.' >> "$CODEX_SWAT_OUTPUT"
+        }
+    else
+        printf 'Target launcher exited with status %s.\n' "$target_status" >> "$CODEX_SWAT_OUTPUT"
+    fi
+
+    cat "$deadline_log" >> "$CODEX_SWAT_OUTPUT"
+    if [ -n "$LOGFILE" ]; then
+        { cat "$CODEX_SWAT_OUTPUT" && printf 'Swat batch result: %s\n' "$result"; } >> "$LOGFILE" || {
+            result=ERROR
+            printf '%s\n' 'Cannot append to the requested log.' >> "$CODEX_SWAT_OUTPUT"
+        }
+    fi
+    printf 'Swat batch result: %s\n' "$result" >> "$CODEX_SWAT_OUTPUT"
+    cat "$CODEX_SWAT_OUTPUT"
+    case "$result" in
+        PASS) exit 0 ;;
+        FAIL) exit 1 ;;
+        TIMEOUT) exit 124 ;;
+        *) exit 2 ;;
+    esac
+fi
+
+[ -z "$BATCH_TIMEOUT" ] || usage
+LOGFILE=${LOGFILE:-/tmp/swat-codex.log}
+
+attach_session()
+{
+    echo "Watching tmux session: $SESSION"
+    echo "Log file: $LOGFILE"
+    if [ "$TERM" = "" ] || [ "$TERM" = "dumb" ]; then
+        export TERM=xterm-256color
+    fi
+    if [ "$TMUX" != "" ]; then
+        tmux switch-client -t "$SESSION"
+    else
+        tmux attach -t "$SESSION"
+    fi
+}
+
+if [ "$DIRECT" != "1" ]; then
+    if ! command -v tmux >/dev/null 2>&1; then
+        echo "*** target-codex requires tmux."
+        exit 1
+    fi
+
+    if ! tmux has-session -t "=$SESSION" 2>/dev/null; then
+        tmux new-session -d -s "$SESSION" -- "$SELF" --direct "$@" || exit 1
+        log_path=$(printf '%s' "$LOGFILE" | sed "s/'/'\\\\''/g")
+        tmux pipe-pane -t "=$SESSION:" -o "cat >> '$log_path'" || exit 1
+    fi
+
+    if [ "$WATCH" != "1" ]; then
+        if open_watch_window; then
+            echo "Opened Swat viewer window for tmux session: $SESSION"
+        else
+            echo "No terminal window opened. Attach with: tmux attach -t $SESSION"
+        fi
+    fi
+
+    if [ -n "$TMUX" ] || { [ -t 0 ] && [ -t 1 ]; }; then
+        attach_session
+        exit $?
+    fi
+    exit 0
+fi
+
+lock_target
+prepare_swat
+trap 'exit 1' HUP INT TERM
+unset CODEX_SWAT_TEST CODEX_SWAT_RUN
+HOME="$CODEX_SWAT_HOME" TERM=dumb "$ROOT_DIR/bin/target" "$@"

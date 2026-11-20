@@ -45,6 +45,15 @@ Evidence: `Library/Kernel/Heap/heapLow.asm:FullLockNoReload`,
 `Include/Internal/threadIn.def`, `Tools/swat/ibm86.c:Ibm86NextFrame`, and
 `Tools/swat/lib.new/stack.tcl:backtrace`.
 
+## Swat symbol cache location on Linux
+
+Swat stores `.symdir.*` files in its development directory. `File_Init`
+tests whether the working directory starts with `ROOT_DIR`. It accepts a
+match without a path separator. As a result, a sibling such as `pcgeos-tools`
+can become the development directory when `ROOT_DIR` ends in `pcgeos`.
+For a working directory with a different prefix, Swat uses `LOCAL_ROOT`.
+See `Tools/swat/file.c`, `File_Init` and `FileGetLocalSymdirCache`.
+
 ## Swat send and EC DOS filenames
 
 Tools/swat/lib.new/filexfer.tcl:get-send-dest now calls

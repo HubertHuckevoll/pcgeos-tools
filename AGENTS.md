@@ -423,26 +423,19 @@ Finally, for each geode that was re-compiled in the process, make sure it has a 
 
 ## Testing
 
-Do not try to run PC/GEOS to test stuff.
+Trivial one-line changes need no test.
 
-Non-trivial logic should be tested in a project-local `Tests` folder on the host system but tests should be deleted when done. Trivial one-line changes need no test. Use the Watcom C compiler (as installed for compiling the pcgeos geodes) and check the `~/pcgeos/Tools` folder first to find include files that can be used to simulate the GEOS API. Don't go overboard with testing.
+Use [the Swat test workflow](prompts/swat/test.md) for GEOS development and regression tests. These tests can run PC/GEOS through Swat. For other tests, keep PC/GEOS stopped.
+
+Keep reusable Swat regression tests as `.tcl` files in a project local `Tests` folder.
+
+For host tests, test non-trivial logic in the project-local `Tests` folder. Use the installed Watcom C compiler and check `~/pcgeos/Tools` first for GEOS API simulation headers.
+
+Delete temporary diagnostic scripts and test output after use.
 
 ## Debugging
 
-When asked (!) to debug, add (custom) `EC_WARNING`s to the code that will show up in Swat. Swat can execute instructions when warnings hit. Add a function like the following to `~/swat.rc` to show variable values, trigger a backtrace, etc. Avoid giving instructions to execute by hand at the Swat prompt. Also, don't dump to much information at once.
-
-```rc
-[defsubr pdf::PDF_TRANSLATION_FAILED {} {
-    echo {PDF translator failure:}
-    locals
-    print p->error
-    print op
-    bt
-    return 1
-}]
-```
-
-You can also use `~/swat.rc` to configure breakpoints. When creating breakpoints for Swat, use the breakpoint syntax for `stop at` described in `~/pcgeos-tools/wiki/swat-source-breakpoints.md`.
+Use [the Swat debug workflow](prompts/swat/debug.md) for GEOS runtime debugging. This workflow can run PC/GEOS through Swat.
 
 ## GEOS knowledge base
 

@@ -2,7 +2,7 @@
 
 Before you use a Swat command or Tcl feature, check its implementation in the local PC/GEOS source. Use `Tools/swat/Doc/` to find commands. Check the exact syntax, arguments, result, and effects in `Tools/swat/lib.new/` or the native code in `Tools/swat/`. Use only features that this Swat interpreter supports. Add commands to this reference after you verify and use them.
 
-The launcher and Tcl helper are in this folder. The link at the root of the tools checkout keeps `target-codex` available when that directory is on `PATH`.
+The launcher and Tcl helper are in this folder. From the tools checkout, use `./prompts/swat/target-codex`.
 
 ## Tcl and startup
 
@@ -19,6 +19,8 @@ The launcher and Tcl helper are in this folder. The link at the root of the tool
 
 - `ensure-swat-attached` raises a Tcl error when Swat has no target connection. `cont` resumes GEOS and usually waits for a stop. `cont -f` can resume from a fatal-error stop. See `Tools/swat/lib.new/swat.tcl`.
 - `patient find NAME` returns a patient token or `nil`. `patient name [TOKEN]` returns the patient name, with the current patient as the default. `spawn NAME` resumes the target and waits for the geode to load or for another stop. It deletes its temporary event handler on return. Check the patient after `spawn`. See `Tools/swat/ibmCmd.c`, `IbmPatient`, and `Tools/swat/lib.new/process.tcl`, `spawn`.
+- `run -p FILE` tries to start an application by its path relative to `SP_APPLICATION`. Check `patient find` for success. On a load failure, `run` prints the error and leaves the load result in the registers. See `Tools/swat/lib.new/call.tcl`, `run`.
+- `getvalue SYMBOL` resolves an integer symbol, such as a GEOS error constant. See `Tools/swat/lib.new/swat.tcl`, `getvalue`.
 - `stop in PROCEDURE` or `stop in CLASS::MESSAGE` sets a breakpoint after the prologue when Swat finds its end. `stop at FILE LINE` or `stop at FILE:LINE` sets a breakpoint at a source line. Both return a breakpoint token. See `Tools/swat/lib.new/ibrk.tcl`, `stop`.
 - `brk aset ADDRESS` sets a breakpoint for all patients and returns its token. `brk address TOKEN` returns its address or raises an error if the token is invalid. `brk clear TOKEN` removes the specified breakpoint. A clear command without a token can clear other breakpoints. See `Tools/swat/break.c`, `Break`.
 - `save-state` saves the current thread's registers. `restore-state` pops that record and restores the registers. `discard-state` pops it without restoration. The record contains registers only. See `Tools/swat/ibmCmd.c`, `IbmSaveState`, `IbmRestoreState`, and `IbmDiscardState`.

@@ -2,7 +2,7 @@
 
 Before you use a Swat command or Tcl feature, check its implementation in the local PC/GEOS source. Use `Tools/swat/Doc/` to find commands. Check the exact syntax, arguments, result, and effects in `Tools/swat/lib.new/` or the native code in `Tools/swat/`. Use only features that this Swat interpreter supports. Add commands to this reference after you verify and use them.
 
-The launcher and Tcl helper are in this folder. From the tools checkout, use `./prompts/swat/target-codex`.
+The launcher and Tcl helper are in this folder. From the tools checkout, use `./swat/target-codex`.
 
 ## Tcl and startup
 

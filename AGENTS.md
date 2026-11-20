@@ -425,7 +425,7 @@ Finally, for each geode that was re-compiled in the process, make sure it has a 
 
 Trivial one-line changes need no test.
 
-Use [the Swat test workflow](prompts/swat/test.md) for GEOS development and regression tests. These tests can run PC/GEOS through Swat. For other tests, keep PC/GEOS stopped.
+Use [the Swat test workflow](swat/test.md) for GEOS development and regression tests. These tests can run PC/GEOS through Swat. For other tests, keep PC/GEOS stopped.
 
 Keep reusable Swat regression tests as `.tcl` files in a project-local (relative to the geodes being worked on) `Test` folder.
 
@@ -433,7 +433,7 @@ For host tests, test non-trivial logic in this project-local `Test` folder. Use 
 
 ## Debugging
 
-Use [the Swat debug workflow](prompts/swat/debug.md) for GEOS runtime debugging. This workflow can run PC/GEOS through Swat.
+Use [the Swat debug workflow](swat/debug.md) for GEOS runtime debugging. This workflow can run PC/GEOS through Swat.
 
 ## GEOS knowledge base
 

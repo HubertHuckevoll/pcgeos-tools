@@ -86,7 +86,7 @@ done
 
 SELF=$(realpath -e -- "$0") || fail 'Cannot find target-codex.'
 SCRIPT_DIR=${SELF%/*}
-ROOT_DIR=$(realpath -e -- "${ROOT_DIR:-$SCRIPT_DIR/../../../pcgeos}") || fail 'Cannot find the PC/GEOS source directory.'
+ROOT_DIR=$(realpath -e -- "${ROOT_DIR:-$SCRIPT_DIR/../../pcgeos}") || fail 'Cannot find the PC/GEOS source directory.'
 LOCAL_ROOT=$(realpath -e -- "${LOCAL_ROOT:-$HOME}") || fail 'Cannot find the local PC/GEOS directory.'
 export ROOT_DIR LOCAL_ROOT
 export PATH="$PATH:$ROOT_DIR/bin"

@@ -31,6 +31,22 @@ keeps promotion messages and runtime output in one log for each normal
 launch. Direct calls to the internal run launchers append to the existing
 log.
 
+## Desktop directory at startup
+
+The BaseBox autoexec calls `SETUP.BAT` and waits for it to return before
+it runs `LOADER.EXE`. The autoexec does not check the setup exit status.
+`Tools/gsetup/gsetup.c:execComspec` runs the setup batch through DOS EXEC
+and reads its return code. The generated `GINST.BAT` creates the local
+`DESKTOP` directory during installation. Activation copies bootstrap
+files and writes `GFS.INI`. It does not rerun the install script.
+
+ISDesk uses `SP_TOP` plus `DESKTOP`. `NDInitDriveLinks` tries to create
+the local desktop and Computer directories if it cannot enter them.
+`NDInitDesktop` also tries to create the desktop directory before it
+creates links. The directory can exist when the metadata write fails.
+See `Appl/FileMgrs2/CommonIS/cNewDeskConstant.def` and
+`Appl/FileMgrs2/CommonDesktop/CMain/cmainInit.asm`.
+
 ## BaseBox startup paths
 
 The package template uses `mount c ..` and then `cd` with the host name

@@ -160,3 +160,37 @@ protects technical strings. Length limits are translator metadata and do not
 resize a caller buffer. See TechDocs/Markdown/Concepts/clocal.md and
 Tools/goc/parse.y:LocalizationLine. Generate .rsc records with goc -l to
 check the target chunk, substitution instructions, and length limits.
+
+## Original Welcome app
+
+`Appl/Startup/Welcome` supplies `welcome.gp`, `welcome.rev`, and `local.mk`.
+The `WELCOME` and `GPC` definitions in `local.mk` select the Welcome code
+in `Appl/Startup/CommonStartup`. The commented Welcome entry in
+`Tools/build/product/bbxensem/bbxensem.filetree` leaves it out of Ensemble.
+
+To build Welcome on Linux, make `Installed/Appl/Startup/Welcome` and link
+the `CMain`, `CUI`, and `CArt` directories and the three `cstartup*.def`
+files from `CommonStartup` into it. In the build directory, link
+`cuiStrings.ui` to `CUI/cuiStrings.ui` so UIC can resolve the final include
+in `CUI/cuiMain.ui`. Run `mkmf` and `pmake depend`. The dependency scanner
+can pass the local `CMain` and `CUI` directories to ESP as files. See the
+local-path access check in `Tools/pmake/makedpnd/makedpnd.c`.
+Run `pmake cuiMain.rdef` before building `welcomeec.geo` and `welcome.geo`
+if the generated dependencies omit the include from `CUI/cuiManager.asm`.
+
+`Appl/Startup/WinDemo` uses the same setup with `GEODE=welcome` on the
+pmake commands. Both variants use the permanent name `welcome.app`.
+WinDemo sets `PRODUCT_WIN_DEMO`, which adds the GlobalPC demo dialog in
+`CommonStartup/CUI/cuiMain.ui`. In `WelcomeOpenApplication`, the first-run
+branch looks for setup token `GPCs`, manufacturer 0, and skips the dialog.
+Set `[welcome] finishedSetup=true` to reach the dialog on a fresh launch.
+`CommonStartup/CMain/cmainStartupPrimary.asm` sets `_PRIMARY_ARTWORK` to 0
+and makes the primary window transparent. Both variants use this primary.
+
+The checked-in `BStartup` Makefile spells `GEODE` as `BStartup`. On Linux,
+use `pmake bstartup.rdef GEODE=bstartup` and then
+`pmake bstartupec.geo bstartup.geo GEODE=bstartup` to match the lowercase
+parameter file and UI resource. `BSSetHardIconsOnOff` in `bsProcess.asm`
+skips the pen-driver start and stop calls if `[system]
+bstartupPCEmulation=true`. `WelcomeStartSelect` in `bsWelcome.asm` skips
+calibration and date and time setup if `[system] penCalibrated=true`.

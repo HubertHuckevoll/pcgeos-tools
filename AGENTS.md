@@ -425,11 +425,11 @@ Finally, for each geode that was re-compiled in the process, make sure it has a 
 
 Trivial one-line changes need no test.
 
-Use [the Swat test workflow](swat/test.md) for GEOS development and regression tests. These tests can run PC/GEOS through Swat. For other tests, keep PC/GEOS stopped.
-
-Keep each reusable Swat regression test as a Perl script in the geode's `Test` folder in the PC/GEOS checkout. Embed the Tcl in the script and use `Tools/swat/SwatTestRunner.pm`. Run the test with `perl path/to/Test/test.pl`.
+Use [the Swat test workflow](swat/test.md) for GEOS development and regression tests when things get hard. These tests can run PC/GEOS through Swat. For other tests, keep PC/GEOS stopped. Keep each reusable Swat regression test as a Perl script in the geode's `Test` folder in the PC/GEOS checkout. Embed the Tcl in the script and use `Tools/swat/SwatTestRunner.pm`. Run the test with `perl path/to/Test/test.pl`.
 
 For host tests, test non-trivial logic in this project-local `Test` folder. Use the installed Watcom C compiler and check `~/pcgeos/Tools` first for GEOS API simulation headers. Delete temporary diagnostic scripts and test output after use.
+
+Don't create tests if you are confident of a change. Don't go overboard with testing!
 
 ## Debugging
 

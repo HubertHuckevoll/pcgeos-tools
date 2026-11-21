@@ -20,6 +20,25 @@ at lines 1926-2012. `TechDocs/html/LRef/GPKey/index.htm` documents `incminor`
 at lines 243-268, and `TechDocs/html/Kernel/Geodes/Geodes_9.htm` explains that
 relocated entry points need a major protocol change at lines 95-113.
 
+For new messages or vardata in an existing exported class, a named
+`incminor` can follow the existing exports and publishes. Put the matching
+`protominor` (ESP) or `@protominor` (GOC) before the new declarations in the
+class header. Glue writes the name after the new minor marker in the `.ldf`.
+When a client references the name, Glue uses that marker to set the client's
+minimum protocol. Moving the GP directive before an existing class export
+would also raise the minimum for clients that only use that class export.
+
+A plain `struct` or `typedef` does not create this dependency. If a GOC
+header was missing a message or vardata declaration that the library already
+had, add the declaration in the matching numeric slot. The new header line
+does not introduce a new runtime version of that symbol.
+
+Evidence: `Tools/glue/parse.y` (`protominorid`), `Tools/glue/library.c`
+(`Library_ProtoMinor`, `Library_UseEntry`), `Tools/goc/parse.y`
+(`messageLine`, `vardataLine`), `Tools/goc/goc.c`
+(`CheckStringForProtoMinorReferences`), and `Tools/esp/expr.c`
+(`ExprConvertSym`).
+
 For a newly built library, run `pmake lib` in its `Installed/Library/...`
 directory after building it. The default build can leave its `.ldf` only in
 that directory; `pmake lib` copies it to `Installed/Include`, where dependent

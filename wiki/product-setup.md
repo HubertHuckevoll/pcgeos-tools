@@ -31,6 +31,30 @@ keeps promotion messages and runtime output in one log for each normal
 launch. Direct calls to the internal run launchers append to the existing
 log.
 
+## BaseBox startup paths
+
+The package template uses `mount c ..` and then `cd` with the host name
+of the Ensemble folder. The parent path does not appear in the DOS path.
+The DOS `CD` receives the host name as written. Names that need a DOS
+short-name alias can fail before `SETUP.BAT` runs. See `CMD_CHDIR` in
+BaseBox `src/shell/shell_cmds.cpp` at `b37410dea65b`.
+
+BaseBox supports `MOUNT -pr` to resolve a relative host path from the
+last loaded configuration file. For a config in `ENSEMBLE/BASEBOX`,
+`mount c .. -t dir -pr` maps the Ensemble folder to DOS `C:\` directly.
+See `MOUNT::ApplyRelativePath` in `src/dos/programs/mount.cpp` at the
+same revision. This also removes the need for a DOS `CD` to the host
+folder name.
+
+For a directory mount, BaseBox keeps the path spelling it received.
+`MOUNT` can list `..\` without showing the resolved host directory.
+Use the process working directory and a DOS file check to verify a
+relative mount. See `MOUNT::MountLocal` and `localDrive::localDrive`
+in `src/dos/programs/mount.cpp` and `src/dos/drive_local.cpp`.
+The Windows wrapper logs the launch request. BaseBox writes its initial
+`Current dir` diagnostic to standard error before applying `--working-dir`.
+See `main` and `init_logger` in `src/main.cpp`.
+
 ## DOS setup drive mapping
 
 `Tools/gsetup/gsetup.c` passes the distribution directory, a free drive

@@ -41,3 +41,40 @@
   CInclude/vm.h:VMClose, CInclude/file.h:FILE_NO_ERRORS,
   Library/Kernel/VMem/vmemC.asm:VMCLOSE, and
   Library/Kernel/VMem/vmemHigh.asm:VMClose.
+
+## Desktop links on a DOS drive
+
+ISDesk creates Computer as a directory. It creates World, Documents, and
+Wastebasket as links. `NDInitDriveLinks` creates the drive links inside
+Computer from the GEOS drive table. See `DesktopItems`, `NDInitDesktop`,
+and `NDInitDriveLinks` in `Appl/FileMgrs2/CommonDesktop/CMain/cmainInit.asm`.
+
+The DOS file-system driver stores links after the 256-byte GEOS header in
+each directory's `@DIRNAME.000`. Link records start with `LN00`. An ordinary
+DOS directory listing shows the metadata file without its links.
+`DOSFileEnum` calls `DOSLinkEnum` only if it finds a directory file with
+a valid header. See `Driver/IFS/DOS/Common/dosEnum.asm` and `dosLink.asm`.
+
+The kernel checks for the DOSBox callback instruction at startup. On
+detection, its automatic driver selection loads the OS/2 driver. This
+driver includes the common DOS enumeration and link routines. See
+`Library/Kernel/FSD/fsdInit.asm` and `Driver/IFS/DOS/OS2/os2Manager.asm`.
+
+A valid directory header can exist without any links. At 256 bytes the
+file contains the header alone. `DOSLinkCreateLink` requests read/write
+access. It creates the metadata file only if the open reports
+`ERROR_FILE_NOT_FOUND`. `NDCreateDriveLinks` skips a failed drive link.
+`NDInitDesktop` continues with the next item after a failed link call.
+
+BaseBox can accept a DOS read/write open on a read-only file and then
+reject the write with DOS error 5. The default setting
+`allow_write_protected_files` enables this behavior. See BaseBox
+`src/dosbox.cpp`, `localDrive::FileOpen`, and `localFile::Write` in
+`src/dos/drive_local.cpp` at revision `b37410dea65b`. In Swat, check the
+carry flag and AX when `DOSLinkInitHeader` returns from the first write.
+
+Preserve the metadata before another start when you investigate missing
+links. In `Driver/IFS/DOS/Common/dosLink.asm`, `DOSLinkReadLinkHeader`
+stops on a short read. If it reads a complete record header with a bad
+signature, it tries to truncate the file to 256 bytes. `DOSLinkEnum`
+treats the end of this scan as normal.

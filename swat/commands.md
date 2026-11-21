@@ -2,7 +2,7 @@
 
 Before you use a Swat command or Tcl feature, check its implementation in the local PC/GEOS source. Use `Tools/swat/Doc/` to find commands. Check the exact syntax, arguments, result, and effects in `Tools/swat/lib.new/` or the native code in `Tools/swat/`. Use only features that this Swat interpreter supports. Add commands to this reference after you verify and use them.
 
-The launcher and Tcl helper are in this folder. From the tools checkout, use `./swat/target-codex`.
+For interactive debugging or temporary Tcl checks, use `./swat/target-codex` from the tools checkout. For reusable regression tests, use [the SDK test workflow](test.md).
 
 ## Tcl and startup
 
@@ -35,4 +35,4 @@ The launcher and Tcl helper are in this folder. From the tools checkout, use `./
 - `read-reg REGISTER` returns the register value in decimal. `regs` and `backtrace 1` print registers and the top frame. `locals` prints the selected frame's local values when the symbols supply them. See `Tools/swat/lib.new/swat.tcl` and `Tools/swat/lib.new/stack.tcl`.
 - Tcl evaluation errors and target connection failures belong to the debugger run. GEOS warnings and fatal errors come from the target. Keep the text from both. At a fatal-error stop, `why` prints the GEOS error and can select the caller's stack frame. Warning handlers can print a warning and continue. See `Tools/swat/lib.new/fatalerr.tcl`, `why`, `geterror`, and `why-warning`.
 
-The batch commands `test-begin`, `test-assert`, and `test-end` are defined in `codex.tcl`.
+The `target-codex --batch` commands `test-begin`, `test-assert`, and `test-end` are defined in `codex.tcl`.

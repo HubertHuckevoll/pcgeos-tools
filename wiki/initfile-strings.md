@@ -147,3 +147,19 @@ INI error cleanup:
   but can first extend the disk file to reserve space. That extension starts
   with DOS EOF; bytes after that marker are not evidence of buffer corruption.
   `initfileLow.asm:ValidateIniFile` stops at the first DOS EOF byte.
+
+INI write size limits:
+
+- In SBCS builds, `initfileConstruct.asm:BuildEntryFromString` doubles the
+  body length in a word before `InitEntry` adds the key length and 12 bytes.
+  Check the construction size as well as the source string length.
+- In DBCS builds, `initfileHigh.asm:InitFileWriteString` sends the string to
+  `BuildEntryFromData`. That routine encodes each byte as two hex digits and
+  inserts CR/LF after every 20 input bytes. Its signed comparison with the
+  line width can omit braces when the encoded length plus the key prefix
+  exceeds 32767 bytes.
+- `initfileLow.asm:MakeSpace` adds each new entry to the remaining primary
+  INI size in a word. The whole file size matters even when the string
+  construction buffer fits.
+- `Loader/loader.def:MAX_INI_SIZE` includes the DOS EOF byte.
+  `Loader/ini.asm:OpenIniFileAndRead` accepts at most 24,999 bytes on disk.

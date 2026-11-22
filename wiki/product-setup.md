@@ -177,6 +177,29 @@ that drive letter. An absolute path in `GFS.INI` then depends on that
 alias. Default setup checks for `GFS.INI` existence only; it does not
 regenerate or validate its paths.
 
+## Access-point index in split installations
+
+The Access Point library uses the first effective `[accpnt] contents`
+value in the active INI chain. FG chains the primary INI through `GFS.INI`
+to `BOOT/NET.INI` or `BOOT/NETEC.INI`, which supplies the factory index.
+After creation or deletion, the primary INI contains the complete ordered
+index. An empty value keeps the factory entries hidden after the last
+entry is deleted. The individual `[accesspointNNNN]` properties can come
+from a lower layer.
+
+`Appl/IDialup/IDialup.goc` inserts new Internet entries before the hidden
+entry with ID 1. The string-section merge puts factory items first, which
+can move a local entry across that insertion point. The library uses
+`InitFileReadString` and `InitFileWriteString` for the complete index.
+See `Library/AccPnt/accpntUtils.asm:AccessPointEntry` and `WriteContents`,
+and `Library/Kernel/Initfile/initfileHigh.asm:InitFileBuildMergedStringBlock`.
+
+The install phase supplies the initial primary INI. Activation supplies
+bootstrap files and regenerates `GFS.INI`. A change to the install
+template does not repair an existing primary INI during activation.
+See `Tools/build/product/bbxensem/bbxensem.filetree` (`setup/install`)
+and `gsetup/gsetup.bat` (`CHECKDEFAULTINI`, `DOINSTALL`, `UPDATEMARKER`).
+
 ## Version metadata
 
 `Tools/build/product/bbxensem/bbxensem.filetree` places the

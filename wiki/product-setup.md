@@ -42,10 +42,22 @@ files and writes `GFS.INI`. It does not rerun the install script.
 
 ISDesk uses `SP_TOP` plus `DESKTOP`. `NDInitDriveLinks` tries to create
 the local desktop and Computer directories if it cannot enter them.
+A failed `FileSetCurrentPath` leaves the previous thread path active.
+Check the retry before cleaning up drive links or creating Computer.
 `NDInitDesktop` also tries to create the desktop directory before it
 creates links. The directory can exist when the metadata write fails.
-See `Appl/FileMgrs2/CommonIS/cNewDeskConstant.def` and
-`Appl/FileMgrs2/CommonDesktop/CMain/cmainInit.asm`.
+See `Appl/FileMgrs2/CommonIS/cNewDeskConstant.def`,
+`Appl/FileMgrs2/CommonDesktop/CMain/cmainInit.asm`, and
+`Library/Kernel/File/filePath.asm` (`SetCurPath`).
+
+`Tools/build/build/fileutil.pl:MakeDir` generates `@DIRNAME.000` when
+the supplied name differs from its lowercase DOS name. An uppercase
+`INSTALL` in `layoutInstallRoot` creates a staging label that `GINST.BAT`
+can copy to `SP_TOP`. The FreeGEOS `fg.build` uses lowercase for its
+plain directory names, including `versionTag` and the paths under `FG`.
+A clean build creates uppercase DOS directories without labels for these
+names. Use lowercase when you override these settings. The generated
+setup batches still copy labels from payload subdirectories.
 
 ## BaseBox startup paths
 
@@ -140,8 +152,12 @@ so its full image path can contain at most 66 characters plus the null.
 `Tools/gsetup/gsetup.c` resolves its distribution directory before it
 starts the batch file. The batch receives this path as `%1`; `%2` is the
 temporary source-drive mapping. Persistent paths must not use `%2`, since
-setup removes that mapping before GEOS starts. Default setup checks for
-`GFS.INI` existence only; it does not regenerate or validate its paths.
+setup removes that mapping before GEOS starts. `GSETUP.BAT` passes the
+original path as `GACT.BAT`'s `%2` for the writer. If the first launcher
+itself runs through an existing drive alias, `resolveOwnPath` preserves
+that drive letter. An absolute path in `GFS.INI` then depends on that
+alias. Default setup checks for `GFS.INI` existence only; it does not
+regenerate or validate its paths.
 
 ## Version metadata
 

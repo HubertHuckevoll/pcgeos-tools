@@ -59,6 +59,24 @@ A clean build creates uppercase DOS directories without labels for these
 names. Use lowercase when you override these settings. The generated
 setup batches still copy labels from payload subdirectories.
 
+## ISDesk folder state at SP_TOP
+
+ISDesk builds with `SMARTFOLDERS` (`Appl/FileMgrs2/ISDesk/local.mk`).
+`NDPrimaryClose` sends `MSG_FOLDER_CLOSE_AND_SAVE`. `FolderCloseAndSave`
+sets the current directory to the folder and calls `ShellCreateDirInfo`.
+On SBCS builds this creates the hidden VM file `@Directory Information`,
+with the DOS name `@DIRECTO.000`. Its map block stores window geometry
+and display options. `FolderSaveIconPositions` can also write icon
+positions to this file. See `CommonIS/CDeskDisplay/cNDPrimaryClass.asm`,
+`CommonIS/CFolder/cndfolderClass.asm`, and
+`CommonDesktop/CFolder/cfolderPlacement.asm` under `Appl/FileMgrs2`.
+
+`CommonDesktop/CUtil/cutilUtil.asm:UtilCheckDirInfoCommon` permits writes
+to writable, fixed standard paths, including `SP_TOP`. The parser can
+return `SP_TOP` for paths with an unmatched suffix. To identify only the
+root, also check that the suffix is empty. See
+`Library/Kernel/File/filePath.asm:FileParseStandardPathReal`.
+
 ## BaseBox startup paths
 
 The package template uses `mount c ..` and then `cd` with the host name

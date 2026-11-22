@@ -179,20 +179,19 @@ regenerate or validate its paths.
 
 ## Access-point index in split installations
 
-The Access Point library uses the first effective `[accpnt] contents`
-value in the active INI chain. FG chains the primary INI through `GFS.INI`
-to `BOOT/NET.INI` or `BOOT/NETEC.INI`, which supplies the factory index.
-After creation or deletion, the primary INI contains the complete ordered
-index. An empty value keeps the factory entries hidden after the last
-entry is deleted. The individual `[accesspointNNNN]` properties can come
-from a lower layer.
+The Access Point library uses the kernel string-section APIs for
+`[accpnt] contents`. FG chains the primary INI through `GFS.INI` to
+`BOOT/NET.INI` or `BOOT/NETEC.INI`, which supplies the factory entries.
+The kernel puts factory entries first. New access points append to the
+local list. Deleting a factory entry records its row in the primary
+`[accpnt] contents.disabled` key. The individual
+`[accesspointNNNN]` properties can come from lower files.
 
-`Appl/IDialup/IDialup.goc` inserts new Internet entries before the hidden
-entry with ID 1. The string-section merge puts factory items first, which
-can move a local entry across that insertion point. The library uses
-`InitFileReadString` and `InitFileWriteString` for the complete index.
-See `Library/AccPnt/accpntUtils.asm:AccessPointEntry` and `WriteContents`,
-and `Library/Kernel/Initfile/initfileHigh.asm:InitFileBuildMergedStringBlock`.
+Internet Dialup hides entry ID 1 and counts only the visible rows when
+it selects an item. The hidden entry can precede local entries in the
+merged list. See `Library/AccPnt/accpntUtils.asm` (`ReloadContents`,
+`AllocateEntry`, `FreeEntry`) and `Appl/IDialup/IDialup.goc`
+(`MSG_IDP_READ_ACCPNT_AND_ACCPNT_LIST`).
 
 The install phase supplies the initial primary INI. Activation supplies
 bootstrap files and regenerates `GFS.INI`. A change to the install

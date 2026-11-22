@@ -137,6 +137,11 @@ Layered INI operation boundaries:
 
 INI error cleanup:
 
+- ESP uses the prologue's saved BP for a local declared with
+  `local word push bp`. Declare it before other locals. See
+  `Tools/esp/parse.y:pushLocalOperand` and the `entryLen` locals in
+  `Library/Kernel/Initfile/initfileHigh.asm` (raw append, raw removal and
+  factory lookup). A later declaration shifts the offsets of earlier locals.
 - `Library/Kernel/Initfile/initfileLow.asm:ExitInitfile` releases both the
   buffer lock and initFileSem. `CorruptedIniFileError` also releases
   initFileSem. A caller that transfers to that fatal handler must keep the

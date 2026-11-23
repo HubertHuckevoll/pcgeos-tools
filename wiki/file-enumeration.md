@@ -55,8 +55,9 @@ DOS directory listing shows the metadata file without its links.
 `DOSFileEnum` calls `DOSLinkEnum` only if it finds a directory file with
 a valid header. See `Driver/IFS/DOS/Common/dosEnum.asm` and `dosLink.asm`.
 
-The kernel checks for the DOSBox callback instruction at startup. On
-detection, its automatic driver selection loads the OS/2 driver. This
+The kernel checks the DOSEMU BIOS signature before it checks the DOSBox
+callback instruction at startup. Detection of either selects the OS/2
+driver during automatic selection. This
 driver includes the common DOS enumeration and link routines. See
 `Library/Kernel/FSD/fsdInit.asm` and `Driver/IFS/DOS/OS2/os2Manager.asm`.
 

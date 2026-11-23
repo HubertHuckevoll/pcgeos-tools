@@ -152,7 +152,14 @@ INT 21h/AX=6522h uppercases both paths before comparison and output.
 Output is written to a unique local file (DOS INT 21h/AH=5Ah) and closed
 before replacement. The old GFS.INI is renamed to a backup; replacement
 failure restores it. If restoration also fails, the backup is retained
-and its name is reported. Read-only files are not replaced.
+and its name is reported. The writer clears an old GFS.INI's read-only
+attribute just before replacement and restores its original attributes
+on rollback, including when the backup must be retained.
+
+Install and activation mark the selected BOOT INI and the new GFS.INI
+read-only through DOS attribute calls. Other attributes are preserved.
+Attribute failures produce warnings; file-operation failures still stop
+activation. The normal startup check does not change file attributes.
 
 Absolute DOS paths are already supported for all four physical values:
 `[paths] top` (`Loader/path.asm:ExpandRelativeTopLevelPathElements`),
@@ -176,6 +183,43 @@ itself runs through an existing drive alias, `resolveOwnPath` preserves
 that drive letter. An absolute path in `GFS.INI` then depends on that
 alias. Default setup checks for `GFS.INI` existence only; it does not
 regenerate or validate its paths.
+
+## Primary filesystem selection
+
+`Library/Kernel/FSD/fsdInit.asm:LoadFSDriver` selects the primary DOS FSD
+before it loads the additional drivers from `[system] fs`. The
+`[system] primaryFSD` key overrides automatic selection in every build.
+`Library/Kernel/kernelConstant.def` sets `PRIMARY_FSD_FOUND_IN_INITFILE`
+to true without a product condition. If the explicit driver cannot load,
+the kernel continues with `[system] fs`; it does not try automatic selection.
+The normal `bbxensem.filetree` packages `Library/Kernel/{dbcs}/geos{ec}.geo`
+for its targets. The image target names nt, pc, and fg do not select a
+separate kernel driver policy.
+
+Automatic selection checks DOSBox and DOSEMU before DR-DOS and NT.
+DOSBox and DOSEMU select OS/2. Supported DR-DOS selects DRI; detected NT
+selects NT FAT. The DOS version table maps major version 3 to MS3, 4-8 to
+MS4, and 9 to NT FAT. Major version 20 selects OS/2. Other versions above
+the table select OS/2 in all builds, including GPC_ONLY. EC and NC use the
+same selection rules with their corresponding filenames.
+A primary DOS FSD override must preserve the split installation's
+`[system] fs = MEGAFILE.GEO` entry, which loads the image driver.
+
+The OS/2 FSD avoids direct SFT access: `DOSPointToSFTEntry` always
+returns carry set (`Driver/IFS/DOS/OS2/os2Utils.asm`). Drive detection uses
+DOS IOCTL calls (`os2InitExit.asm:OS2CreateDrive`, `OS2FetchDeviceParams`).
+The NT FAT driver is based on the OS/2 driver but has separate drive
+initialization (`Driver/IFS/DOS/NTFat/ntfatManager.asm`,
+`ntfatInitExit.asm:OS2CreateDrive`). Keep this distinction when changing
+the kernel's automatic selection.
+
+DOSEMU 1.4.0 and DOSEMU 2 both place the eight-byte signature `$DOSEMU$`
+at F000:FFE0, followed by a four-byte version value at F000:FFE8. Thus one
+read-only signature check can identify both families. Evidence:
+https://github.com/dosemu2/dosemu2/blob/dosemu-1.4.0/src/base/bios/bios.S
+(`.org 0xffe0`) and
+https://github.com/dosemu2/dosemu2/blob/devel/src/base/bios/x86/bios.S
+(`_ORG(0xffe0)`, `DOSEMU_VERSION_CODE`).
 
 ## Access-point index in split installations
 

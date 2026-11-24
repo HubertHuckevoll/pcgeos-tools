@@ -116,8 +116,6 @@ A glue parameter file (`*.GP`) instructs Glue, the Linker, how to combine compil
 ```
 ##############################################################################
 #
-#       Copyright (c) GeoWorks 1992 -- All Rights Reserved
-#
 # PROJECT:      PC GEOS
 # MODULE:       GeoWrite
 # FILE:         geowrite.gp

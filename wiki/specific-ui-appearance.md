@@ -22,8 +22,12 @@
   palette constants, with a separate colour-menu branch.
   ISUI 2000 normal/default button inner highlights use C_LIGHT_GRAY, leaving a
   single white outer highlight. CComp/copenMenuBar.asm's
-  DrawColorOrBWMenuBar fills ISUI 2000 colour menu bars without a raised frame;
-  its monochrome and Motif paths still use OpenDrawRect.
+  DrawColorOrBWMenuBar fills separate ISUI 2000 colour menu bars without a
+  raised frame; its monochrome and Motif paths still use OpenDrawRect.
+  OLMenuBarDraw skips this helper for both ISUI variants when
+  OpenCheckMenusInHeaderOnMax is set and MSG_OL_WIN_IS_MAXIMIZED returns
+  carry set. The window supplies the combined-header frame, and the
+  superclass still draws the menu items.
 - ISUI's title background gradient is implemented in
   OpenWinDrawHeaderTitleBackground/DrawGradientTitle in ISUI/Win/winDraw.asm,
   despite GRADIENT_TITLE_BAR being FALSE in CommonUI/cConstant.def.
@@ -61,7 +65,9 @@
   caption icons. EnableDisableAndPosSysIcon sizes its Done button through
   MSG_VIS_RECALC_SIZE. OpenWinGetCloseButtonWidth uses the same query so
   OpenWinPositionSysMenuIcons reserves its measured width plus the Close gap
-  in OLWI_titleBarBounds.R_right; OpenWinCalcMinWidth uses the same reservation.
+  in OLWI_titleBarBounds.R_right. OpenWinCalcMinWidth and
+  OLWinGetHeaderTitleBounds use the same reservation. The latter supplies
+  the right-hand control width for combined-header menu sizing.
   The title reservation determines where right-hand controls start, so fixed
   icon widths cannot stand in for natural-width text controls.
 - Toolbar appearance spans DrawColorButton in CButton/copenButtonColor.asm

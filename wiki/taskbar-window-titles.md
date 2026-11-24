@@ -83,6 +83,18 @@
   and updates the separate `OLWinGlyphDisplay` caption object.
   `MSG_OL_MENUED_WIN_UPDATE_ICON_MONIKER` already exposes that refresh path.
   These `CWin` paths are under `Library/SpecUI/CommonUI/`.
+- Desktop icon creation occurs after the primary is hidden in
+  `CWin/cwinMenuedWin.asm:OLMenuedWinGenSetMinimized`. In Motif with the
+  taskbar disabled, this method first copies a nonempty text
+  `GPI_longTermMoniker` into a temporary chunk with `UserCopyChunkOut`.
+  The application-moniker hint overrides this selection. At `OMWGSM_50`,
+  both new and reused Motif icons receive the caption through
+  `OLMenuedWinSendIconMonikers`; the normal source optr is restored and
+  the temporary chunk is freed before return. `FindIconMonikers` still
+  stores only the normal window/app source optrs. The icon owns the copy
+  made by `CWin/cwinWinIcon.asm:OLWinIconUpdateMoniker`.
+  `CWin/cwinGlyphDisplay.asm:OLWinGlyphDisplayRerecalcSize` sizes the
+  caption to the measured moniker plus four pixels in each dimension.
 - Taskbar entries use the shared toolbox-item moniker drawing path in
   `CommonUI/CItem/citemItemColor.asm`, `ItemDrawColorItem`. Ordinary items
   retain left justification and vertical centering; the tab-style test must

@@ -1,16 +1,21 @@
 # Swat source-line breakpoints
 
-Samples for swat.rc.
-The app / lib must be called with run or spawn before setting the breakpoint in swat.rc:
+You can use `~/swat.rc` to configure breakpoints. When creating breakpoints for Swat, prefer the breakpoint syntax for `stop at`.
 
-run someapp
-spawn somelib
+The app / lib must be called with run or spawn before setting the breakpoint in `~/swat.rc`:
 
-## stop at
-stop at /home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc 82
+`run someapp`
+`spawn somelib`
 
-## stop in
-stop in HTMLVProcessClass::MSG_META_NOTIFY
+## using `stop at`
+
+Sample:
+`stop at /home/konstantinmeyer/pcgeos/Appl/Breadbox/BbxBrow/urltext/URLTEXT.goc 82`
+
+## using `stop in`
+
+Sample:
+`stop in HTMLVProcessClass::MSG_META_NOTIFY`
 
 ## C locals
 

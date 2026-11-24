@@ -8,11 +8,20 @@
   `OLBaseWinUpdateVisMoniker` handles `MSG_SPEC_UPDATE_VIS_MONIKER` and
   falls through to `OLBaseWinSetWindowEntryMoniker`.
   `OLBaseWinSetWindowEntryMoniker` prefers a primary's nonempty text
-  `GPI_longTermMoniker`, then the window moniker, then the app moniker.
+  `GPI_longTermMoniker`. In taskbar builds, if that field is absent
+  while minimized, it keeps the window-list entry's existing moniker.
+  An entry with no moniker still gets its initial window/app fallback.
+  `OLBaseWinDisplaySetNotMinimized` refreshes the entry after restoring
+  the primary, including when no document remains.
   `OLBaseWinCreateCombinationMoniker` combines the selected text with an
   icon in a temporary LMem block; it does not prepend an app name or
   change the source monikers.
   The window-list entry is replaced and `UpdateTaskBarList` is called.
+- Window-list items belong to the field's UI thread. Read their moniker
+  through `MSG_GEN_GET_VIS_MONIKER`, not `ObjSwapLock` from an app UI
+  thread. `Library/Kernel/Object/objectClass.asm:ObjLockObjBlock` checks
+  the object block's burden thread and raises
+  `OBJ_LOCK_OBJ_BLOCK_BY_WRONG_THREAD` for a different thread.
 - App fallback monikers need not share a handle with the application's
   original moniker. `OLMenuedWinFindTitleMoniker` in
   `Library/SpecUI/CommonUI/CWin/cwinMenuedWin.asm` uses `VMSF_COPY_CHUNK`
@@ -40,7 +49,8 @@
   (`Appl/GeoDraw/UI/uiDocument.ui`, `DrawDocumentControlObj`).
   `OpenWinDrawMoniker` in `cwinClassCommonLow.asm` draws this extra text.
   `OLBaseWinUseLongTermMoniker` redraws the header and refreshes the
-  window-list entry, including when the extra title is removed.
+  window-list entry, including when the extra title is removed; the
+  entry can retain its caption while the primary is minimized.
   Overlapping document windows clear the primary's extra title; the
   taskbar then uses the ordinary fallback.
 - `MSG_GEN_PRIMARY_GET_LONG_TERM_MONIKER` provides public access to a
@@ -48,6 +58,19 @@
   and specifies a chunk handle returned in AX. The chunk is in the
   primary's object block, not the caller's block. Implementation:
   `GenPrimaryGetLongTermMoniker` in `Library/User/Gen/genPrimary.asm`.
+- An inactive target branch can remember child targets, but explicit
+  release clears those references. Minimizing sets `SA_BRANCH_MINIMIZED`
+  and clears `SA_REALIZABLE` (`CWin/cwinMenuedWin.asm:
+  OLMenuedWinGenSetMinimized`). `CWin/cwinClassOther.asm:OpenWinVisClose`
+  sends `MSG_META_RELEASE_FT_EXCL` as windows close; `Library/User/User/
+  userFlowUtils.asm:FlowReleaseWithinLevel` clears the stored grab.
+  Thus `MSG_META_GET_TARGET_AT_TARGET_LEVEL` is not a stable way to find
+  the selected document after minimizing. `CWin/cwinDisplay.asm:
+  OLDisplayWinUpdPriFocusState` sends an empty display-change notification
+  on loss of target; `Library/User/UI/uiDispCtrl.asm:
+  GenDisplayControlUpdateUI` clears the primary's long-term title.
+  `Library/User/Gen/genPrimary.asm:GenPrimaryReplaceLongTermMoniker` frees
+  that title chunk, so only an owned copy can be kept.
 - Minimized desktop icons use a separate caption path in
   `CWin/cwinMenuedWin.asm`: `FindIconMonikers` selects abbreviated text
   from the window or app into `OLMDWI_iconCaptionMoniker`; it does not

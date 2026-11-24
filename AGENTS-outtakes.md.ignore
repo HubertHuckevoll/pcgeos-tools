@@ -57,3 +57,12 @@ I will send another message when the worker has finished. Then read `done.txt`, 
 
 (From here on, applies to every agent.)
 
+## Debugging
+
+Use [the Swat debug workflow](swat/debug.md) for GEOS runtime debugging. This workflow can run PC/GEOS through Swat.
+
+##Testing
+
+Use [the Swat test workflow](swat/test.md) for GEOS development and regression tests when things get hard. These tests can run PC/GEOS through Swat. For other tests,
+
+Keep each reusable Swat regression test as a Perl script in the geode's `Test` folder in the PC/GEOS checkout. Embed the Tcl in the script and use `Tools/swat/SwatTestRunner.pm`. Run the test with `perl path/to/Test/test.pl`.

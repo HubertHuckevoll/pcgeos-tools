@@ -243,6 +243,20 @@ template does not repair an existing primary INI during activation.
 See `Tools/build/product/bbxensem/bbxensem.filetree` (`setup/install`)
 and `gsetup/gsetup.bat` (`CHECKDEFAULTINI`, `DOINSTALL`, `UPDATEMARKER`).
 
+## Application links in split installations
+
+FreeGEOS puts application geodes in `SYSTEM/DISTAPPL`; the product file
+tree alone does not create their WORLD links. `Template/net.ini` starts
+FirstRun in FreeGEOS builds. `Appl/FirstRun/appSeedList.goh` supplies the
+permanent application names and destination folders. Append new records
+with a higher release level to cover existing installations.
+
+`Appl/FirstRun/firstrun.goc:FirstRunSeedPendingAppLinks` skips records at
+or below `[firstRun] lastReleaseLevel`. It probes NC and EC filenames,
+checks the target application, and reads its display name from `FEA_NAME`.
+The saved level advances to the highest level with a successful link,
+even if another record at that level fails.
+
 ## Version metadata
 
 `Tools/build/product/bbxensem/bbxensem.filetree` places the
@@ -264,11 +278,11 @@ Plain DOS builds keep the PC/GEOS line without a Basebox line.
 ## Literal parentheses in INI templates
 
 The legacy template processor in `Tools/build/build/template.pl`,
-`ParseTemplateFileAndSend`, closes language macros at the first `)`.
+`ParseTemplateFileAndSend`, closes conditional and language macros at the first `)`.
 Backslash-parenthesis does not escape that delimiter. Use `\[` and `\]`
 for literal parentheses inside a macro. The processor converts these after
 it processes the macros. See the languageName entries in
-`Tools/build/product/bbxensem/Template/geos.ini` and the runnable check
+`Tools/build/product/bbxensem/Template/net.ini` and the runnable check
 `Tools/build/Tests/ini-language.pl`.
 
 An inactive language entry with backslash-parentheses can leave a standalone

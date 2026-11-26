@@ -424,9 +424,11 @@ limit. Evidence: graphicsPathLow.asm:GetWinTopBottom;
 graphicsRegionPath.asm:GrRegionPathInit;
 graphicsRegionRaster.asm:RasterLine, SetPointCommon.
 
-The CInclude GrGetClipRegion declaration takes two arguments. Its native
-entry requires CL = RegionFillRule, even when each saved clip section supplies
-its own rule. GRGETCLIPREGION must use C_GetTwoWordArgs, as GrGetPathRegion
+Both CInclude/graphics.h and TechDocs/Markdown/Routines/rroutg_g.md:
+GrGetClipRegion specify two arguments, GStateHandle and RegionFillRule. This
+is the documented C calling convention, not an API extension. The native
+assembly entry requires CL = RegionFillRule, even when each saved clip section
+supplies its own rule. GRGETCLIPREGION must use C_GetTwoWordArgs, as GrGetPathRegion
 does. The former one-word decoder read the wrong stack argument for GState,
 did not initialize the fill-rule register and left one argument on the caller's
 stack. Evidence: CInclude/graphics.h; Library/Kernel/Graphics/graphicsC.asm:

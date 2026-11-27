@@ -13,7 +13,7 @@ call clean || goto failed
 
 rem Merge stderr in cmd so PowerShell receives plain build output.
 rem Return the pmake exit code after writing the log.
-powershell.exe -NoLogo -NoProfile -Command "$ErrorActionPreference = 'Stop'; cmd.exe /d /c 'pmake -L 8 -J 8 2>&1' | Tee-Object -LiteralPath (Join-Path $env:USERPROFILE 'build.log'); exit $LASTEXITCODE" || goto failed
+powershell.exe -NoLogo -NoProfile -Command "$ErrorActionPreference = 'Stop'; cmd.exe /d /c 'pmake -P -L 8 -J 8 2>&1' | Tee-Object -LiteralPath (Join-Path $env:USERPROFILE 'build.log'); exit $LASTEXITCODE" || goto failed
 
 call "%~dp0shinyproduct.cmd"
 set "shinyStatus=%errorlevel%"

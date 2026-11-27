@@ -18,6 +18,13 @@ invoked executable path. Windows J and L limits belong to each invocation;
 there is no shared recursive pool. nt-cfg.h keeps the default at one job and
 sets NT_MAX_JOBS to 63. job.c reserves wait slot zero for cancellation.
 
+job.c:JobProgress reports local shell starts and collected exits with the
+pmake process ID, nLocal, and the smaller of maxJobs and maxLocal. These
+counts belong to one invocation; they are not a total for its descendants.
+Progress is live in the outer -P invocation and part of its capture for
+recursive invocations. -s suppresses it. -B counts each shell command;
+-M uses the separate serial compatibility path.
+
 job.c defines _WIN32_WINNT before Windows headers so Watcom declares the job
 object APIs. Its Windows job object is not inheritable and uses
 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. Suspended shells join it before ResumeThread.
@@ -30,6 +37,17 @@ The console handler only signals the event. The main thread owns child waits,
 job lists, target deletion, and handle cleanup. JobNTExit is registered with
 atexit, including for failures in .BEGIN. main.c:DieHorribly must use exit,
 rather than ExitProcess, to run this cleanup.
+
+Windows -P captures each outer target in an outputH file created by
+JobNTTempFile with delete-on-close. The handle is inheritable only while
+CreateProcess starts that target. JobNTOutput replays bounded byte blocks
+with ReadFile and WriteFile, so it does not split lines or translate CRLF.
+JobNTFree also replays output after build-tree termination. -B keeps the
+handle across command restarts. main.c uses PMAKE_OUTPUT_CAPTURED so
+recursive pmake calls write through to the outer capture; unfinished child
+output then survives cancellation of the whole process tree. -M retains
+the separate Compat_Run path. Evidence: main.c:main; job.c:JobExec,
+JobNTOutput, JobNTFinish, JobNTFree, and Job_AbortAll.
 
 Windows Make_Run calls Finish if Job_End collected errors or numNodes remains
 nonzero. Its query path returns before this check. Linux retains its older

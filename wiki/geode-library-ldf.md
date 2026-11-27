@@ -217,3 +217,17 @@ On Linux, include paths must match directory case. WListGen uses
 with lowercase `ansi` can produce misleading graph-cycle diagnostics.
 Regenerate with `pmake depend` after correcting source include paths;
 see `Appl/Tools/WListGen/wlistgen.goc` and its Installed dependency file.
+
+On Windows, a read-only published LDF prevents copy-if-different from
+updating Installed/Include. Older bin/clean.cmd versions used attrib +R
+to make selected files survive ordinary del commands. serial.ldf is generated from
+Driver/Stream/Serial and must be writable. BorlandRTL/borland.obj also
+has sources: Library/BorlandRTL/borland.asm and the files it includes;
+Library/BorlandRTL/local.mk builds borland.lib from it. RGB2CMYK has no
+source or Installed directory in the repository, and its product entry
+in Tools/build/product/bbxensem/bbxensem.filetree is commented out.
+Protecting these names is not needed for the current source build.
+clean.cmd clears the old read-only flags on borland.obj and serial.ldf
+before cleaning. The no preview leaves attributes unchanged.
+Also see Include/Win32/geode.mk, LIBOBJ and SETLIBFLAG rules, and
+Tools/scripts/perl/copy-if-different.

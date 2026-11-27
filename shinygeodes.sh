@@ -8,7 +8,7 @@ getamd.sh
 set -o pipefail
 cd ~/pcgeos/Installed
 yes | clean
-pmake -L 8 -J 8 2>&1 | tee ~/build.log
+pmake -P -L 8 -J 8 2>&1 | tee ~/build.log
 
 # Build product
 shinyproduct.sh

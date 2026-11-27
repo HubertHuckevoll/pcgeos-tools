@@ -304,3 +304,9 @@ is stored in `$LOCAL_ROOT/.bbxxip/.bbxxip.fg`.
 `shipfiles` is true. With `shipFiles=false`, it can create the empty
 `image` directory, but `Tools/scripts/perl/lib/imageutil.pl:CreateGFS`
 reports that the missing `gfs` directory prevents image creation.
+
+The native Windows cleanup command is bin/clean.cmd. It does not ask for
+confirmation. Invoke it as `call clean` from another batch file. Its Perl
+wrapper uses `perl -S %0.cmd`, so a call that already includes the .cmd suffix
+would add that suffix twice. Evidence: `bin/clean.cmd`, its batch header and
+argument handling; compare the confirmation prompt in `bin/clean`.

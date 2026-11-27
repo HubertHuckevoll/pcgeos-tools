@@ -194,3 +194,26 @@ parameter file and UI resource. `BSSetHardIconsOnOff` in `bsProcess.asm`
 skips the pen-driver start and stop calls if `[system]
 bstartupPCEmulation=true`. `WelcomeStartSelect` in `bsWelcome.asm` skips
 calibration and date and time setup if `[system] penCalibrated=true`.
+
+## Product dependency checks
+
+Compare the top-level build graph with both `library` and `driver` imports
+in GP files, including conditional imports and full-build product variants.
+Also check the imported-library tables of the linked geodes. Class references
+can add imports that are absent from the GP library list. The format is
+defined by `GeodeHeader2` and `ImportedLibraryEntry` in
+`Tools/include/geode.h`. Existing LDF files can hide missing build order;
+check that providers publish their definitions before consumers start.
+
+Config needs Color before linking. `Library/Config/configGeode.def` uses
+`Objects/colorC.def`, and `config.gp` exports `PrefColorSelectorClass`.
+The top-level Config rule orders Color before Config. ParentC then waits
+for Config. BJack and GWPoker also import Text through class references;
+TEdit imports Spell. These imports occur in the linked geodes even though
+the GP files do not list them.
+
+On Linux, include paths must match directory case. WListGen uses
+`Ansi/stdlib.h`, `Ansi/stdio.h`, and `Ansi/string.h`. Stale dependencies
+with lowercase `ansi` can produce misleading graph-cycle diagnostics.
+Regenerate with `pmake depend` after correcting source include paths;
+see `Appl/Tools/WListGen/wlistgen.goc` and its Installed dependency file.

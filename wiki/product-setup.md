@@ -248,8 +248,10 @@ and `gsetup/gsetup.bat` (`CHECKDEFAULTINI`, `DOINSTALL`, `UPDATEMARKER`).
 FreeGEOS puts application geodes in `SYSTEM/DISTAPPL`; the product file
 tree alone does not create their WORLD links. `Template/net.ini` starts
 FirstRun in FreeGEOS builds. `Appl/FirstRun/appSeedList.goh` supplies the
-permanent application names and destination folders. Append new records
-with a higher release level to cover existing installations.
+build filename bases and destination folders. These can differ from the
+permanent GP names (for example, WebBox uses `webbox` for the build file
+and `bw97.app` as its permanent name). Append new records with a higher
+release level to cover existing installations.
 
 `Appl/FirstRun/firstrun.goc:FirstRunSeedPendingAppLinks` skips records at
 or below `[firstRun] lastReleaseLevel`. It probes NC and EC filenames,
@@ -290,3 +292,15 @@ An inactive language entry with backslash-parentheses can leave a standalone
 later commit, so Apply can fail in an unrelated preferences module.
 Evidence: `Library/Kernel/Initfile/initfileLow.asm:ValidateIniFile`,
 `VIF_LOOKING_FOR_EQUAL`, and `initfileHigh.asm:INITFILECOMMIT`.
+
+## Product build after cleanup
+
+`~/pcgeos-tools/shinyproduct.sh` removes the GFS source tree before it
+runs `Scripts/buildbbx.pl`. The build must then use `shipFiles=true`
+(answer `y` to `Copy geodes from Installed to target?`). The prompt default
+is stored in `$LOCAL_ROOT/.bbxxip/.bbxxip.fg`.
+
+`Tools/build/build/build.pl` calls `OpenAndSendFileTreeFile` only when
+`shipfiles` is true. With `shipFiles=false`, it can create the empty
+`image` directory, but `Tools/scripts/perl/lib/imageutil.pl:CreateGFS`
+reports that the missing `gfs` directory prevents image creation.
